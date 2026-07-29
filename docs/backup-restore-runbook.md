@@ -123,6 +123,31 @@ Folyamat:
 
 Napi módban az AI szerver nem kötelező. Ha alszik vagy nem elérhető, a helyi archívum ettől még sikeres marad.
 
+## Webes full AI backup indítás
+
+A Backup tabon a `Run Full AI Backup` gomb a teljes AI HDD-s folyamatot kéri:
+
+1. Gitea config snapshot sync.
+2. Gitea dump az AI szerveren.
+3. Kötelező restic backup az AI HDD-re.
+4. Opcionális AI szerver leállítás.
+
+A gomb nem közvetlenül a konténerből indít host `systemctl` parancsot. A backend a `backups/full-ai-backup.request` fájlt frissíti, a hoston futó `homecontrol-full-ai-backup-request.path` systemd helper pedig erre elindítja a `weekly_ai_backup.sh` full mentési folyamatot.
+
+Telepítés/frissítés:
+
+```bash
+cd /srv/docker/homecontrol
+sudo scripts/apply_backup_timer.sh
+```
+
+Ellenőrzés:
+
+```bash
+systemctl status homecontrol-full-ai-backup-request.path
+journalctl -u homecontrol-full-ai-backup-request.service -n 120 --no-pager
+```
+
 ## Heti AI HDD backup részletesen
 
 A heti mentést a `homecontrol-ai-weekly-backup.timer` indítja. Alapértelmezett időpont: vasárnap 03:30, kis random késleltetéssel.

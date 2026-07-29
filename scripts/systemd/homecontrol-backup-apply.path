@@ -8,6 +8,8 @@ PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-ai-weekly-backup
 PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-ai-weekly-backup.service
 PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-restic-check.timer
 PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-restic-check.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-full-ai-backup-request.path
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-full-ai-backup-request.service
 Unit=homecontrol-backup-apply.service
 
 [Install]
