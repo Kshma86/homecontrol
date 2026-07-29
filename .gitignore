@@ -1,0 +1,17 @@
+.env
+*.db
+*.db-*
+*.log
+*.tar.gz
+__pycache__/
+secrets.yaml
+.storage/
+deps/
+tts/
+postgres/data/
+mqtt/data/
+mqtt/log/
+zigbee2mqtt/data/log/
+infra/ssh/
+tuya-poller/logs/
+tuya-poller/multi_connector_config.json

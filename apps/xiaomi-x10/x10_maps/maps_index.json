@@ -1,0 +1,238 @@
+{
+  "current_map_id": 3,
+  "source_file": "/app/x10_maps/map_object_69cca3c356e307e7f77b2f8b79d8cfc5.json",
+  "maps": [
+    {
+      "id_from_json": 2,
+      "name": "2. Szint",
+      "angle": "0",
+      "is_current": false,
+      "png": "/app/x10_maps/2_2._Szint.png",
+      "decoded": "/app/x10_maps/2_2._Szint.decoded",
+      "header": {
+        "map_id": 44,
+        "frame_id": 0,
+        "frame_type": 73,
+        "robot_x": 0,
+        "robot_y": 0,
+        "robot_angle": 0,
+        "dock_x": 32767,
+        "dock_y": 32767,
+        "dock_angle": 32767,
+        "grid_size": 50,
+        "width": 174,
+        "height": 151,
+        "left": -4150,
+        "top": -6400,
+        "raw_size": 26636
+      },
+      "rooms": [
+        {
+          "segment_id": 4,
+          "name": "WsO2bGQgc3pvYmE=",
+          "type": 0,
+          "roomID": "48001100024",
+          "neighbors": [
+            5
+          ]
+        },
+        {
+          "segment_id": 2,
+          "name": "RsO8cmTFkXN6b2Jh",
+          "type": 0,
+          "roomID": "48001097076",
+          "neighbors": [
+            5
+          ]
+        },
+        {
+          "segment_id": 5,
+          "name": "Rm9seW9zw7M=",
+          "type": 0,
+          "roomID": "48001100025",
+          "neighbors": [
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "segment_id": 1,
+          "name": null,
+          "type": null,
+          "roomID": null,
+          "neighbors": [
+            3
+          ]
+        },
+        {
+          "segment_id": 3,
+          "name": null,
+          "type": null,
+          "roomID": null,
+          "neighbors": [
+            1,
+            5
+          ]
+        }
+      ],
+      "meta_keys": [
+        "pointinfo",
+        "seg_inf",
+        "vw"
+      ]
+    },
+    {
+      "id_from_json": 1,
+      "name": "1. Szint",
+      "angle": "0",
+      "is_current": false,
+      "png": "/app/x10_maps/1_1._Szint.png",
+      "decoded": "/app/x10_maps/1_1._Szint.decoded",
+      "header": {
+        "map_id": 197,
+        "frame_id": 0,
+        "frame_type": 73,
+        "robot_x": 0,
+        "robot_y": 0,
+        "robot_angle": 0,
+        "dock_x": 32767,
+        "dock_y": 32767,
+        "dock_angle": 32767,
+        "grid_size": 50,
+        "width": 135,
+        "height": 253,
+        "left": -5700,
+        "top": -8100,
+        "raw_size": 34511
+      },
+      "rooms": [
+        {
+          "segment_id": 1,
+          "name": "WnPDs2ZpIHN6b2Jh",
+          "type": 0,
+          "roomID": "48001098232",
+          "neighbors": [
+            2
+          ]
+        },
+        {
+          "segment_id": 3,
+          "name": "QW55YS1hcGEgc3pvYmE=",
+          "type": 0,
+          "roomID": "48001098233",
+          "neighbors": [
+            2
+          ]
+        },
+        {
+          "segment_id": 2,
+          "name": "TMOpcGNzxZEgZm9yZHVsw7M=",
+          "type": 0,
+          "roomID": "48001098235",
+          "neighbors": [
+            1,
+            3
+          ]
+        }
+      ],
+      "meta_keys": [
+        "pointinfo",
+        "seg_inf",
+        "vw"
+      ]
+    },
+    {
+      "id_from_json": 0,
+      "name": "Földszint",
+      "angle": "0",
+      "is_current": true,
+      "png": "/app/x10_maps/0_Földszint.png",
+      "decoded": "/app/x10_maps/0_Földszint.decoded",
+      "header": {
+        "map_id": 3,
+        "frame_id": 0,
+        "frame_type": 73,
+        "robot_x": 0,
+        "robot_y": 0,
+        "robot_angle": 0,
+        "dock_x": 475,
+        "dock_y": -53,
+        "dock_angle": 178,
+        "grid_size": 50,
+        "width": 99,
+        "height": 247,
+        "left": -3850,
+        "top": -7650,
+        "raw_size": 25015
+      },
+      "rooms": [
+        {
+          "segment_id": 4,
+          "name": "S29ueWhh",
+          "type": 0,
+          "roomID": "48001097077",
+          "neighbors": [
+            2,
+            3
+          ]
+        },
+        {
+          "segment_id": 7,
+          "name": "V0M=",
+          "type": 0,
+          "roomID": "48001097078",
+          "neighbors": [
+            2
+          ]
+        },
+        {
+          "segment_id": 3,
+          "name": "RsO8cmTFkXN6b2Jh",
+          "type": 0,
+          "roomID": "48001097076",
+          "neighbors": [
+            2,
+            4
+          ]
+        },
+        {
+          "segment_id": 1,
+          "name": "TmFwcGFsaQ==",
+          "type": 0,
+          "roomID": "48001097074",
+          "neighbors": [
+            2,
+            5
+          ]
+        },
+        {
+          "segment_id": 2,
+          "name": "RWzFkXN6b2Jh",
+          "type": 0,
+          "roomID": "48001097075",
+          "neighbors": [
+            1,
+            3,
+            4,
+            7
+          ]
+        },
+        {
+          "segment_id": 5,
+          "name": null,
+          "type": null,
+          "roomID": null,
+          "neighbors": [
+            1
+          ]
+        }
+      ],
+      "meta_keys": [
+        "pointinfo",
+        "seg_inf",
+        "vw"
+      ]
+    }
+  ]
+}

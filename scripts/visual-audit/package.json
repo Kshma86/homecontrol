@@ -1,0 +1,12 @@
+{
+  "name": "homecontrol-visual-audit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "server": "node server.mjs",
+    "capture": "node capture.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.46.0"
+  }
+}

@@ -1,0 +1,7 @@
+[Unit]
+Description=HomeControl daily backup
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/docker/homecontrol/scripts/backup_hc.sh

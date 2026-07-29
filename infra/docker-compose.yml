@@ -1,0 +1,397 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: homecontrol-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Europe/Budapest
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.22.1-p0
+    container_name: homecontrol-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+
+      AUTH_TYPE: scram-sha-256
+      AUTH_USER: ${POSTGRES_USER}
+      AUTH_PASSWORD: ${POSTGRES_PASSWORD}
+
+      POOL_MODE: ${PGBOUNCER_POOL_MODE}
+      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE}
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
+      TZ: Europe/Budapest
+    ports:
+      - "127.0.0.1:${PGBOUNCER_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: homecontrol-mqtt
+    restart: unless-stopped
+    ports:
+      - "${MQTT_PORT}:1883"
+    volumes:
+      - ./mqtt/config:/mosquitto/config
+      - ./mqtt/data:/mosquitto/data
+      - ./mqtt/log:/mosquitto/log
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  adminer:
+    image: adminer:4
+    container_name: homecontrol-adminer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "0.0.0.0:${ADMINER_PORT}:8080"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: homecontrol-backend
+    restart: unless-stopped
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+      ai-server:
+        condition: service_started
+    environment:
+      TZ: Europe/Budapest
+      # PgBouncer a compose networkön belül 5432-n hallgat
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}
+      MQTT_HOST: mqtt
+      MQTT_PORT: 1883
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
+      OPENWEATHER_LAT: ${OPENWEATHER_LAT:-}
+      OPENWEATHER_LON: ${OPENWEATHER_LON:-}
+      OPENWEATHER_UNITS: ${OPENWEATHER_UNITS:-metric}
+      OPENWEATHER_LANG: ${OPENWEATHER_LANG:-hu}
+      OPENWEATHER_POLL_SECONDS: ${OPENWEATHER_POLL_SECONDS:-3600}
+      X10_BASE_TOPIC: ${X10_BASE_TOPIC:-homecontrol/xiaomi_x10}
+      X10_MAP_DIR: /srv/docker/homecontrol/apps/xiaomi-x10/x10_maps
+      CLIMATE_BASE_TOPIC: ${CLIMATE_BASE_TOPIC:-homecontrol/gree_climate}
+      GREE_CLIMATE_IP: ${GREE_CLIMATE_IP:-192.168.1.72}
+      GREE_CLIMATE_PORT: ${GREE_CLIMATE_PORT:-7000}
+      GREE_CLIMATE_MAC: ${GREE_CLIMATE_MAC:-9424b8ba43f7}
+      GREE_CLIMATE_NAME: ${GREE_CLIMATE_NAME:-Gree klíma}
+      AI_SERVER_URL: ${AI_SERVER_URL:-http://ai-server:8088}
+      AI_SERVER_TIMEOUT: ${AI_SERVER_TIMEOUT:-360}
+      AI_NODE_NAME: ${AI_NODE_NAME:-Remote AI Server}
+      AI_NODE_HOST: ${AI_NODE_HOST:-}
+      AI_NODE_MAC: ${AI_NODE_MAC:-}
+      AI_NODE_BROADCAST: ${AI_NODE_BROADCAST:-255.255.255.255}
+      AI_NODE_SSH_USER: ${AI_NODE_SSH_USER:-}
+      AI_NODE_SSH_PORT: ${AI_NODE_SSH_PORT:-22}
+      AI_NODE_SSH_KEY: ${AI_NODE_SSH_KEY:-}
+      AI_NODE_STACK_DIR: ${AI_NODE_STACK_DIR:-~/homecontrol-ai-node}
+      AI_NODE_NET_IFACE: ${AI_NODE_NET_IFACE:-}
+      AI_NODE_POWER_ENTITY_ID: ${AI_NODE_POWER_ENTITY_ID:-}
+      AI_NODE_POWER_OFF_DELAY_SEC: ${AI_NODE_POWER_OFF_DELAY_SEC:-300}
+      AI_NODE_OLLAMA_URL: ${AI_NODE_OLLAMA_URL:-}
+      AI_NODE_OPENWEBUI_URL: ${AI_NODE_OPENWEBUI_URL:-}
+      AI_NODE_STATUS_TIMEOUT: ${AI_NODE_STATUS_TIMEOUT:-3}
+      AI_NODE_SSH_TIMEOUT: ${AI_NODE_SSH_TIMEOUT:-20}
+      HC_V2_EXECUTION_ENABLED: ${HC_V2_EXECUTION_ENABLED:-0}
+      HC_V2_EXECUTION_ALLOW_IRRIGATION: ${HC_V2_EXECUTION_ALLOW_IRRIGATION:-0}
+      HC_V2_EXECUTION_ALLOW_X10: ${HC_V2_EXECUTION_ALLOW_X10:-0}
+      HC_V2_EXECUTION_ALLOW_CLIMATE: ${HC_V2_EXECUTION_ALLOW_CLIMATE:-0}
+      DOCKER_SOCKET: /var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../backups:/srv/docker/homecontrol/backups
+      - ../restore_staging:/srv/docker/homecontrol/restore_staging
+      - ../apps:/srv/docker/homecontrol/apps
+      - ../docs:/srv/docker/homecontrol/docs:ro
+      - .:/srv/docker/homecontrol/infra
+      - ./zigbee2mqtt/data:/srv/docker/homecontrol/infra/zigbee2mqtt/data
+      - ./ssh:/srv/docker/homecontrol/infra/ssh:ro
+      - ../homeassistant:/srv/docker/homecontrol/homeassistant
+      - ../scripts:/srv/docker/homecontrol/scripts
+    ports:
+      - "${BACKEND_PORT}:5000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ai-server:
+    build:
+      context: /srv/docker/homecontrol/apps/ai-server
+      dockerfile: Dockerfile
+    container_name: homecontrol-ai-server
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Budapest
+      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      AI_MODEL: ${AI_MODEL:-qwen3:1.7b}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AI_REQUEST_TIMEOUT: ${AI_REQUEST_TIMEOUT:-300}
+      AI_PROBE_TIMEOUT: ${AI_PROBE_TIMEOUT:-1.5}
+      AI_CONFIG_PATH: /data/config.json
+    volumes:
+      - ai_server_data:/data
+    ports:
+      - "127.0.0.1:${AI_SERVER_PORT:-8095}:8088"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: homecontrol-ollama
+    profiles:
+      - local-ai
+    restart: unless-stopped
+    volumes:
+      - ollama_models:/root/.ollama
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: homecontrol-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  homecontrol-tuya-poller:
+    build:
+      context: /srv/docker/homecontrol/apps/tuya-poller
+      dockerfile: Dockerfile
+    container_name: homecontrol-tuya-poller
+    restart: unless-stopped
+    volumes:
+      - /srv/docker/homecontrol/apps/tuya-poller/multi_connector_config.json:/app/multi_connector_config.json:ro
+      - /srv/docker/homecontrol/apps/tuya-poller/logs:/root/hc_logs/tuya
+    depends_on:
+      - mqtt
+
+  homecontrol-xiaomi-x10:
+    build:
+      context: /srv/docker/homecontrol/apps/xiaomi-x10
+      dockerfile: Dockerfile
+    container_name: homecontrol-xiaomi-x10
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Budapest
+      X10_MQTT_HOST: mqtt
+      X10_MQTT_PORT: 1883
+      X10_BASE_TOPIC: ${X10_BASE_TOPIC:-homecontrol/xiaomi_x10}
+      X10_ROBOT_IP: ${X10_ROBOT_IP:-}
+      X10_ROBOT_TOKEN: ${X10_ROBOT_TOKEN:-}
+      X10_MIIOCLI: ${X10_MIIOCLI:-/usr/local/bin/miiocli}
+      X10_MAP_OUTPUT_DIR: /app/x10_maps
+      X10_MAP_SCRIPT: /app/xiaomi_x10_map.py
+      X10_MAPS_INDEX: /app/x10_maps/maps_index.json
+      X10_XIAOMI_CLOUD_AUTH: /app/x10_maps/xiaomi_cloud_auth.json
+      X10_XIAOMI_CLOUD_COUNTRY: ${X10_XIAOMI_CLOUD_COUNTRY:-de}
+      X10_CAPTURE_DIR: /app/x10_maps/captures
+      X10_CAPTURE_STATUS_SEC: ${X10_CAPTURE_STATUS_SEC:-5}
+      X10_CAPTURE_MAP_SEC: ${X10_CAPTURE_MAP_SEC:-20}
+      X10_CAPTURE_SCHEDULER_SEC: ${X10_CAPTURE_SCHEDULER_SEC:-30}
+      X10_POLL_IDLE_SEC: ${X10_POLL_IDLE_SEC:-60}
+      X10_POLL_CLEANING_SEC: ${X10_POLL_CLEANING_SEC:-10}
+      X10_MAP_CHECK_CLEANING_SEC: ${X10_MAP_CHECK_CLEANING_SEC:-20}
+      X10_SCHEDULER_WATCH_SEC: ${X10_SCHEDULER_WATCH_SEC:-10}
+      X10_ROOM_CLEAN_TASK_ID: ${X10_ROOM_CLEAN_TASK_ID:-1}
+      X10_ROOM_CLEAN_DELAY_MIN: ${X10_ROOM_CLEAN_DELAY_MIN:-2}
+      X10_ROOM_CLEAN_SUCTION: ${X10_ROOM_CLEAN_SUCTION:-3}
+      X10_ROOM_CLEAN_PARAM: ${X10_ROOM_CLEAN_PARAM:-3}
+      X10_SET_MAP_SIID: ${X10_SET_MAP_SIID:-6}
+      X10_SET_MAP_AIID: ${X10_SET_MAP_AIID:-2}
+    volumes:
+      - /srv/docker/homecontrol/apps/xiaomi-x10/x10_maps:/app/x10_maps
+    depends_on:
+      - mqtt
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  homecontrol-gree-climate:
+    build:
+      context: /srv/docker/homecontrol/apps/gree-climate
+      dockerfile: Dockerfile
+    container_name: homecontrol-gree-climate
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TZ: Europe/Budapest
+      MQTT_HOST: 127.0.0.1
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      CLIMATE_BASE_TOPIC: ${CLIMATE_BASE_TOPIC:-homecontrol/gree_climate}
+      GREE_CLIMATE_IP: ${GREE_CLIMATE_IP:-192.168.1.72}
+      GREE_CLIMATE_PORT: ${GREE_CLIMATE_PORT:-7000}
+      GREE_CLIMATE_MAC: ${GREE_CLIMATE_MAC:-9424b8ba43f7}
+      GREE_CLIMATE_NAME: ${GREE_CLIMATE_NAME:-Gree klíma}
+      GREE_CLIMATE_POLL_SECONDS: ${GREE_CLIMATE_POLL_SECONDS:-20}
+    depends_on:
+      - mqtt
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  homecontrol-ha-growatt-poller:
+    build:
+      context: /srv/docker/homecontrol/apps/ha-growatt-poller
+      dockerfile: Dockerfile
+    container_name: homecontrol-ha-growatt-poller
+    restart: unless-stopped
+    profiles:
+      - ha-growatt
+    network_mode: host
+    environment:
+      TZ: Europe/Budapest
+      HA_BASE_URL: ${HA_BASE_URL:-http://127.0.0.1:8123}
+      HA_TOKEN: ${HA_GROWATT_TOKEN:-}
+      HA_GROWATT_BASE_TOPIC: ${HA_GROWATT_BASE_TOPIC:-homecontrol/tele/growatt/cloud}
+      HA_GROWATT_POLL_SECONDS: ${HA_GROWATT_POLL_SECONDS:-60}
+      MQTT_HOST: 127.0.0.1
+      MQTT_PORT: ${MQTT_PORT:-1883}
+    depends_on:
+      - mqtt
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  growatt-grott:
+    image: ledidobe/grott:2.8.3
+    container_name: homecontrol-growatt-grott
+    restart: unless-stopped
+    profiles:
+      - growatt
+    environment:
+      TZ: Europe/Budapest
+      gmode: proxy
+      gnomqtt: "False"
+      gmqttip: mqtt
+      gmqttport: 1883
+      gmqtttopic: homecontrol/tele/growatt/inverter
+      gmqttretain: "False"
+      gblockcmd: "True"
+      gverbose: ${GROWATT_VERBOSE:-False}
+    ports:
+      - "${GROWATT_GROTT_PORT:-5279}:5279"
+    depends_on:
+      - mqtt
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt
+    container_name: zigbee2mqtt
+    restart: unless-stopped
+    volumes:
+      - ./zigbee2mqtt/data:/app/data
+    ports:
+      - "8090:8080"
+    environment:
+      - TZ=Europe/Budapest
+
+  hc_ingest:
+    build: ../apps/hc_ingest
+    container_name: homecontrol-ingest
+    restart: unless-stopped
+
+    environment:
+      TZ: Europe/Budapest
+
+      MQTT_HOST: mqtt
+      MQTT_PORT: 1883
+
+      PG_HOST: pgbouncer
+      PG_PORT: 5432
+      PG_DB: ${POSTGRES_DB}
+      PG_USER: ${POSTGRES_USER}
+      PG_PASSWORD: ${POSTGRES_PASSWORD}
+
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+
+    logging:
+        driver: "json-file"
+        options:
+          max-size: "10m"
+          max-file: "3"
+
+volumes:
+  ai_server_data:
+  ollama_models:

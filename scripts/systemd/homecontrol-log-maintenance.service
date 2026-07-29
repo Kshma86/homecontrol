@@ -1,0 +1,7 @@
+[Unit]
+Description=HomeControl runtime log retention cleanup
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/docker/homecontrol/scripts/maintenance_logs.sh

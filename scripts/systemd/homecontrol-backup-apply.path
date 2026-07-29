@@ -1,0 +1,12 @@
+[Unit]
+Description=Watch HomeControl backup timer source files
+
+[Path]
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-backup.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-backup.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-ai-weekly-backup.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-ai-weekly-backup.service
+Unit=homecontrol-backup-apply.service
+
+[Install]
+WantedBy=multi-user.target

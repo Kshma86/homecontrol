@@ -1,0 +1,4 @@
+default_config:
+
+# Temporarily use Home Assistant's default SQLite recorder so the UI can start
+# independently from the HomeControl PostgreSQL database.

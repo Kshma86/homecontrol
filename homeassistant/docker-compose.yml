@@ -1,0 +1,11 @@
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Budapest
+    volumes:
+      - ./config:/config
+      - /etc/localtime:/etc/localtime:ro

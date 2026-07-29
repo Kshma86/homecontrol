@@ -1,0 +1,7 @@
+Flask>=3.0
+click<8.2
+colorama>=0.4.6
+paho-mqtt>=2.0
+Pillow>=10.0
+python-miio>=0.5.12
+requests>=2.31

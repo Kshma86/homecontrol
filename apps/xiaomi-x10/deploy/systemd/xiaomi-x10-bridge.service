@@ -1,0 +1,16 @@
+[Unit]
+Description=Xiaomi X10 HomeControl MQTT bridge
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=homecontrol
+WorkingDirectory=/opt/xiaomi-x10
+EnvironmentFile=/opt/xiaomi-x10/.env
+ExecStart=/opt/xiaomi-x10/.venv/bin/python /opt/xiaomi-x10/xiaomi_x10_bridge.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

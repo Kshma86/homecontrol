@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <title>Xiaomi X10</title>
+  <style>
+    body { font-family: Arial; background:#111; color:#eee; padding:20px; }
+    .card { background:#1d1d1d; padding:16px; border-radius:12px; margin-bottom:16px; }
+    button { padding:10px 14px; margin:4px; border-radius:8px; border:0; cursor:pointer; }
+    .danger { background:#b33; color:white; }
+    .room { background:#2d6cdf; color:white; }
+  </style>
+</head>
+<body>
+  <h1>Xiaomi X10</h1>
+
+  <div class="card">
+    <h2>Állapot</h2>
+    <div id="status">Betöltés...</div>
+    <button onclick="sendCommand('status')">Frissítés</button>
+    <button onclick="sendCommand('home')">Dock</button>
+    <button class="danger" onclick="sendCommand('stop')">Stop</button>
+  </div>
+
+  <div class="card">
+    <h2>Szobák</h2>
+    <div id="rooms"></div>
+  </div>
+
+<script>
+async function loadStatus() {
+  const r = await fetch('/api/xiaomi_x10/status');
+  const s = await r.json();
+
+  document.getElementById('status').innerHTML = `
+    <p>Állapot: <b>${s.robot_state_text}</b></p>
+    <p>Akku: <b>${s.battery}%</b></p>
+    <p>Térkép: <b>${s.map_current_name}</b></p>
+    <p>Bridge: <b>${s.bridge_status}</b></p>
+  `;
+}
+
+async function loadRooms() {
+  const r = await fetch('/api/xiaomi_x10/rooms');
+  const data = await r.json();
+
+  const rooms = data.rooms.filter(room => room.room_id && room.name && !room.name.startsWith('room_'));
+
+  document.getElementById('rooms').innerHTML = rooms.map(room => `
+    <button class="room" onclick="roomClean(${data.map_id}, ${room.segment_id}, '${room.name}')">
+      ${room.name}
+    </button>
+  `).join('');
+}
+
+async function sendCommand(command, payload = "1") {
+  await fetch('/api/xiaomi_x10/command', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({command, payload})
+  });
+
+  setTimeout(() => {
+    loadStatus();
+    loadRooms();
+  }, 1000);
+}
+
+async function roomClean(mapId, segmentId, name) {
+  if (!confirm(`Induljon takarítás itt: ${name}?`)) return;
+
+  await sendCommand('room_clean', {
+    map_id: mapId,
+    segments: [segmentId],
+    delay_min: 2
+  });
+}
+
+loadStatus();
+loadRooms();
+setInterval(loadStatus, 5000);
+setInterval(loadRooms, 30000);
+</script>
+</body>
+</html>
