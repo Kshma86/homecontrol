@@ -21,7 +21,6 @@ HA_TOKEN="${HA_BACKUP_TOKEN:-}"
 
 [ -n "$HA_URL" ] || exit 0
 [ -n "$HA_TOKEN" ] || exit 0
-command -v curl >/dev/null 2>&1 || exit 0
 
 python3 - "$HA_URL" "$HA_TOKEN" "$TITLE" "$MESSAGE" <<'PY'
 import json
