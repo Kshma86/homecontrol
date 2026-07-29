@@ -96,9 +96,12 @@ done
 log "-- AI szerver SSH elérhető, kötelező restic backup indul"
 log "-- Gitea config snapshot sync indul"
 "$BASE/scripts/sync_config_to_gitea.sh"
+log "-- Gitea config snapshot sync kész"
 
 log "-- AI szerver Gitea dump indul"
-if ! ssh "${SSH_OPTS[@]}" "${AI_BACKUP_USER}@${AI_BACKUP_HOST}" "cd ${AI_NODE_STACK_DIR} && [ -x ./backup_gitea.sh ] && ./backup_gitea.sh"; then
+if ssh "${SSH_OPTS[@]}" "${AI_BACKUP_USER}@${AI_BACKUP_HOST}" "cd ${AI_NODE_STACK_DIR} && [ -x ./backup_gitea.sh ] && ./backup_gitea.sh"; then
+  log "-- Gitea dump kész"
+else
   log "-- Gitea dump nem futott le, a kötelező restic backup folytatódik"
 fi
 
