@@ -68,15 +68,19 @@ Defaults:
 
 - Git/Gitea is for versioned text/config: Home Assistant configuration,
   automations, scripts, docker-compose files and HomeControl helper code.
+- `scripts/sync_config_to_gitea.sh` pushes a filtered configuration snapshot to
+  `ssh://git@192.168.1.2:2222/homecontrol/config.git`. It excludes secrets,
+  `.env`, SSH keys, databases, logs, cache/runtime folders and selected local
+  capture data.
 - Restic from the HC server is for restore-grade HC snapshots: the full
   HomeControl tree, database dumps, Docker volumes and media files.
 - Daily backup treats the remote restic target as best-effort: if the AI server
   is sleeping or the HDD is unavailable, the local archive still succeeds and
   the restic step is logged as skipped.
 - Weekly AI HDD backup uses `scripts/weekly_ai_backup.sh`: it wakes the AI
-  server through the backend AI-node API, waits for SSH, runs
-  `scripts/backup_hc.sh` with `RESTIC_REQUIRED=true`, then requests AI-server
-  shutdown by default.
+  server through the backend AI-node API, waits for SSH, pushes the filtered
+  Gitea config snapshot, runs `scripts/backup_hc.sh` with
+  `RESTIC_REQUIRED=true`, then requests AI-server shutdown by default.
 - AI-server Gitea data lives on the remote host; back it up with a Gitea dump or
   an AI-side local backup job, not as a HC-server restic source path.
 - `scripts/check_ai_backup_target.sh` verifies SSH access, mount availability,

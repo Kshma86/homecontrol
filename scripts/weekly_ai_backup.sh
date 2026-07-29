@@ -79,6 +79,10 @@ until ssh "${SSH_OPTS[@]}" "${AI_BACKUP_USER}@${AI_BACKUP_HOST}" "true" >/dev/nu
 done
 
 log "-- AI szerver SSH elérhető, kötelező restic backup indul"
+log "-- Gitea config snapshot sync indul"
+"$BASE/scripts/sync_config_to_gitea.sh"
+
+log "-- Kötelező restic backup indul"
 RESTIC_REQUIRED=true "$BASE/scripts/backup_hc.sh"
 
 if [ "$AI_BACKUP_SHUTDOWN_AFTER" = "true" ]; then

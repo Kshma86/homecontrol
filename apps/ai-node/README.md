@@ -29,6 +29,7 @@ docker compose --profile ui up -d
 ```bash
 mkdir -p /mnt/hc-backup/gitea
 docker compose --profile git up -d gitea
+./configure_gitea.sh
 ```
 
 Default Gitea ports:
@@ -37,6 +38,10 @@ Default Gitea ports:
 - SSH: `2222`
 
 The default data directory is `/mnt/hc-backup/gitea`.
+
+The setup helper locks the installer, creates admin user `a`, stores the
+generated password at `/mnt/hc-backup/gitea/gitea-admin-password.txt`, and
+creates the private `homecontrol/config` repository.
 
 ## HomeControl settings
 
