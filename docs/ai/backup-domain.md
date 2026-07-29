@@ -14,8 +14,18 @@ Primary implementation:
 - `scripts/backup_hc.sh`
 - `scripts/check_ai_backup_target.sh`
 - `scripts/install_restic_backup_prereqs.sh`
+- `scripts/restic_check_ai_backup.sh`
+- `scripts/restore_smoke_test.sh`
+- `scripts/sync_config_to_gitea.sh`
+- `scripts/weekly_ai_backup.sh`
+- `apps/ai-node/backup_gitea.sh`
 - `scripts/systemd/homecontrol-backup.timer`
 - `scripts/systemd/homecontrol-backup.service`
+- `scripts/systemd/homecontrol-ai-weekly-backup.timer`
+- `scripts/systemd/homecontrol-ai-weekly-backup.service`
+- `scripts/systemd/homecontrol-restic-check.timer`
+- `scripts/systemd/homecontrol-restic-check.service`
+- `docs/backup-restore-runbook.md`
 - `infra/backend/tests/test_backup_service_payloads.py`
 
 ## Ownership
@@ -81,6 +91,13 @@ Defaults:
   server through the backend AI-node API, waits for SSH, pushes the filtered
   Gitea config snapshot, runs `scripts/backup_hc.sh` with
   `RESTIC_REQUIRED=true`, then requests AI-server shutdown by default.
+- The weekly job also asks the AI server to run `apps/ai-node/backup_gitea.sh`
+  when that helper exists in the remote `~/homecontrol-ai-node` directory.
+- Monthly `homecontrol-restic-check.timer` runs `scripts/restic_check_ai_backup.sh`
+  to verify that the restic repository is readable.
+- `scripts/restore_smoke_test.sh` is the non-destructive restore proof: it
+  checks the latest local archive, Gitea reachability and, when enabled, a
+  small restic restore into `/tmp`.
 - AI-server Gitea data lives on the remote host; back it up with a Gitea dump or
   an AI-side local backup job, not as a HC-server restic source path.
 - `scripts/check_ai_backup_target.sh` verifies SSH access, mount availability,

@@ -5,6 +5,7 @@ BASE="/srv/docker/homecontrol"
 BACKUP_ROOT="${BACKUP_ROOT:-$BASE/backups}"
 SETTINGS_FILE="$BACKUP_ROOT/backup_settings.json"
 LOG_FILE="$BACKUP_ROOT/backup.log"
+NOTIFY_SCRIPT="$BASE/scripts/notify_backup_result.sh"
 
 setting() {
   local key="$1"
@@ -29,6 +30,19 @@ PY
 log() {
   echo "[$(date '+%F %T')] $*" | tee -a "$LOG_FILE"
 }
+
+notify_finish() {
+  local status=$?
+  if [ -x "$NOTIFY_SCRIPT" ]; then
+    if [ "$status" -eq 0 ]; then
+      "$NOTIFY_SCRIPT" "HomeControl backup" "Weekly AI HDD backup sikeresen lefutott." || true
+    else
+      "$NOTIFY_SCRIPT" "HomeControl backup hiba" "Weekly AI HDD backup hibával állt le. Nézd meg: $LOG_FILE" || true
+    fi
+  fi
+  exit "$status"
+}
+trap notify_finish EXIT
 
 api_post() {
   local path="$1"
@@ -59,6 +73,7 @@ AI_BACKUP_SSH_KEY="$(setting ai_backup_ssh_key /srv/docker/homecontrol/infra/ssh
 AI_BACKUP_WAIT_SECONDS="${AI_BACKUP_WAIT_SECONDS:-900}"
 AI_BACKUP_SHUTDOWN_AFTER="${AI_BACKUP_SHUTDOWN_AFTER:-true}"
 AI_BACKUP_POWER_OFF_DELAY_SECONDS="${AI_BACKUP_POWER_OFF_DELAY_SECONDS:-300}"
+AI_NODE_STACK_DIR="${AI_NODE_STACK_DIR:-~/homecontrol-ai-node}"
 
 SSH_OPTS=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5)
 if [ -n "$AI_BACKUP_SSH_KEY" ] && [ -f "$AI_BACKUP_SSH_KEY" ]; then
@@ -81,6 +96,11 @@ done
 log "-- AI szerver SSH elérhető, kötelező restic backup indul"
 log "-- Gitea config snapshot sync indul"
 "$BASE/scripts/sync_config_to_gitea.sh"
+
+log "-- AI szerver Gitea dump indul"
+if ! ssh "${SSH_OPTS[@]}" "${AI_BACKUP_USER}@${AI_BACKUP_HOST}" "cd ${AI_NODE_STACK_DIR} && [ -x ./backup_gitea.sh ] && ./backup_gitea.sh"; then
+  log "-- Gitea dump nem futott le, a kötelező restic backup folytatódik"
+fi
 
 log "-- Kötelező restic backup indul"
 RESTIC_REQUIRED=true "$BASE/scripts/backup_hc.sh"

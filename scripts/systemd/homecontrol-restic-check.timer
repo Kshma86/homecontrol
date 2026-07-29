@@ -1,0 +1,10 @@
+[Unit]
+Description=Run HomeControl restic repository check monthly
+
+[Timer]
+OnCalendar=Sun *-*-01..07 04:30:00
+Persistent=true
+RandomizedDelaySec=45m
+
+[Install]
+WantedBy=timers.target

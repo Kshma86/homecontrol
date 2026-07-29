@@ -1,0 +1,8 @@
+[Unit]
+Description=HomeControl restic repository check
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/srv/docker/homecontrol/scripts/restic_check_ai_backup.sh

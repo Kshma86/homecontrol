@@ -43,6 +43,16 @@ The setup helper locks the installer, creates admin user `a`, stores the
 generated password at `/mnt/hc-backup/gitea/gitea-admin-password.txt`, and
 creates the private `homecontrol/config` repository.
 
+Create a Gitea dump manually:
+
+```bash
+./backup_gitea.sh
+```
+
+Gitea dumps are stored in `/mnt/hc-backup/gitea-dumps`. They are useful for
+quick Gitea recovery, but they are still on the same HDD and do not replace an
+offsite backup.
+
 ## HomeControl settings
 
 Set these in the HomeControl `infra/.env` on the mini PC:

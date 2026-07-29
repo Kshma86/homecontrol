@@ -72,6 +72,7 @@ copy_path "$BASE/infra/docker-compose.yml" "$REPO/infra/docker-compose.yml"
 copy_path "$BASE/scripts" "$REPO/scripts"
 copy_path "$BASE/apps" "$REPO/apps"
 copy_path "$BASE/docs/ai/backup-domain.md" "$REPO/docs/ai/backup-domain.md"
+copy_path "$BASE/docs/backup-restore-runbook.md" "$REPO/docs/backup-restore-runbook.md"
 
 cat > "$REPO/.gitignore" <<'EOF'
 .env
