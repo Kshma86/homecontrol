@@ -91,3 +91,177 @@ Ez ugyanazon a HDD-n van, ezért nem offsite mentés. Arra jó, hogy Gitea sér�
 ## Offsite kiegészítés
 
 A 250 GB-os AI HDD jó másodlagos helyi cél. Igazi katasztrófa ellen még egy titkosított külső cél kellene később, például USB lemez vagy felhős restic repository. A restic jelszófájl és az SSH kulcs külön mentése kritikus.
+
+## Teljes folyamatkép
+
+A HC backup rendszer négy rétegből áll.
+
+1. Helyi archívum a HC szerveren.
+2. Gitea verziókövetés az AI szerveren.
+3. Restic snapshot az AI szerver HDD-jén.
+4. Rendszeres ellenőrzés és nem romboló restore próba.
+
+A helyi archívum gyors visszanézésre és staging restore-ra való. A Gitea akkor hasznos, ha konfigurációs változást kell visszakeresni. A restic akkor fontos, ha a HC szerveren megsérül vagy elveszik a helyi backup könyvtár, vagy hosszabb távú snapshotból kell visszaállni.
+
+## Napi backup részletesen
+
+A napi mentést a `homecontrol-backup.timer` indítja. Alapértelmezett időpont: `02:15`.
+
+Folyamat:
+
+1. Lock fájlt fog, hogy ne fusson párhuzamosan két backup.
+2. Beolvassa a `backups/backup_settings.json` beállításait.
+3. Ellenőrzi a fő könyvtárakat és a `homecontrol-postgres` konténert.
+4. `pg_dump` formátumban adatbázis mentést készít.
+5. Átmásolja a kiválasztott komponenseket ideiglenes munkakönyvtárba.
+6. Docker és host metaadatokat ír.
+7. Manifestet és SHA256 checksum listát készít.
+8. `homecontrol_YYYY-MM-DD_HH-MM-SS.tar.gz` archívumot hoz létre.
+9. Ellenőrzi, hogy az archívum listázható.
+10. Törli a retentionnél régebbi helyi archívumokat.
+11. Ha a restic engedélyezett, megpróbál snapshotot küldeni az AI HDD-re.
+
+Napi módban az AI szerver nem kötelező. Ha alszik vagy nem elérhető, a helyi archívum ettől még sikeres marad.
+
+## Heti AI HDD backup részletesen
+
+A heti mentést a `homecontrol-ai-weekly-backup.timer` indítja. Alapértelmezett időpont: vasárnap 03:30, kis random késleltetéssel.
+
+Folyamat:
+
+1. Wake kérést küld az AI szerver felé.
+2. SSH-n várja, hogy a szerver elérhető legyen.
+3. Lefuttatja a Gitea config snapshot szinkront.
+4. Az AI szerveren lefuttatja a Gitea dump scriptet, ha elérhető.
+5. `RESTIC_REQUIRED=true` módban indítja a HC backup scriptet.
+6. Ha a restic repo vagy AI HDD nem elérhető, a heti mentés hibára fut.
+7. Siker után alapértelmezetten leállítást kér az AI szerverre.
+
+Ez a kötelező heti mentés az a pont, ami biztosítja, hogy akkor is legyen AI HDD-s snapshot, ha a napi mentések idején az AI szerver általában ki van kapcsolva.
+
+## Havi restic check részletesen
+
+A havi ellenőrzést a `homecontrol-restic-check.timer` futtatja. Alapértelmezés szerint a hónap első vasárnapján, 04:30 körül indul.
+
+Folyamat:
+
+1. Ellenőrzi, hogy a restic engedélyezve van-e.
+2. Ellenőrzi a restic binárist, SSH klienst és jelszófájlt.
+3. Megnézi, hogy az AI szerver elérhető-e SSH-n.
+4. Ha nem elérhető, wake kérést küld és várja az SSH-t.
+5. Ellenőrzi, hogy létezik az AI HDD restic repo könyvtára.
+6. Lefuttatja a `restic snapshots --tag homecontrol` parancsot.
+7. Lefuttatja a `restic check` parancsot.
+8. Ha ő ébresztette fel az AI szervert, a végén leállítást kérhet.
+
+Sikeres kimenetnél ezt kell látni:
+
+```text
+repository ... opened successfully, password is correct
+check snapshots, trees and blobs
+no errors were found
+== Restic check kész ==
+```
+
+## Mit NE csinálj restore közben
+
+- Ne állíts vissza közvetlenül éles könyvtárba első próbára.
+- Ne másold vissza vakon a PostgreSQL futó adatkönyvtárát.
+- Ne írd felül a teljes `/srv/docker/homecontrol` könyvtárat addig, amíg nem tudod pontosan, melyik réteg sérült.
+- Ne töröld a restic repositoryt vagy a Gitea adatkönyvtárat hibakeresés közben.
+- Ne használd ugyanazt a restore parancsot DB-re és konfigurációs fájlokra.
+
+## Hibaelhárítási térkép
+
+`Permission denied` az AI HDD-n:
+
+```bash
+ssh a@192.168.1.2
+ls -ld /mnt/hc-backup
+touch /mnt/hc-backup/iras-teszt
+rm /mnt/hc-backup/iras-teszt
+```
+
+Elvárt tulajdonos: `a:a`.
+
+Restic jelszófájl hiányzik:
+
+```bash
+sudo ls -l /etc/homecontrol/restic-password
+sudo scripts/install_restic_backup_prereqs.sh
+```
+
+Gitea privát repo 404:
+
+Ez belépés nélkül normális. Lépj be a Gitea weben, vagy ellenőrizd SSH-n:
+
+```bash
+GIT_SSH_COMMAND='ssh -i /srv/docker/homecontrol/infra/ssh/ai_node_key -o BatchMode=yes -o StrictHostKeyChecking=accept-new' \
+git ls-remote ssh://git@192.168.1.2:2222/homecontrol/config.git refs/heads/main
+```
+
+AI szerver nem elérhető:
+
+```bash
+ping 192.168.1.2
+ssh -i /srv/docker/homecontrol/infra/ssh/ai_node_key a@192.168.1.2 true
+```
+
+Systemd timer ellenőrzés:
+
+```bash
+systemctl list-timers 'homecontrol*backup*' 'homecontrol-restic-check*'
+systemctl status homecontrol-backup.timer
+systemctl status homecontrol-ai-weekly-backup.timer
+systemctl status homecontrol-restic-check.timer
+```
+
+Naplók:
+
+```bash
+tail -n 120 /srv/docker/homecontrol/backups/backup.log
+journalctl -u homecontrol-backup.service -n 120 --no-pager
+journalctl -u homecontrol-ai-weekly-backup.service -n 120 --no-pager
+journalctl -u homecontrol-restic-check.service -n 120 --no-pager
+```
+
+## Restore döntési fa
+
+Konfigurációs hiba:
+
+1. Nézd meg Gitea-ban a commit historyt.
+2. Ha egy fájl változott rosszul, Gitea-ból vagy staging archívumból hozd vissza azt az egy fájlt.
+3. Indítsd újra csak az érintett szolgáltatást.
+
+Eltűnt vagy sérült fájl:
+
+1. Backup tabon válaszd ki a legfrissebb jó archívumot.
+2. Staging preview módban bontsd ki.
+3. Compare-rel ellenőrizd, mi változik.
+4. Csak a szükséges fájlt másold vissza éles helyre.
+
+Adatbázis hiba:
+
+1. Állítsd meg az érintett appokat, ha írnak a DB-be.
+2. Bontsd ki a dumpot stagingbe vagy /tmp alá.
+3. Töltsd be külön teszt DB-be.
+4. Ellenőrizd a táblákat/adatokat.
+5. Csak ezután tervezz éles DB cserét.
+
+HC szerver helyi backup könyvtár elveszett:
+
+1. AI szervert indítsd el.
+2. Resticből restore-olj külön `/tmp/hc-restic-restore` célba.
+3. Onnan válaszd ki a szükséges archívumot vagy fájlokat.
+4. Ne restore-olj közvetlenül éles könyvtárra.
+
+Teljes HC szerver újraépítés:
+
+1. Telepítsd az alap OS/Docker környezetet.
+2. Szerezd vissza az SSH kulcsot és restic jelszófájlt.
+3. Clone-old a Gitea `homecontrol/config` repositoryt.
+4. Resticből hozd vissza a legfrissebb teljes snapshotot külön könyvtárba.
+5. Compose/config fájlokat ellenőrizd.
+6. PostgreSQL-t dumpból állítsd vissza.
+7. Indítsd a konténereket fokozatosan.
+8. Futtasd a smoke testeket és nézd a dashboardokat.
