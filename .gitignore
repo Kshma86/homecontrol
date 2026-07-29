@@ -2,8 +2,12 @@
 *.db
 *.db-*
 *.log
+*.log.*
+*.log.fault
 *.tar.gz
 __pycache__/
+.cache/
+.ha_run.lock
 secrets.yaml
 .storage/
 deps/
@@ -15,3 +19,4 @@ zigbee2mqtt/data/log/
 infra/ssh/
 tuya-poller/logs/
 tuya-poller/multi_connector_config.json
+xiaomi-x10/x10_maps/captures/

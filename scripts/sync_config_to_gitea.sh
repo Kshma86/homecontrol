@@ -22,14 +22,18 @@ copy_path() {
   mkdir -p "$(dirname "$target")"
   if [ -d "$source" ]; then
     mkdir -p "$target"
-    rsync -a --delete \
+    rsync -a --delete --delete-excluded \
       --exclude '.git' \
       --exclude '.env' \
       --exclude '*.db' \
       --exclude '*.db-*' \
       --exclude '*.log' \
+      --exclude '*.log.*' \
+      --exclude '*.log.fault' \
       --exclude '*.tar.gz' \
       --exclude '__pycache__' \
+      --exclude '.cache' \
+      --exclude '.ha_run.lock' \
       --exclude 'secrets.yaml' \
       --exclude '.storage' \
       --exclude 'deps' \
@@ -40,6 +44,7 @@ copy_path() {
       --exclude 'zigbee2mqtt/data/log' \
       --exclude 'tuya-poller/logs' \
       --exclude 'tuya-poller/multi_connector_config.json' \
+      --exclude 'xiaomi-x10/x10_maps/captures' \
       --exclude 'infra/ssh' \
       "$source/" "$target/"
   else
@@ -73,8 +78,12 @@ cat > "$REPO/.gitignore" <<'EOF'
 *.db
 *.db-*
 *.log
+*.log.*
+*.log.fault
 *.tar.gz
 __pycache__/
+.cache/
+.ha_run.lock
 secrets.yaml
 .storage/
 deps/
@@ -86,6 +95,7 @@ zigbee2mqtt/data/log/
 infra/ssh/
 tuya-poller/logs/
 tuya-poller/multi_connector_config.json
+xiaomi-x10/x10_maps/captures/
 EOF
 
 git -C "$REPO" add -A
