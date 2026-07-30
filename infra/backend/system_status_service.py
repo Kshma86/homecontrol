@@ -228,6 +228,32 @@ BACKUP_RESTORE_DEEP_DIVE = [
         ],
     },
     {
+        "title": "Encrypted secrets bundle",
+        "body": "A Git/Gitea/GitHub snapshot nem tartalmaz nyers titkokat. A katasztrófa-restore-hoz szükséges kulcsok, jelszavak és tokenek külön age-gel titkosított csomagban vannak a secrets könyvtárban.",
+        "items": [
+            "Gitben látható: secrets/homecontrol-secrets-latest.tar.gz.age és .sha256.",
+            "Gitben látható: secrets/age-recipient.txt és secrets/manifest.txt.",
+            "Gitben nem lehet nyers .env, secrets.yaml, SSH private key vagy restic password.",
+            "Bundle készítés: sudo scripts/create_secrets_bundle.sh.",
+            "Staging decrypt próba: sudo scripts/restore_secrets_bundle.sh.",
+            "Éles secrets restore csak új gépen: sudo scripts/restore_secrets_bundle.sh --apply --confirm.",
+            "A private age key külön mentett emergency adat, Gitbe nem kerülhet.",
+        ],
+    },
+    {
+        "title": "Disaster restore bootstrap v0.1",
+        "body": "A scripts/bootstrap_restore_v0_1.sh friss Ubuntu szerverre készült újraépítő script. Alapból stagingben dolgozik: clone, secrets decrypt, restic restore és archive kibontás. Éles helyekre csak explicit kapcsolókkal ír.",
+        "items": [
+            "Staging próba: sudo scripts/bootstrap_restore_v0_1.sh --age-key /root/emergency/homecontrol-secrets-age-key.txt --install-packages.",
+            "Repo override: --repo-url https://github.com/Kshma86/homecontrol.git vagy ssh://git@192.168.1.2:2222/homecontrol/config.git.",
+            "Éles fájlok visszaírása: --apply.",
+            "DB csere csak: --restore-db --confirm-db-replace.",
+            "Konténerek indítása csak: --start.",
+            "Staging könyvtárak: /tmp/homecontrol-restore-v0.1/project, secrets/rootfs, restic és archive.",
+            "A v0.1 célja a sorrend automatizálása; restore után smoke test és dashboard ellenőrzés kell.",
+        ],
+    },
+    {
         "title": "Gyakori hibák és mit jelentenek",
         "body": "A backup log első hibasora általában elég pontosan megmondja, melyik réteg állt meg. A napi backupnál az AI szerver alvása nem végzetes, a heti backupnál viszont hiba.",
         "items": [

@@ -619,3 +619,69 @@ Teljes HC szerver újraépítés:
 6. PostgreSQL-t dumpból állítsd vissza.
 7. Indítsd a konténereket fokozatosan.
 8. Futtasd a smoke testeket és nézd a dashboardokat.
+
+## Disaster restore bootstrap v0.1
+
+A `scripts/bootstrap_restore_v0_1.sh` az első teljes újraépítő script. Friss Ubuntu szerverre készült, de alapból nem romboló staging módban fut.
+
+Mit csinál:
+
+1. Opcionálisan telepíti az alap Ubuntu csomagokat.
+2. Clone-olja a GitHub/Gitea HC repositoryt.
+3. Ellenőrzi a `secrets/homecontrol-secrets-latest.tar.gz.age` checksumját.
+4. A külön mentett age private key-jel stagingbe visszafejti a secrets bundle-t.
+5. A visszafejtett restic password és AI SSH key alapján resticből stagingbe restore-ol.
+6. Kibontja a legfrissebb HC tar archívumot stagingbe, hogy a DB dump elérhető legyen.
+7. Csak `--apply` mellett ír a `/srv/docker/homecontrol` és `/etc/homecontrol` alá.
+8. Csak `--restore-db --confirm-db-replace` mellett cseréli az adatbázist.
+9. Csak `--start` mellett indítja el a Docker Compose stackeket.
+
+Staging próba friss gépen:
+
+```bash
+sudo scripts/bootstrap_restore_v0_1.sh \
+  --age-key /root/emergency/homecontrol-secrets-age-key.txt \
+  --repo-url https://github.com/Kshma86/homecontrol.git \
+  --install-packages
+```
+
+Ha a GitHub repo privát és nincs még hozzáférés a friss gépen, két út van:
+
+1. Ideiglenes HTTPS tokennel vagy SSH kulccsal clone-olod a repo-t.
+2. Gitea-ból clone-olod, ha az AI szerver elérhető:
+
+```bash
+sudo scripts/bootstrap_restore_v0_1.sh \
+  --age-key /root/emergency/homecontrol-secrets-age-key.txt \
+  --repo-url ssh://git@192.168.1.2:2222/homecontrol/config.git
+```
+
+Éles fájlok visszaírása, de DB csere és konténerindítás nélkül:
+
+```bash
+sudo scripts/bootstrap_restore_v0_1.sh \
+  --age-key /root/emergency/homecontrol-secrets-age-key.txt \
+  --apply
+```
+
+Teljesebb restore friss gépen DB cserével és indítással:
+
+```bash
+sudo scripts/bootstrap_restore_v0_1.sh \
+  --age-key /root/emergency/homecontrol-secrets-age-key.txt \
+  --apply \
+  --restore-db \
+  --confirm-db-replace \
+  --start
+```
+
+Fontos: a v0.1 még nem “láthatatlanul okos” restore. A staging könyvtárakat mindig nézd meg:
+
+```text
+/tmp/homecontrol-restore-v0.1/project
+/tmp/homecontrol-restore-v0.1/secrets/rootfs
+/tmp/homecontrol-restore-v0.1/restic
+/tmp/homecontrol-restore-v0.1/archive
+```
+
+A script célja, hogy egy katasztrófa után ne kelljen fejből összerakni a sorrendet. A restore minőségét továbbra is a staging ellenőrzés és a DB restore próba bizonyítja.

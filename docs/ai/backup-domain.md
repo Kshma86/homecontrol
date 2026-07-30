@@ -16,6 +16,7 @@ Primary implementation:
 - `scripts/install_restic_backup_prereqs.sh`
 - `scripts/restic_check_ai_backup.sh`
 - `scripts/restore_smoke_test.sh`
+- `scripts/bootstrap_restore_v0_1.sh`
 - `scripts/gitea_config_status.sh`
 - `scripts/gitea_config_commit.sh`
 - `scripts/gitea_config_restore.sh`
@@ -152,6 +153,11 @@ Defaults:
   note.
 - `scripts/restore_secrets_bundle.sh` decrypts the latest secrets bundle to
   staging by default and writes to `/` only with `--apply --confirm`.
+- `scripts/bootstrap_restore_v0_1.sh` is the first disaster-restore bootstrap
+  for a fresh Ubuntu host. It clones the Git snapshot, verifies/decrypts the
+  encrypted secrets bundle, restores restic into staging, and only writes live
+  paths or replaces the database when explicit apply/confirmation flags are
+  supplied.
 
 ## Archive Rules
 
