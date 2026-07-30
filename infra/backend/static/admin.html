@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HomeControl Admin</title>
+    <link rel="stylesheet" href="/static/admin.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>HomeControl</h1>
+        <p id="statusLine">Connecting...</p>
+      </div>
+      <div class="top-actions">
+        <nav class="tabs" aria-label="Admin tabs">
+          <button class="tab-btn active" type="button" data-tab="irrigation">Irrigation</button>
+          <button class="tab-btn" type="button" data-tab="hc-admin">HC Admin</button>
+        </nav>
+        <button id="refreshBtn" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="tab-irrigation" class="tab-panel active">
+        <section class="tile-grid">
+          <article class="card">
+            <h2>Watering</h2>
+            <strong id="manualState">-</strong>
+            <span id="manualMeta">Valve open, max 180 min safety close</span>
+          </article>
+          <article class="card">
+            <h2>Valve</h2>
+            <strong id="valveState">-</strong>
+            <span id="valveMeta">valve_state</span>
+          </article>
+          <article class="card">
+            <h2>Manual Valve</h2>
+            <strong id="manualValveState">-</strong>
+            <span id="manualValveMeta">manual_valve_state</span>
+          </article>
+          <article class="card">
+            <h2>Tank</h2>
+            <strong id="tankState">-</strong>
+            <span id="tankMeta">liquid_level_percent</span>
+          </article>
+          <article class="card">
+            <h2>Pump / Fill</h2>
+            <strong id="pumpState">-</strong>
+            <span id="pumpMeta">Tank filling, not watering</span>
+          </article>
+          <article class="card">
+            <h2>Pump Use Today</h2>
+            <strong id="energyState">-</strong>
+            <span id="energyMeta">Daily Ah / Wh estimate</span>
+          </article>
+          <article class="card" id="cardHealth"><h2>Health</h2><strong>-</strong><span>-</span></article>
+          <article class="card" id="cardMode"><h2>Mode</h2><strong>-</strong><span>-</span></article>
+          <article class="card" id="cardLevels"><h2>Levels</h2><strong>-</strong><span>-</span></article>
+          <article class="card" id="cardTemp"><h2>Temperature</h2><strong>-</strong><span>-</span></article>
+          <article class="card" id="cardEsp"><h2>ESP link</h2><strong>-</strong><span>-</span></article>
+          <article class="card" id="cardConfig"><h2>Config</h2><strong>-</strong><span>-</span></article>
+          <article class="card" id="cardSolar"><h2>Solar</h2><strong>-</strong><span>-</span></article>
+          <article class="card" id="cardMqtt"><h2>MQTT</h2><strong id="mqttState">-</strong><span id="mqttMeta">-</span></article>
+          <article class="card">
+            <h2>Soil Moisture</h2>
+            <strong id="soilState">-</strong>
+            <span id="soilMeta">Visible only, no automation</span>
+          </article>
+        </section>
+
+        <section class="grid two irrigation-main">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>Manual Watering</h2>
+              <span>Opens the valve and schedules automatic close.</span>
+            </div>
+            <form id="manualForm" class="inline-form">
+              <label>
+                Duration, min
+                <input id="durationMinutes" type="number" min="1" max="180" value="20">
+              </label>
+              <button type="submit">Open Valve</button>
+              <button id="stopManualBtn" type="button" class="secondary">Close Valve</button>
+            </form>
+            <div class="button-grid command-grid">
+              <button type="button" data-irrigation-command="valve_open">Open</button>
+              <button type="button" data-irrigation-command="valve_close">Close</button>
+              <button type="button" data-irrigation-command="valve_stop">Stop</button>
+              <button type="button" data-irrigation-command="valve_home">Home</button>
+              <button type="button" data-irrigation-command="valve_status">Status</button>
+              <button type="button" data-irrigation-command="fault_reset">Fault reset</button>
+              <button type="button" data-irrigation-command="diag_now">Diag now</button>
+              <button type="button" data-irrigation-command="nano_status_now">Nano status</button>
+            </div>
+            <h3>Tank Fill / Mode</h3>
+            <div class="button-grid command-grid">
+              <button type="button" data-irrigation-command="mode_manual">Mode manual</button>
+              <button type="button" data-irrigation-command="mode_auto">Mode auto</button>
+              <button type="button" data-irrigation-command="pump_on">Pump ON</button>
+              <button type="button" data-irrigation-command="pump_off">Pump OFF</button>
+              <button type="button" data-irrigation-command="ping">Ping</button>
+              <button type="button" data-irrigation-command="valve_cal_zero">Current zero</button>
+            </div>
+            <div class="table-wrap session-wrap">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Status</th><th>Start</th><th>Stop target</th><th>Stopped</th></tr>
+                </thead>
+                <tbody id="sessionRows"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <h2>DB Current State</h2>
+              <span>entity_state, persisted state</span>
+            </div>
+            <div class="table-wrap compact">
+              <table>
+                <thead>
+                  <tr><th>Entity</th><th>Key</th><th>Value</th><th>Time</th></tr>
+                </thead>
+                <tbody id="latestRows"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Nano Configuration</h2>
+            <span id="nanoConfigMeta">MQTT nano_config</span>
+          </div>
+          <div class="config-grid" id="nanoConfigFields"></div>
+          <div class="button-row">
+            <button type="button" data-irrigation-command="nano_get">GET all</button>
+            <button type="button" data-irrigation-command="nano_save">SAVE EEPROM</button>
+            <button type="button" data-irrigation-command="nano_load">LOAD EEPROM</button>
+            <button type="button" data-irrigation-command="nano_defaults">DEFAULTS</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Live MQTT Topics</h2>
+            <span>MQTT snapshot</span>
+          </div>
+          <div class="table-wrap compact">
+            <table>
+              <thead>
+                <tr><th>Name</th><th>Age</th><th>Last value</th></tr>
+              </thead>
+              <tbody id="topicRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Raw MQTT monitor</h2>
+            <span id="rawCount">-</span>
+          </div>
+          <div class="table-wrap raw-wrap">
+            <table>
+              <thead>
+                <tr><th>Age</th><th>Topic</th><th>Payload</th></tr>
+              </thead>
+              <tbody id="rawRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="tab-hc-admin" class="tab-panel">
+        <section class="grid two">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>Add Sensor</h2>
+              <span>Device + entity + metric rules</span>
+            </div>
+            <form id="deviceForm" class="form-grid">
+              <label>Platform
+                <select name="platform">
+                  <option value="zigbee">zigbee</option>
+                  <option value="wifi">wifi</option>
+                  <option value="tuya">tuya</option>
+                  <option value="system">system</option>
+                  <option value="other">other</option>
+                </select>
+              </label>
+              <label>Ext ID
+                <input name="ext_id" placeholder="0x... vagy esp-id">
+              </label>
+              <label>Device name
+                <input name="name" required placeholder="Tank_level">
+              </label>
+              <label>Location
+                <input name="location" placeholder="Kert">
+              </label>
+              <label>Entity name
+                <input name="entity_name" placeholder="Tank_level">
+              </label>
+              <label>Topic base
+                <input name="topic_base" placeholder="zigbee/0x...">
+              </label>
+              <label class="wide">Metric keys
+                <input name="metric_keys" placeholder="liquid_level_percent, liquid_depth, linkquality">
+              </label>
+              <div class="wide actions">
+                <button type="submit">Save</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <h2>Add Metric</h2>
+              <span>Measurement key metadata</span>
+            </div>
+            <form id="metricForm" class="form-grid">
+              <label>Key
+                <input name="key" required placeholder="liquid_level_percent">
+              </label>
+              <label>Type
+                <select name="value_type">
+                  <option value="num">num</option>
+                  <option value="bool">bool</option>
+                  <option value="text">text</option>
+                  <option value="json">json</option>
+                </select>
+              </label>
+              <label>Unit
+                <input name="unit" placeholder="%">
+              </label>
+              <label>Min
+                <input name="min_num" type="number" step="any">
+              </label>
+              <label>Max
+                <input name="max_num" type="number" step="any">
+              </label>
+              <label class="wide">Description
+                <input name="description" placeholder="Tank liquid level percent">
+              </label>
+              <label class="check wide">
+                <input name="enforce_validation" type="checkbox" checked>
+                Validation enabled
+              </label>
+              <div class="wide actions">
+                <button type="submit">Save Metric</button>
+              </div>
+            </form>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Entities</h2>
+            <span id="entityCount">-</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Platform</th><th>Device</th><th>Entity</th><th>Location</th><th>Topic</th><th>Status</th></tr>
+              </thead>
+              <tbody id="entityRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Metrics</h2>
+            <span id="metricCount">-</span>
+          </div>
+          <div class="table-wrap metric-table">
+            <table>
+              <thead>
+                <tr><th>Key</th><th>Type</th><th>Unit</th><th>Min</th><th>Max</th><th>Description</th></tr>
+              </thead>
+              <tbody id="metricRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+    <script src="/static/admin.js"></script>
+  </body>
+</html>

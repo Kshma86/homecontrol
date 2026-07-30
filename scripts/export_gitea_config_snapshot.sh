@@ -27,6 +27,9 @@ copy_path() {
       --exclude '*.tar.gz' \
       --exclude '__pycache__' \
       --exclude '.cache' \
+      --exclude 'node_modules' \
+      --exclude 'dist' \
+      --exclude 'build' \
       --exclude '.ha_run.lock' \
       --exclude 'secrets.yaml' \
       --exclude '.storage' \
@@ -50,6 +53,8 @@ mkdir -p "$TARGET"
 copy_path "$BASE/homeassistant/config" "$TARGET/homeassistant/config"
 copy_path "$BASE/homeassistant/docker-compose.yml" "$TARGET/homeassistant/docker-compose.yml"
 copy_path "$BASE/infra/docker-compose.yml" "$TARGET/infra/docker-compose.yml"
+copy_path "$BASE/infra/backend" "$TARGET/infra/backend"
+copy_path "$BASE/infra/frontend" "$TARGET/infra/frontend"
 copy_path "$BASE/scripts" "$TARGET/scripts"
 copy_path "$BASE/apps" "$TARGET/apps"
 copy_path "$BASE/docs/ai/backup-domain.md" "$TARGET/docs/ai/backup-domain.md"
@@ -65,6 +70,9 @@ cat > "$TARGET/.gitignore" <<'EOF'
 *.tar.gz
 __pycache__/
 .cache/
+node_modules/
+dist/
+build/
 .ha_run.lock
 secrets.yaml
 .storage/

@@ -1,0 +1,19 @@
+{
+  "name": "HomeControl",
+  "short_name": "HomeControl",
+  "description": "HomeControl tablet dashboard",
+  "start_url": "/#tablet-dashboard",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b1118",
+  "theme_color": "#0b1118",
+  "icons": [
+    {
+      "src": "/homecontrol-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
