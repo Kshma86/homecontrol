@@ -654,6 +654,7 @@ Mit csinál:
 9. Éles apply előtt leállítja az esetleg már futó infra/Home Assistant stackeket.
 10. Csak `--restore-db --confirm-db-replace` mellett cseréli az adatbázist.
 11. Csak `--start` mellett indítja el a Docker Compose stackeket.
+12. Ha a visszaállított `.env` tartalmaz `HA_GROWATT_TOKEN` értéket, elindítja a `ha-growatt` compose profilt is.
 
 Staging próba friss gépen:
 
@@ -721,3 +722,5 @@ A script célja, hogy egy katasztrófa után ne kelljen fejből összerakni a so
 Megjegyzés: a restic SFTP eléréshez a bootstrap a repository URL-ből olvassa ki a cél hostot, például `a@192.168.1.2`, majd a secrets bundle-ből visszafejtett `ai_node_key` kulccsal indítja az SSH/SFTP kapcsolatot.
 
 Újrafuttatáskor a meglévő restic staging könyvtárat a script félrerakja `restic.previous-YYYY-MM-DD_HH-MM-SS` néven, mert a restic restore nem minden esetben tud tisztán ráírni egy korábbi staging célra.
+
+A régi HC-n jelenleg 14 futó konténer lehet normális: 12 alap infra szolgáltatás, 1 Home Assistant, és 1 `ha-growatt` profilból induló `homecontrol-ha-growatt-poller`. Ha az új gépen csak 13 fut, elsőként ezt a profilos pollert kell ellenőrizni.

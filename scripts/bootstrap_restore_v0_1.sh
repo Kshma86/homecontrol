@@ -382,8 +382,14 @@ restore_database() {
 start_stacks() {
   [ "$START_STACK" = "true" ] || return 0
   [ "$APPLY" = "true" ] || fail "--start csak --apply mellett futtathato"
+  local ha_growatt_token
+  ha_growatt_token="$(env_value HA_GROWATT_TOKEN "")"
   log "Docker compose stack inditas: infra"
   (cd "$TARGET_BASE/infra" && docker compose up -d --build)
+  if [ -n "$ha_growatt_token" ]; then
+    log "Docker compose profil inditas: ha-growatt"
+    (cd "$TARGET_BASE/infra" && docker compose --profile ha-growatt up -d --build homecontrol-ha-growatt-poller)
+  fi
   if [ -f "$TARGET_BASE/homeassistant/docker-compose.yml" ]; then
     log "Docker compose stack inditas: homeassistant"
     (cd "$TARGET_BASE/homeassistant" && docker compose up -d)
