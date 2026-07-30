@@ -624,6 +624,14 @@ Teljes HC szerver újraépítés:
 
 A `scripts/bootstrap_restore_v0_1.sh` az első teljes újraépítő script. Friss Ubuntu szerverre készült, de alapból nem romboló staging módban fut.
 
+A legkényelmesebb indítás a one-file launcher:
+
+```text
+scripts/homecontrol_restore_magic.sh
+```
+
+Ezt elég letölteni vagy átmásolni az új HC szerverre. A script telepíti a minimális bootstrap csomagokat, clone-olja/frissíti a HC repositoryt, majd a repositoryban lévő `bootstrap_restore_v0_1.sh` scriptet futtatja.
+
 Mit csinál:
 
 1. Opcionálisan telepíti az alap Ubuntu csomagokat.
@@ -644,6 +652,12 @@ sudo scripts/bootstrap_restore_v0_1.sh \
   --age-key /root/emergency/homecontrol-secrets-age-key.txt \
   --repo-url https://github.com/Kshma86/homecontrol.git \
   --install-packages
+```
+
+One-file staging próba:
+
+```bash
+sudo ./homecontrol_restore_magic.sh --staging-only
 ```
 
 Ha a GitHub repo privát és nincs még hozzáférés a friss gépen, két út van:
@@ -675,6 +689,12 @@ sudo scripts/bootstrap_restore_v0_1.sh \
   --restore-db \
   --confirm-db-replace \
   --start
+```
+
+One-file teljes restore friss gépen:
+
+```bash
+sudo ./homecontrol_restore_magic.sh --confirm-new-hc-server
 ```
 
 Fontos: a v0.1 még nem “láthatatlanul okos” restore. A staging könyvtárakat mindig nézd meg:

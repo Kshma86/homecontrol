@@ -244,7 +244,7 @@ decrypt_secrets_to_staging() {
 apply_project() {
   log "Project apply: $PROJECT_DIR -> $TARGET_BASE"
   mkdir -p "$TARGET_BASE"
-  rsync -a --delete \
+  rsync -a \
     --exclude '.git' \
     "$PROJECT_DIR/" "$TARGET_BASE/"
 }
