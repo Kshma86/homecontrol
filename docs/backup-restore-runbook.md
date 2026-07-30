@@ -52,6 +52,79 @@ Innen kézzel érdemes összehasonlítani és átmásolni a szükséges fájloka
 
 A `/srv/docker/homecontrol` könyvtár jelenleg nem normál Git working tree-ként működik. Emiatt a Gitea workflow külön, biztonságos snapshot scriptekkel dolgozik: előállít egy szűrt konfigurációs képet, összeveti a Gitea repo aktuális állapotával, majd csak ezt commitolja/pusholja.
 
+### Mit tartalmaz a Gitea snapshot
+
+A Gitea repo célja a kézzel szerkesztett, szöveges HC állapot verziókövetése. Ez nem váltja ki a resticet és nem teljes gépmentés, hanem gyorsan böngészhető, commit historyval rendelkező konfigurációs/projekt snapshot.
+
+Jelenlegi mentett területek:
+
+- `homeassistant/config`
+- `homeassistant/docker-compose.yml`
+- `infra/docker-compose.yml`
+- `infra/backend`
+- `infra/frontend`
+- `apps`
+- `scripts`
+- `docs/ai/backup-domain.md`
+- `docs/backup-restore-runbook.md`
+
+Szándékosan kizárt területek:
+
+- `.env` fájlok
+- `secrets.yaml`
+- `infra/ssh`
+- adatbázisok és SQLite fájlok
+- logok
+- cache/runtime könyvtárak
+- Home Assistant `.storage`, `deps`, `tts`
+- PostgreSQL/MQTT/Zigbee runtime data/log
+- frontend `node_modules`, `dist`, `build`
+- lokális capture/export jellegű adatok
+
+Ez azért fontos, mert a repo legyen olvasható és visszakereshető, de ne kerüljön bele jelszó, kulcs, token, adatbázis vagy nagy futásidejű szemét.
+
+### Webes Gitea Control panel
+
+A Backup tabon a `Gitea Control` panel ugyanazokat a scripteket futtatja, mint a CLI workflow, csak kényelmes gombokkal.
+
+`Status / Diff`:
+
+1. A backend meghívja a `scripts/gitea_config_status.sh` scriptet.
+2. A script ideiglenes könyvtárba klónozza a Gitea repo `main` branchét.
+3. Lefuttatja a `scripts/export_gitea_config_snapshot.sh` exportert.
+4. Git stagingbe teszi az exportált állapotot.
+5. Ha nincs változás, ezt írja: `Nincs változás a Gitea snapshothoz képest.`
+6. Ha van változás, megmutatja a `git status --short` listát és a diff statot.
+
+`Commit & Push`:
+
+1. A webes commit message mező értékét küldi a backendnek.
+2. A backend meghívja a `scripts/gitea_config_commit.sh` scriptet.
+3. A script friss snapshotot exportál.
+4. Ha nincs változás, nem készít üres commitot, hanem `Nincs változás, push kihagyva` üzenettel kilép.
+5. Ha van változás, commitolja és pusholja a `ssh://git@192.168.1.2:2222/homecontrol/config.git` repositoryba.
+6. A Backup Activity panelben a Gitea sor frissül.
+
+`Restore to Staging`:
+
+1. A `Restore ref` mezőben megadható branch, tag vagy commit hash. Alapértelmezett: `main`.
+2. A backend meghívja a `scripts/gitea_config_restore.sh` scriptet.
+3. A script a kiválasztott refet staging mappába klónozza.
+4. Éles HC fájlokat nem ír felül.
+5. A staging mappából kézzel lehet diffelni és csak a szükséges fájlokat visszahozni.
+
+`Open Gitea`:
+
+Megnyitja a Gitea webes repository oldalt:
+
+```text
+http://192.168.1.2:3002/homecontrol/config
+```
+
+Privát repo esetén belépés nélkül 404 vagy üres oldal normális lehet. Ilyenkor előbb be kell jelentkezni Gitea-ba.
+
+### CLI alternatívák
+
 Státusz és diff stat:
 
 ```bash
@@ -94,6 +167,30 @@ Alapértelmezett restore cél:
 ```
 
 Ez nem ír felül éles fájlokat. Először diffeld, utána csak a szükséges fájlokat mozgasd vissza.
+
+### Javasolt használati rend
+
+Napi munka után:
+
+1. Backup tabon `Status / Diff`.
+2. Ha van értelmes változás, adj rövid commit message-et.
+3. `Commit & Push`.
+4. Nyisd meg Gitea-ban a commit historyt, ha ellenőrizni akarod.
+
+Nagyobb módosítás előtt:
+
+1. `Status / Diff`, hogy tiszta-e a kiinduló állapot.
+2. Ha van régi, nem mentett változás, előbb commitold.
+3. Módosítás után újra `Status / Diff`.
+4. `Commit & Push` leíró üzenettel.
+
+Visszakeresés vagy hibás módosítás esetén:
+
+1. Gitea weben keresd meg a jó commitot.
+2. A Backup tabon a `Restore ref` mezőbe írd be a commit hash-t vagy branch nevet.
+3. `Restore to Staging`.
+4. Stagingből diffeld az érintett fájlokat az éles állapottal.
+5. Csak a szükséges fájlokat hozd vissza, majd indíts célzott szolgáltatás restartot.
 
 ## Helyi tar archívum visszaállítása stagingbe
 

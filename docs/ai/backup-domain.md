@@ -16,6 +16,10 @@ Primary implementation:
 - `scripts/install_restic_backup_prereqs.sh`
 - `scripts/restic_check_ai_backup.sh`
 - `scripts/restore_smoke_test.sh`
+- `scripts/gitea_config_status.sh`
+- `scripts/gitea_config_commit.sh`
+- `scripts/gitea_config_restore.sh`
+- `scripts/export_gitea_config_snapshot.sh`
 - `scripts/sync_config_to_gitea.sh`
 - `scripts/weekly_ai_backup.sh`
 - `apps/ai-node/backup_gitea.sh`
@@ -55,6 +59,10 @@ Mutation endpoints:
 
 - `PUT /api/backup/settings`
 - `POST /api/backup/create`
+- `POST /api/backup/full-ai`
+- `POST /api/backup/gitea/status`
+- `POST /api/backup/gitea/commit`
+- `POST /api/backup/gitea/restore`
 - `POST /api/backup/restore`
 
 ## Settings
@@ -77,11 +85,19 @@ Defaults:
 ## Backup Layers
 
 - Git/Gitea is for versioned text/config: Home Assistant configuration,
-  automations, scripts, docker-compose files and HomeControl helper code.
+  automations, scripts, docker-compose files, apps, backend/frontend source and
+  HomeControl helper code.
 - `scripts/sync_config_to_gitea.sh` pushes a filtered configuration snapshot to
   `ssh://git@192.168.1.2:2222/homecontrol/config.git`. It excludes secrets,
   `.env`, SSH keys, databases, logs, cache/runtime folders and selected local
   capture data.
+- The Backup tab exposes a Gitea Control panel:
+  `Status / Diff` runs `scripts/gitea_config_status.sh`,
+  `Commit & Push` runs `scripts/gitea_config_commit.sh`, and
+  `Restore to Staging` runs `scripts/gitea_config_restore.sh`.
+- Gitea restore is non-destructive: it clones the selected branch/tag/commit to
+  `/srv/docker/homecontrol/restore_staging/gitea-config-*` and never overwrites
+  live HomeControl files.
 - Restic from the HC server is for restore-grade HC snapshots: the full
   HomeControl tree, database dumps, Docker volumes and media files.
 - Daily backup treats the remote restic target as best-effort: if the AI server
