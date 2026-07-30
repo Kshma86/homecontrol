@@ -252,23 +252,28 @@ restore_restic_to_staging() {
 
   local restic_password="$SECRETS_ROOT/etc/homecontrol/restic-password"
   local ai_key="$SECRETS_ROOT/srv/docker/homecontrol/infra/ssh/ai_node_key"
+  local sftp_target=""
   [ -s "$restic_password" ] || fail "Restic password hianyzik a secrets stagingbol: $restic_password"
   [ -s "$ai_key" ] || fail "AI SSH key hianyzik a secrets stagingbol: $ai_key"
+  if [[ "$RESTIC_REPOSITORY" =~ ^sftp:([^:]+): ]]; then
+    sftp_target="${BASH_REMATCH[1]}"
+  fi
+  [ -n "$sftp_target" ] || fail "Nem tudom kiolvasni az SFTP cel hostot a restic repo-bol: $RESTIC_REPOSITORY"
 
   chmod 600 "$ai_key"
   export RESTIC_PASSWORD_FILE="$restic_password"
   export RESTIC_CACHE_DIR="$WORK_ROOT/restic-cache"
+  RESTIC_ARGS=(
+    -r "$RESTIC_REPOSITORY"
+    -o "sftp.command=ssh -i $ai_key -o BatchMode=yes -o StrictHostKeyChecking=accept-new $sftp_target -s sftp"
+  )
 
   log "Restic snapshots ellenorzes: $RESTIC_REPOSITORY"
-  restic -r "$RESTIC_REPOSITORY" \
-    -o "sftp.command=ssh -i $ai_key -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
-    snapshots --tag homecontrol >/dev/null
+  restic "${RESTIC_ARGS[@]}" snapshots --tag homecontrol >/dev/null
 
   log "Restic restore stagingbe: snapshot=$RESTIC_SNAPSHOT target=$RESTIC_TARGET"
   mkdir -p "$RESTIC_TARGET"
-  restic -r "$RESTIC_REPOSITORY" \
-    -o "sftp.command=ssh -i $ai_key -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
-    restore "$RESTIC_SNAPSHOT" --target "$RESTIC_TARGET" --tag homecontrol
+  restic "${RESTIC_ARGS[@]}" restore "$RESTIC_SNAPSHOT" --target "$RESTIC_TARGET" --tag homecontrol
 }
 
 latest_archive_from_restic() {
