@@ -245,9 +245,10 @@ BACKUP_RESTORE_DEEP_DIVE = [
         "body": "A scripts/bootstrap_restore_v0_1.sh friss Ubuntu szerverre készült újraépítő script. Alapból stagingben dolgozik: clone, secrets decrypt, restic restore és archive kibontás. Éles helyekre csak explicit kapcsolókkal ír.",
         "items": [
             "One-file launcher: scripts/homecontrol_restore_magic.sh.",
+            "Alap age key hely one-file módban: a magic script melletti homecontrol-secrets-age-key.txt.",
             "Teljes restore új gépen: sudo ./homecontrol_restore_magic.sh --confirm-new-hc-server.",
             "Staging-only próba: sudo ./homecontrol_restore_magic.sh --staging-only.",
-            "Staging próba: sudo scripts/bootstrap_restore_v0_1.sh --age-key /root/emergency/homecontrol-secrets-age-key.txt --install-packages.",
+            "Bootstrap közvetlen futtatásnál az age key explicit: sudo scripts/bootstrap_restore_v0_1.sh --age-key /path/to/homecontrol-secrets-age-key.txt --install-packages.",
             "Repo override: --repo-url https://github.com/Kshma86/homecontrol.git vagy ssh://git@192.168.1.2:2222/homecontrol/config.git.",
             "Éles fájlok visszaírása: --apply.",
             "Resticből visszahozott HC fájlok overlaye: --apply-restic-files.",

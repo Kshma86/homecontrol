@@ -632,6 +632,15 @@ scripts/homecontrol_restore_magic.sh
 
 Ezt elég letölteni vagy átmásolni az új HC szerverre. A script telepíti a minimális bootstrap csomagokat, clone-olja/frissíti a HC repositoryt, majd a repositoryban lévő `bootstrap_restore_v0_1.sh` scriptet futtatja.
 
+Alapértelmezés szerint az age private key-t a magic script mellett keresi:
+
+```text
+homecontrol_restore_magic.sh
+homecontrol-secrets-age-key.txt
+```
+
+Ha máshol van a kulcs, továbbra is megadható explicit módon a `--age-key /path/to/key` kapcsolóval.
+
 Mit csinál:
 
 1. Opcionálisan telepíti az alap Ubuntu csomagokat.

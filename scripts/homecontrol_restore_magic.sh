@@ -2,12 +2,14 @@
 set -Eeuo pipefail
 
 VERSION="0.1"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 REPO_URL="${REPO_URL:-https://github.com/Kshma86/homecontrol.git}"
 REPO_REF="${REPO_REF:-main}"
 BOOTSTRAP_DIR="${BOOTSTRAP_DIR:-/tmp/homecontrol-bootstrap}"
 TARGET_BASE="${TARGET_BASE:-/srv/docker/homecontrol}"
 WORK_ROOT="${WORK_ROOT:-/tmp/homecontrol-restore-v0.1}"
-AGE_KEY_FILE="${AGE_KEY_FILE:-/root/emergency/homecontrol-secrets-age-key.txt}"
+AGE_KEY_FILE="${AGE_KEY_FILE:-$SCRIPT_DIR/homecontrol-secrets-age-key.txt}"
 RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-sftp:a@192.168.1.2:/mnt/hc-backup/restic/homecontrol}"
 RESTIC_SNAPSHOT="${RESTIC_SNAPSHOT:-latest}"
 MODE="full"
@@ -30,7 +32,7 @@ Usage:
   sudo $0 --confirm-new-hc-server [options]
 
 Options:
-  --age-key PATH              Saved age identity key. Default: ${AGE_KEY_FILE}
+  --age-key PATH              Saved age identity key. Default: magic script mellett: ${AGE_KEY_FILE}
   --repo-url URL              GitHub/Gitea repo. Default: ${REPO_URL}
   --repo-ref REF              Branch/tag/commit. Default: ${REPO_REF}
   --bootstrap-dir DIR         Local clone dir. Default: ${BOOTSTRAP_DIR}
