@@ -112,7 +112,7 @@ find "${find_args[@]}" -o -type f -print0 |
     rel="${file#./}"
     if [ "$mode" = "project" ]; then
       case "$rel" in
-        *.db|*.db-*|*.log|*.log.*|*.log.fault|*.tar.gz|*.tmp|*.pid|*.lock|homeassistant/config/.HA_VERSION|infra/zigbee2mqtt/data/database.db|infra/zigbee2mqtt/data/state.json)
+        *.db|*.db-*|*.log|*.log.*|*.log.fault|*.tar.gz|*.tmp|*.pid|*.lock|homeassistant/config/.HA_VERSION|infra/zigbee2mqtt/data/database.db|infra/zigbee2mqtt/data/state.json|apps/xiaomi-x10/x10_maps/map_object_*.json)
           continue
           ;;
       esac

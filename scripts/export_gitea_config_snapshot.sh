@@ -61,6 +61,11 @@ copy_path "$BASE/secrets" "$TARGET/secrets"
 copy_path "$BASE/docs" "$TARGET/docs"
 copy_path "$BASE/visual-audit" "$TARGET/visual-audit"
 
+for root_doc in "$BASE"/*.md; do
+  [ -e "$root_doc" ] || continue
+  copy_path "$root_doc" "$TARGET/$(basename "$root_doc")"
+done
+
 cat > "$TARGET/.gitignore" <<'EOF'
 .env
 *.db
