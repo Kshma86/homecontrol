@@ -91,6 +91,12 @@ Defaults:
   `ssh://git@192.168.1.2:2222/homecontrol/config.git`. It excludes secrets,
   `.env`, SSH keys, databases, logs, cache/runtime folders and selected local
   capture data.
+- `scripts/sync_config_to_gitea.sh` can also push the same snapshot to an
+  optional offsite Git remote, for example GitHub. Offsite settings are
+  `git_offsite_enabled`, `git_offsite_remote`, `git_offsite_branch`,
+  `git_offsite_token_file`, and `git_offsite_ssh_key`.
+- HTTPS offsite pushes read the token from the configured token file through a
+  temporary `GIT_ASKPASS` helper; tokens must not be placed in the remote URL.
 - The Backup tab exposes a Gitea Control panel:
   `Status / Diff` runs `scripts/gitea_config_status.sh`,
   `Commit & Push` runs `scripts/gitea_config_commit.sh`, and

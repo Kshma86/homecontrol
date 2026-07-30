@@ -144,6 +144,20 @@ class BackupServicePayloadTest(unittest.TestCase):
         self.assertEqual(calls[0][0], "gitea_config_restore.sh")
         self.assertEqual(calls[0][1], ["main"])
 
+    def test_gitea_environment_includes_offsite_settings(self):
+        service = self.service()
+        service.backup_root.mkdir(parents=True)
+        service.settings_file.write_text(
+            '{"git_offsite_enabled": true, "git_offsite_remote": "https://github.com/user/homecontrol.git", "git_offsite_branch": "main"}',
+            encoding="utf-8",
+        )
+
+        env = service.gitea_environment()
+
+        self.assertEqual(env["GIT_OFFSITE_ENABLED"], "true")
+        self.assertEqual(env["GIT_OFFSITE_REMOTE"], "https://github.com/user/homecontrol.git")
+        self.assertEqual(env["GIT_OFFSITE_BRANCH"], "main")
+
 
 if __name__ == "__main__":
     unittest.main()

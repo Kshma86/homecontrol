@@ -83,6 +83,42 @@ Szándékosan kizárt területek:
 
 Ez azért fontos, mert a repo legyen olvasható és visszakereshető, de ne kerüljön bele jelszó, kulcs, token, adatbázis vagy nagy futásidejű szemét.
 
+### Hárompéldányos Git modell
+
+A tervezett biztonsági modell így néz ki:
+
+1. HC szerver: itt él a futó HomeControl projekt.
+2. AI szerver Gitea: ide kerül a szűrt, verziózott HC snapshot.
+3. Külső Git fiók, például GitHub: ide kerül opcionális offsite mirror.
+
+Ez azért erős, mert nem csak egy másik lemezen van mentés, hanem a szöveges konfiguráció/projekt állapot egy külső Git szolgáltatóban is megvan. A külső Git repo nem adatbázis- és volume-backup, hanem verziózott projekt/config másolat.
+
+Az offsite Git mirror beállításai a Backup tab `Backup Settings / Gitea / Git` részében vannak:
+
+- `Offsite Git mirror enabled`
+- `Offsite remote`
+- `Offsite branch`
+- `Offsite token file`
+- `Offsite SSH key`
+
+HTTPS tokenes GitHub remote példa:
+
+```text
+https://github.com/FELHASZNALO/homecontrol.git
+```
+
+A token ne kerüljön a remote URL-be és ne kerüljön a webes beállításba. A javasolt hely:
+
+```text
+/srv/docker/homecontrol/infra/ssh/git-offsite-token
+```
+
+Ez a fájl nincs Gitea snapshotba exportálva, mert az `infra/ssh` kizárt terület. A sync script GitHub push közben ideiglenes `GIT_ASKPASS` helperrel olvassa a tokent, így a token nem jelenik meg a logban és nem lesz commitolva.
+
+SSH-s külső remote is használható, ha az `Offsite SSH key` egy olyan privát kulcsra mutat, amelynek publikus párja fel van véve a külső Git fiókba.
+
+Fontos: a külső Git repo törlése külön, kézi megerősítést igénylő művelet. Üres repo-k törlése előtt mindig nézd meg a pontos repo nevet, owner nevet és hogy tényleg nincs-e benne értékes commit.
+
 ### Webes Gitea Control panel
 
 A Backup tabon a `Gitea Control` panel ugyanazokat a scripteket futtatja, mint a CLI workflow, csak kényelmes gombokkal.
@@ -103,7 +139,8 @@ A Backup tabon a `Gitea Control` panel ugyanazokat a scripteket futtatja, mint a
 3. A script friss snapshotot exportál.
 4. Ha nincs változás, nem készít üres commitot, hanem `Nincs változás, push kihagyva` üzenettel kilép.
 5. Ha van változás, commitolja és pusholja a `ssh://git@192.168.1.2:2222/homecontrol/config.git` repositoryba.
-6. A Backup Activity panelben a Gitea sor frissül.
+6. Ha az offsite mirror engedélyezve van, ugyanazt a snapshot branch-et a külső Git remote-ra is pusholja.
+7. A Backup Activity panelben a Gitea sor frissül.
 
 `Restore to Staging`:
 

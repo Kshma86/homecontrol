@@ -7711,7 +7711,7 @@ function Backup() {
           </div>
           <div className="plan-meta">
             <span>{settings.gitea_url || "-"}</span>
-            <strong>{settings.git_repository || "-"}</strong>
+            <strong>{settings.git_repository || "-"}{settings.git_offsite_enabled ? ` | offsite ${settings.git_offsite_branch || "main"}` : ""}</strong>
           </div>
           <div className="pill-list">
             {(plan.git?.paths || settings.git_paths || []).map((path) => <span key={path}>{path}</span>)}
@@ -7808,6 +7808,10 @@ function Backup() {
             <span>Web UI</span>
             <strong>{settings.gitea_url || "-"}</strong>
           </div>
+          <div className={`status-chip ${settings.git_offsite_enabled ? "" : "warn"}`}>
+            <span>Offsite Git</span>
+            <strong>{settings.git_offsite_enabled ? (settings.git_offsite_remote || "enabled, no remote") : "disabled"}</strong>
+          </div>
         </div>
         <div className="form-grid backup-settings-grid">
           <label className="wide">Commit message
@@ -7890,6 +7894,22 @@ function Backup() {
               </label>
               <label>Repository
                 <input value={settings.git_repository || ""} onChange={(event) => updateSetting("git_repository", event.target.value)} />
+              </label>
+              <label className="check wide">
+                <input type="checkbox" checked={Boolean(settings.git_offsite_enabled)} onChange={(event) => updateSetting("git_offsite_enabled", event.target.checked)} />
+                Offsite Git mirror enabled
+              </label>
+              <label className="wide">Offsite remote
+                <input placeholder="https://github.com/user/homecontrol.git" value={settings.git_offsite_remote || ""} onChange={(event) => updateSetting("git_offsite_remote", event.target.value)} />
+              </label>
+              <label>Offsite branch
+                <input value={settings.git_offsite_branch || "main"} onChange={(event) => updateSetting("git_offsite_branch", event.target.value)} />
+              </label>
+              <label className="wide">Offsite token file
+                <input value={settings.git_offsite_token_file || ""} onChange={(event) => updateSetting("git_offsite_token_file", event.target.value)} />
+              </label>
+              <label className="wide">Offsite SSH key
+                <input value={settings.git_offsite_ssh_key || ""} onChange={(event) => updateSetting("git_offsite_ssh_key", event.target.value)} />
               </label>
             </div>
             <h3>AI backup HDD</h3>

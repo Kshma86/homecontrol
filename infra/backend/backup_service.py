@@ -44,6 +44,11 @@ class BackupService:
         "ai_backup_ssh_key": "/srv/docker/homecontrol/infra/ssh/ai_node_key",
         "gitea_url": "http://192.168.1.2:3002",
         "git_repository": "homecontrol/config",
+        "git_offsite_enabled": False,
+        "git_offsite_remote": "",
+        "git_offsite_branch": "main",
+        "git_offsite_token_file": "/srv/docker/homecontrol/infra/ssh/git-offsite-token",
+        "git_offsite_ssh_key": "",
         "git_paths": [
             "homeassistant/config",
             "homeassistant/docker-compose.yml",
@@ -509,6 +514,11 @@ class BackupService:
             "GITEA_REMOTE": f"ssh://git@{host}:2222/{repository}.git",
             "GITEA_SSH_KEY": normalize_text(settings.get("ai_backup_ssh_key"), "/srv/docker/homecontrol/infra/ssh/ai_node_key"),
             "GITEA_BRANCH": normalize_text(settings.get("git_branch"), "main"),
+            "GIT_OFFSITE_ENABLED": "true" if settings.get("git_offsite_enabled") else "false",
+            "GIT_OFFSITE_REMOTE": normalize_text(settings.get("git_offsite_remote")),
+            "GIT_OFFSITE_BRANCH": normalize_text(settings.get("git_offsite_branch"), "main"),
+            "GIT_OFFSITE_TOKEN_FILE": normalize_text(settings.get("git_offsite_token_file"), "/srv/docker/homecontrol/infra/ssh/git-offsite-token"),
+            "GIT_OFFSITE_SSH_KEY": normalize_text(settings.get("git_offsite_ssh_key")),
         }
 
     def run_gitea_script(self, script_name: str, args: Iterable[str] = (), timeout: int = 120):
@@ -708,6 +718,13 @@ class BackupService:
                 "enabled": bool(settings.get("git_enabled")),
                 "target": settings.get("gitea_url"),
                 "repository": settings.get("git_repository"),
+                "offsite": {
+                    "enabled": bool(settings.get("git_offsite_enabled")),
+                    "remote": settings.get("git_offsite_remote"),
+                    "branch": settings.get("git_offsite_branch"),
+                    "token_file": settings.get("git_offsite_token_file"),
+                    "ssh_key": settings.get("git_offsite_ssh_key"),
+                },
                 "paths": git_paths,
                 "remote": {
                     "host": settings.get("ai_backup_host"),
