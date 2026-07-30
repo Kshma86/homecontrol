@@ -6,11 +6,38 @@ MESSAGE="${2:-Backup event}"
 BASE="${BASE:-/srv/docker/homecontrol}"
 ENV_FILE="${HC_BACKUP_NOTIFY_ENV:-$BASE/infra/.env}"
 
-if [ -f "$ENV_FILE" ]; then
-  set -a
-  . "$ENV_FILE"
-  set +a
-fi
+env_value() {
+  local key="$1"
+  local default="$2"
+  python3 - "$ENV_FILE" "$key" "$default" <<'PY' 2>/dev/null || printf '%s\n' "$default"
+import sys
+from pathlib import Path
+
+path, wanted, default = sys.argv[1:4]
+value = default
+try:
+    for raw in Path(path).read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, item = line.split("=", 1)
+        if key.strip() != wanted:
+            continue
+        item = item.strip()
+        if (item.startswith('"') and item.endswith('"')) or (item.startswith("'") and item.endswith("'")):
+            item = item[1:-1]
+        value = item
+        break
+except Exception:
+    pass
+print(value)
+PY
+}
+
+HA_BACKUP_NOTIFY_ENABLED="${HA_BACKUP_NOTIFY_ENABLED:-$(env_value HA_BACKUP_NOTIFY_ENABLED false)}"
+HA_BACKUP_URL="${HA_BACKUP_URL:-$(env_value HA_BACKUP_URL "")}"
+HA_BASE_URL="${HA_BASE_URL:-$(env_value HA_BASE_URL "")}"
+HA_BACKUP_TOKEN="${HA_BACKUP_TOKEN:-$(env_value HA_BACKUP_TOKEN "")}"
 
 if [ "${HA_BACKUP_NOTIFY_ENABLED:-false}" != "true" ]; then
   exit 0

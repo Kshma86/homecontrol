@@ -6,6 +6,10 @@ BACKUP_ROOT="${BACKUP_ROOT:-$BASE/backups}"
 SETTINGS_FILE="$BACKUP_ROOT/backup_settings.json"
 LOG_FILE="$BACKUP_ROOT/backup.log"
 NOTIFY_SCRIPT="$BASE/scripts/notify_backup_result.sh"
+AI_BACKUP_LOCK_FILE="$BACKUP_ROOT/ai-backup.lock"
+AI_BACKUP_STATE_FILE="$BACKUP_ROOT/ai-backup-state.json"
+AI_SHUTDOWN_REQUEST_FILE="$BACKUP_ROOT/ai-shutdown-after-backup.request"
+LOCK_ACQUIRED=false
 
 setting() {
   local key="$1"
@@ -28,11 +32,73 @@ PY
 }
 
 log() {
+  mkdir -p "$BACKUP_ROOT"
   echo "[$(date '+%F %T')] $*" | tee -a "$LOG_FILE"
 }
 
-notify_finish() {
+write_state() {
+  local state="$1"
+  local detail="${2:-}"
+  mkdir -p "$BACKUP_ROOT"
+  printf '{"state":"%s","updated_at":"%s","pid":%s,"detail":"%s"}\n' \
+    "$state" "$(date -Iseconds)" "$$" "$(printf '%s' "$detail" | sed 's/\\/\\\\/g; s/"/\\"/g')" > "$AI_BACKUP_STATE_FILE"
+}
+
+deferred_shutdown_delay() {
+  python3 - "$AI_SHUTDOWN_REQUEST_FILE" "$AI_BACKUP_POWER_OFF_DELAY_SECONDS" <<'PY' 2>/dev/null || printf '%s\n' "$AI_BACKUP_POWER_OFF_DELAY_SECONDS"
+import json
+import sys
+
+path, default = sys.argv[1], sys.argv[2]
+try:
+    with open(path, "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    print(int(data.get("power_off_delay_sec") or default))
+except Exception:
+    print(default)
+PY
+}
+
+run_shutdown_request() {
+  local source="$1"
+  local delay="${2:-$AI_BACKUP_POWER_OFF_DELAY_SECONDS}"
+  log "-- AI szerver leállítás kérése (${source})"
+  api_post "/api/ai/node/command" "{\"action\":\"shutdown\",\"schedule_power_off_on_failure\":true,\"power_off_delay_sec\":${delay},\"defer_if_backup_running\":false}" \
+    || return 1
+}
+
+finish_deferred_shutdown() {
+  local status="$1"
+  if [ ! -f "$AI_SHUTDOWN_REQUEST_FILE" ]; then
+    return 0
+  fi
+  if [ "$status" -ne 0 ]; then
+    log "-- Halasztott AI shutdown kérés marad, mert a backup hibával állt le"
+    return 0
+  fi
+  local delay
+  delay="$(deferred_shutdown_delay)"
+  if run_shutdown_request "halasztott kérés" "$delay"; then
+    rm -f "$AI_SHUTDOWN_REQUEST_FILE"
+    log "-- Halasztott AI shutdown kérés teljesítve"
+  else
+    log "-- Halasztott AI shutdown kérés sikertelen, kérés fájl megtartva"
+  fi
+}
+
+finish() {
   local status=$?
+  set +e
+  if [ "$LOCK_ACQUIRED" = "true" ]; then
+    if [ "$status" -eq 0 ]; then
+      write_state "idle" "last run successful"
+    else
+      write_state "failed" "last run failed; see backup.log"
+    fi
+  fi
+  if [ "$LOCK_ACQUIRED" = "true" ]; then
+    finish_deferred_shutdown "$status"
+  fi
   if [ -x "$NOTIFY_SCRIPT" ]; then
     if [ "$status" -eq 0 ]; then
       "$NOTIFY_SCRIPT" "HomeControl backup" "Weekly AI HDD backup sikeresen lefutott." || true
@@ -42,7 +108,7 @@ notify_finish() {
   fi
   exit "$status"
 }
-trap notify_finish EXIT
+trap finish EXIT
 
 api_post() {
   local path="$1"
@@ -74,6 +140,17 @@ AI_BACKUP_WAIT_SECONDS="${AI_BACKUP_WAIT_SECONDS:-900}"
 AI_BACKUP_SHUTDOWN_AFTER="${AI_BACKUP_SHUTDOWN_AFTER:-true}"
 AI_BACKUP_POWER_OFF_DELAY_SECONDS="${AI_BACKUP_POWER_OFF_DELAY_SECONDS:-300}"
 AI_NODE_STACK_DIR="${AI_NODE_STACK_DIR:-~/homecontrol-ai-node}"
+
+mkdir -p "$BACKUP_ROOT"
+exec 8>"$AI_BACKUP_LOCK_FILE"
+if ! flock -n 8; then
+  log "-- Weekly AI HDD backup már fut, új kérés kihagyva"
+  write_state "running" "another backup process owns the lock"
+  exit 0
+fi
+LOCK_ACQUIRED=true
+printf '%s\n' "$$" > "$AI_BACKUP_LOCK_FILE"
+write_state "running" "weekly AI HDD backup running"
 
 SSH_OPTS=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5)
 if [ -n "$AI_BACKUP_SSH_KEY" ] && [ -f "$AI_BACKUP_SSH_KEY" ]; then
@@ -109,9 +186,11 @@ log "-- Kötelező restic backup indul"
 RESTIC_REQUIRED=true "$BASE/scripts/backup_hc.sh"
 
 if [ "$AI_BACKUP_SHUTDOWN_AFTER" = "true" ]; then
-  log "-- AI szerver leállítás kérése"
-  api_post "/api/ai/node/command" "{\"action\":\"shutdown\",\"schedule_power_off_on_failure\":true,\"power_off_delay_sec\":${AI_BACKUP_POWER_OFF_DELAY_SECONDS}}" \
-    || log "-- AI shutdown API nem válaszolt"
+  if run_shutdown_request "weekly auto" "$AI_BACKUP_POWER_OFF_DELAY_SECONDS"; then
+    rm -f "$AI_SHUTDOWN_REQUEST_FILE"
+  else
+    log "-- AI shutdown API nem válaszolt"
+  fi
 else
   log "-- AI szerver leállítás kihagyva"
 fi

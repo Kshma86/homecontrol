@@ -48,6 +48,53 @@ git clone ssh://git@192.168.1.2:2222/homecontrol/config.git /tmp/hc-config-resto
 
 Innen kézzel érdemes összehasonlítani és átmásolni a szükséges fájlokat. A repository szándékosan nem tartalmaz titkokat, adatbázisokat, logokat és runtime cache-eket.
 
+## Gitea kézi workflow
+
+A `/srv/docker/homecontrol` könyvtár jelenleg nem normál Git working tree-ként működik. Emiatt a Gitea workflow külön, biztonságos snapshot scriptekkel dolgozik: előállít egy szűrt konfigurációs képet, összeveti a Gitea repo aktuális állapotával, majd csak ezt commitolja/pusholja.
+
+Státusz és diff stat:
+
+```bash
+cd /srv/docker/homecontrol
+scripts/gitea_config_status.sh
+```
+
+Kézi commit és push:
+
+```bash
+cd /srv/docker/homecontrol
+scripts/gitea_config_commit.sh "Leíró commit üzenet"
+```
+
+Külön branch használata:
+
+```bash
+cd /srv/docker/homecontrol
+GITEA_BRANCH=teszt-valtozas scripts/gitea_config_commit.sh "Teszt konfiguráció snapshot"
+```
+
+Nem romboló restore stagingbe:
+
+```bash
+cd /srv/docker/homecontrol
+scripts/gitea_config_restore.sh main
+```
+
+Konkrét commit vagy branch stagingbe:
+
+```bash
+scripts/gitea_config_restore.sh 0770d86
+scripts/gitea_config_restore.sh teszt-valtozas
+```
+
+Alapértelmezett restore cél:
+
+```text
+/srv/docker/homecontrol/restore_staging/gitea-config-YYYY-MM-DD_HH-MM-SS
+```
+
+Ez nem ír felül éles fájlokat. Először diffeld, utána csak a szükséges fájlokat mozgasd vissza.
+
 ## Helyi tar archívum visszaállítása stagingbe
 
 A webes Backup oldalon válassz archívumot, nyisd meg, majd `staging preview` módban állítsd vissza a kiválasztott komponenseket. A fájlok a `restore_staging` könyvtárba kerülnek, innen összehasonlíthatók az éles fájlokkal.
@@ -133,6 +180,16 @@ A Backup tabon a `Run Full AI Backup` gomb a teljes AI HDD-s folyamatot kéri:
 4. Opcionális AI szerver leállítás.
 
 A gomb nem közvetlenül a konténerből indít host `systemctl` parancsot. A backend a `backups/full-ai-backup.request` fájlt frissíti, a hoston futó `homecontrol-full-ai-backup-request.path` systemd helper pedig erre elindítja a `weekly_ai_backup.sh` full mentési folyamatot.
+
+Shutdown védelem:
+
+1. A full AI backup a `backups/ai-backup.lock` lock alatt fut.
+2. Ha backup közben a webes AI oldalon shutdown kérést küldesz, a backend nem állítja le azonnal az AI szervert.
+3. Ilyenkor létrejön a `backups/ai-shutdown-after-backup.request` kérés.
+4. Sikeres backup végén a `weekly_ai_backup.sh` teljesíti a halasztott shutdown kérést, majd törli a request fájlt.
+5. Ha a backup hibával áll le, a gép bekapcsolva marad, hogy a hibát meg lehessen nézni.
+
+A Backup oldali `AI Shutdown Guard` csempe mutatja, hogy fut-e full AI backup vagy van-e sorban álló leállítás. Az AI oldalon a shutdown gomb backup közben `Shutdown After Backup` névre vált.
 
 Telepítés/frissítés:
 
