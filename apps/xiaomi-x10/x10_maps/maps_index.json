@@ -1,6 +1,6 @@
 {
   "current_map_id": 3,
-  "source_file": "/app/x10_maps/map_object_69cca3c356e307e7f77b2f8b79d8cfc5.json",
+  "source_file": "/app/x10_maps/map_object_c03c081a1967e8513a358d2488317050.json",
   "maps": [
     {
       "id_from_json": 2,
@@ -156,9 +156,9 @@
         "robot_x": 0,
         "robot_y": 0,
         "robot_angle": 0,
-        "dock_x": 475,
+        "dock_x": 474,
         "dock_y": -53,
-        "dock_angle": 178,
+        "dock_angle": 177,
         "grid_size": 50,
         "width": 99,
         "height": 247,

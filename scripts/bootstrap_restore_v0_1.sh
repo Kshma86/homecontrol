@@ -159,6 +159,10 @@ install_packages() {
   fi
 
   if ! docker compose version >/dev/null 2>&1; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose-v2 || true
+  fi
+
+  if ! docker compose version >/dev/null 2>&1; then
     DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose-plugin || true
   fi
 }
@@ -205,7 +209,14 @@ verify_bundle() {
   local checksum="$bundle.sha256"
   [ -s "$bundle" ] || fail "Encrypted secrets bundle hianyzik: $bundle"
   [ -s "$checksum" ] || fail "Secrets checksum hianyzik: $checksum"
-  (cd "$PROJECT_DIR" && sha256sum -c "secrets/homecontrol-secrets-latest.tar.gz.age.sha256")
+  local expected actual
+  expected="$(awk 'NR == 1 {print $1}' "$checksum")"
+  actual="$(sha256sum "$bundle" | awk '{print $1}')"
+  [ -n "$expected" ] || fail "Secrets checksum ures vagy olvashatatlan: $checksum"
+  if [ "$expected" != "$actual" ]; then
+    fail "Secrets checksum nem egyezik: $bundle"
+  fi
+  log "Secrets checksum OK: $bundle"
 }
 
 decrypt_secrets_to_staging() {

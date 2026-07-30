@@ -91,11 +91,11 @@ cp "$work/SECRETS_BUNDLE_CONTENTS.txt" "$work/rootfs/SECRETS_BUNDLE_CONTENTS.txt
 log "Secrets bundle keszul: $output"
 tar -C "$work/rootfs" -czf - . | age -r "$recipient" -o "$output"
 chmod 644 "$output"
-sha256sum "$output" > "$output.sha256"
+(cd "$OUT_DIR" && sha256sum "$(basename "$output")" > "$(basename "$output").sha256")
 chmod 644 "$output.sha256"
 
 cp -a "$output" "$latest"
-sha256sum "$latest" > "$latest.sha256"
+(cd "$OUT_DIR" && sha256sum "$(basename "$latest")" > "$(basename "$latest").sha256")
 chmod 644 "$latest"
 chmod 644 "$latest.sha256"
 
