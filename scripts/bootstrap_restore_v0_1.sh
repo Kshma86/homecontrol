@@ -264,6 +264,21 @@ apply_restic_files() {
     "$source/" "$TARGET_BASE/"
 }
 
+stop_existing_stacks_for_apply() {
+  [ "$APPLY" = "true" ] || return 0
+  if ! command -v docker >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ -f "$TARGET_BASE/homeassistant/docker-compose.yml" ]; then
+    log "Meglevo Home Assistant stack leallitasa restore elott"
+    (cd "$TARGET_BASE/homeassistant" && docker compose down) || true
+  fi
+  if [ -f "$TARGET_BASE/infra/docker-compose.yml" ]; then
+    log "Meglevo infra stack leallitasa restore elott"
+    (cd "$TARGET_BASE/infra" && docker compose down) || true
+  fi
+}
+
 apply_secrets() {
   local bundle="$PROJECT_DIR/secrets/homecontrol-secrets-latest.tar.gz.age"
   log "Secrets apply: encrypted bundle -> /"
@@ -420,6 +435,7 @@ main() {
   restore_restic_to_staging
 
   if [ "$APPLY" = "true" ]; then
+    stop_existing_stacks_for_apply
     apply_restic_files
     apply_project
     apply_secrets

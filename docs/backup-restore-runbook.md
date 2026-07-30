@@ -642,8 +642,9 @@ Mit csinál:
 6. Kibontja a legfrissebb HC tar archívumot stagingbe, hogy a DB dump elérhető legyen.
 7. Csak `--apply` mellett ír a `/srv/docker/homecontrol` és `/etc/homecontrol` alá.
 8. Csak `--apply-restic-files` mellett overlayeli a resticből visszahozott HC fájlokat is az éles célra.
-9. Csak `--restore-db --confirm-db-replace` mellett cseréli az adatbázist.
-10. Csak `--start` mellett indítja el a Docker Compose stackeket.
+9. Éles apply előtt leállítja az esetleg már futó infra/Home Assistant stackeket.
+10. Csak `--restore-db --confirm-db-replace` mellett cseréli az adatbázist.
+11. Csak `--start` mellett indítja el a Docker Compose stackeket.
 
 Staging próba friss gépen:
 
