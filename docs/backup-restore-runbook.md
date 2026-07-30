@@ -633,8 +633,9 @@ Mit csinál:
 5. A visszafejtett restic password és AI SSH key alapján resticből stagingbe restore-ol.
 6. Kibontja a legfrissebb HC tar archívumot stagingbe, hogy a DB dump elérhető legyen.
 7. Csak `--apply` mellett ír a `/srv/docker/homecontrol` és `/etc/homecontrol` alá.
-8. Csak `--restore-db --confirm-db-replace` mellett cseréli az adatbázist.
-9. Csak `--start` mellett indítja el a Docker Compose stackeket.
+8. Csak `--apply-restic-files` mellett overlayeli a resticből visszahozott HC fájlokat is az éles célra.
+9. Csak `--restore-db --confirm-db-replace` mellett cseréli az adatbázist.
+10. Csak `--start` mellett indítja el a Docker Compose stackeket.
 
 Staging próba friss gépen:
 
@@ -670,6 +671,7 @@ Teljesebb restore friss gépen DB cserével és indítással:
 sudo scripts/bootstrap_restore_v0_1.sh \
   --age-key /root/emergency/homecontrol-secrets-age-key.txt \
   --apply \
+  --apply-restic-files \
   --restore-db \
   --confirm-db-replace \
   --start

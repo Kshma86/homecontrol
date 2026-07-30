@@ -12,6 +12,7 @@ AGE_KEY_FILE="${AGE_KEY_FILE:-}"
 
 INSTALL_PACKAGES=false
 APPLY=false
+APPLY_RESTIC_FILES=false
 START_STACK=false
 RESTORE_RESTIC=true
 RESTORE_DB=false
@@ -43,6 +44,7 @@ Options:
   --install-packages          Install Ubuntu packages with apt-get.
   --skip-restic               Skip restic restore.
   --apply                     Copy project and secrets to live target paths.
+  --apply-restic-files        Also overlay restic-restored HC files to target.
   --restore-db                Restore PostgreSQL dump from latest archive.
   --confirm-db-replace        Required with --restore-db; drops/recreates DB.
   --start                     Start Docker Compose stacks after apply.
@@ -97,6 +99,10 @@ while [ "$#" -gt 0 ]; do
       APPLY=true
       shift
       ;;
+    --apply-restic-files)
+      APPLY_RESTIC_FILES=true
+      shift
+      ;;
     --restore-db)
       RESTORE_DB=true
       shift
@@ -130,6 +136,14 @@ fi
 
 if [ "$START_STACK" = "true" ] && [ "$APPLY" != "true" ]; then
   fail "--start csak --apply mellett ertelmes"
+fi
+
+if [ "$APPLY_RESTIC_FILES" = "true" ] && [ "$APPLY" != "true" ]; then
+  fail "--apply-restic-files csak --apply mellett ertelmes"
+fi
+
+if [ "$APPLY_RESTIC_FILES" = "true" ] && [ "$RESTORE_RESTIC" != "true" ]; then
+  fail "--apply-restic-files nem hasznalhato --skip-restic mellett"
 fi
 
 if [ "$APPLY" = "true" ] && [ "$(id -u)" -ne 0 ]; then
@@ -233,6 +247,21 @@ apply_project() {
   rsync -a --delete \
     --exclude '.git' \
     "$PROJECT_DIR/" "$TARGET_BASE/"
+}
+
+apply_restic_files() {
+  [ "$APPLY_RESTIC_FILES" = "true" ] || return 0
+  local source="$RESTIC_TARGET/$TARGET_BASE"
+  [ -d "$source" ] || fail "Restic HC staging konyvtar hianyzik: $source"
+  log "Restic file apply: $source -> $TARGET_BASE"
+  mkdir -p "$TARGET_BASE"
+  rsync -a \
+    --exclude 'infra/postgres/data' \
+    --exclude 'infra/mqtt/data' \
+    --exclude 'infra/mqtt/log' \
+    --exclude 'infra/zigbee2mqtt/data/log' \
+    --exclude 'apps/tuya-poller/logs' \
+    "$source/" "$TARGET_BASE/"
 }
 
 apply_secrets() {
@@ -383,12 +412,14 @@ main() {
   verify_bundle
   decrypt_secrets_to_staging
 
+  restore_restic_to_staging
+
   if [ "$APPLY" = "true" ]; then
+    apply_restic_files
     apply_project
     apply_secrets
   fi
 
-  restore_restic_to_staging
   if [ "$RESTORE_DB" = "true" ]; then
     restore_database
   elif [ "$RESTORE_RESTIC" = "true" ]; then

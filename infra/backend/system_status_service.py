@@ -247,6 +247,7 @@ BACKUP_RESTORE_DEEP_DIVE = [
             "Staging próba: sudo scripts/bootstrap_restore_v0_1.sh --age-key /root/emergency/homecontrol-secrets-age-key.txt --install-packages.",
             "Repo override: --repo-url https://github.com/Kshma86/homecontrol.git vagy ssh://git@192.168.1.2:2222/homecontrol/config.git.",
             "Éles fájlok visszaírása: --apply.",
+            "Resticből visszahozott HC fájlok overlaye: --apply-restic-files.",
             "DB csere csak: --restore-db --confirm-db-replace.",
             "Konténerek indítása csak: --start.",
             "Staging könyvtárak: /tmp/homecontrol-restore-v0.1/project, secrets/rootfs, restic és archive.",
