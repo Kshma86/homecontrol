@@ -689,3 +689,5 @@ Fontos: a v0.1 még nem “láthatatlanul okos” restore. A staging könyvtára
 A script célja, hogy egy katasztrófa után ne kelljen fejből összerakni a sorrendet. A restore minőségét továbbra is a staging ellenőrzés és a DB restore próba bizonyítja.
 
 Megjegyzés: a restic SFTP eléréshez a bootstrap a repository URL-ből olvassa ki a cél hostot, például `a@192.168.1.2`, majd a secrets bundle-ből visszafejtett `ai_node_key` kulccsal indítja az SSH/SFTP kapcsolatot.
+
+Újrafuttatáskor a meglévő restic staging könyvtárat a script félrerakja `restic.previous-YYYY-MM-DD_HH-MM-SS` néven, mert a restic restore nem minden esetben tud tisztán ráírni egy korábbi staging célra.

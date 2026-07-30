@@ -301,6 +301,11 @@ restore_restic_to_staging() {
   restic "${RESTIC_ARGS[@]}" snapshots --tag homecontrol >/dev/null
 
   log "Restic restore stagingbe: snapshot=$RESTIC_SNAPSHOT target=$RESTIC_TARGET"
+  if [ -e "$RESTIC_TARGET" ]; then
+    previous="${RESTIC_TARGET}.previous-$(date +%F_%H-%M-%S)"
+    log "Meglevo restic staging felrerakasa: $RESTIC_TARGET -> $previous"
+    mv "$RESTIC_TARGET" "$previous"
+  fi
   mkdir -p "$RESTIC_TARGET"
   restic "${RESTIC_ARGS[@]}" restore "$RESTIC_SNAPSHOT" --target "$RESTIC_TARGET" --tag homecontrol
 }
