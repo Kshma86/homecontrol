@@ -110,6 +110,13 @@ find "${find_args[@]}" -o -type f -print0 |
   LC_ALL=C sort -z |
   while IFS= read -r -d "" file; do
     rel="${file#./}"
+    if [ "$mode" = "project" ]; then
+      case "$rel" in
+        *.db|*.db-*|*.log|*.log.*|*.log.fault|*.tar.gz|*.tmp|*.pid|*.lock|homeassistant/config/.HA_VERSION|infra/zigbee2mqtt/data/database.db|infra/zigbee2mqtt/data/state.json)
+          continue
+          ;;
+      esac
+    fi
     bytes="$(wc -c < "$file" 2>/dev/null || printf unreadable)"
     lines="$(wc -l < "$file" 2>/dev/null || printf unreadable)"
     sha="$(sha256sum "$file" 2>/dev/null | awk "{print \$1}" || printf unreadable)"

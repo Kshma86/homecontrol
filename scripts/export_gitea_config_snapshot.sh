@@ -58,8 +58,8 @@ copy_path "$BASE/infra/frontend" "$TARGET/infra/frontend"
 copy_path "$BASE/scripts" "$TARGET/scripts"
 copy_path "$BASE/apps" "$TARGET/apps"
 copy_path "$BASE/secrets" "$TARGET/secrets"
-copy_path "$BASE/docs/ai/backup-domain.md" "$TARGET/docs/ai/backup-domain.md"
-copy_path "$BASE/docs/backup-restore-runbook.md" "$TARGET/docs/backup-restore-runbook.md"
+copy_path "$BASE/docs" "$TARGET/docs"
+copy_path "$BASE/visual-audit" "$TARGET/visual-audit"
 
 cat > "$TARGET/.gitignore" <<'EOF'
 .env
