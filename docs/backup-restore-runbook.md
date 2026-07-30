@@ -83,6 +83,106 @@ Szándékosan kizárt területek:
 
 Ez azért fontos, mert a repo legyen olvasható és visszakereshető, de ne kerüljön bele jelszó, kulcs, token, adatbázis vagy nagy futásidejű szemét.
 
+## Titkos adatok encrypted bundle-ben
+
+A Gitea/GitHub snapshot szándékosan nem tartalmaz nyers titkokat. Ettől még a teljes katasztrófa-restore-hoz kellenek jelszavak, tokenek és kulcsok, ezért ezek külön, age-gel titkosított csomagba kerülnek.
+
+Alapelvek:
+
+1. A nyers `.env`, `secrets.yaml`, SSH private key, restic password és integrációs token nem mehet Gitbe.
+2. A publikus age recipient mehet Gitbe, mert azzal csak titkosítani lehet.
+3. Az age identity private key nem mehet Gitbe; azt külön, jelszókezelőben vagy offline emergency helyen kell tartani.
+4. A Gitea/GitHub snapshotba csak `secrets/*.age` és `secrets/*.age.sha256` kerülhet.
+
+Első beállítás:
+
+```bash
+cd /srv/docker/homecontrol
+sudo apt install age
+scripts/init_secrets_age_key.sh
+```
+
+Ez létrehozza:
+
+```text
+/srv/docker/homecontrol/infra/ssh/homecontrol-secrets-age-key.txt
+/srv/docker/homecontrol/secrets/age-recipient.txt
+```
+
+A private key fájlt azonnal mentsd el külső helyre is. Ha a HC gép meghal és ez a kulcs nincs meg, az encrypted secrets bundle nem fejthető vissza.
+
+Mit csomagol:
+
+```text
+/srv/docker/homecontrol/secrets/manifest.txt
+```
+
+Jelenlegi manifest célok:
+
+- `infra/.env`
+- `homeassistant/config/secrets.yaml`
+- HC -> AI SSH kulcs
+- HC -> GitHub deploy key
+- `/etc/homecontrol/restic-password`
+- Tuya/Xiaomi lokális secrets fájlok, ha léteznek
+- Zigbee2MQTT konfiguráció és coordinator backup, ha léteznek
+
+Bundle készítése:
+
+```bash
+cd /srv/docker/homecontrol
+sudo scripts/create_secrets_bundle.sh
+```
+
+Kimenet:
+
+```text
+/srv/docker/homecontrol/secrets/homecontrol-secrets-YYYY-MM-DD_HH-MM-SS.tar.gz.age
+/srv/docker/homecontrol/secrets/homecontrol-secrets-YYYY-MM-DD_HH-MM-SS.tar.gz.age.sha256
+/srv/docker/homecontrol/secrets/homecontrol-secrets-latest.tar.gz.age
+/srv/docker/homecontrol/secrets/homecontrol-secrets-latest.tar.gz.age.sha256
+```
+
+Szigorú mód, amikor bármely hiányzó manifest elem hiba:
+
+```bash
+STRICT_SECRETS=true sudo scripts/create_secrets_bundle.sh
+```
+
+Nem romboló secrets restore próba:
+
+```bash
+cd /srv/docker/homecontrol
+sudo scripts/restore_secrets_bundle.sh
+```
+
+Ez stagingbe bont:
+
+```text
+/srv/docker/homecontrol/restore_staging/secrets-YYYY-MM-DD_HH-MM-SS/rootfs
+```
+
+Éles secrets restore csak újraépített vagy tudatosan előkészített gépen:
+
+```bash
+cd /srv/docker/homecontrol
+sudo scripts/restore_secrets_bundle.sh --apply --confirm
+```
+
+Ez a bundle-ben lévő fájlokat az eredeti abszolút útvonalukra bontja vissza. Emiatt éles gépen előtte ellenőrizd, hogy tényleg a megfelelő bundle-t használod:
+
+```bash
+sha256sum -c /srv/docker/homecontrol/secrets/homecontrol-secrets-latest.tar.gz.age.sha256
+```
+
+Restore szempontból ez lesz a hiányzó ötödik réteg:
+
+1. Gitea/GitHub: projekt és konfigurációs kód.
+2. Restic: adatbázis-dumpok, volume-ok, média és teljes HC állapot.
+3. Helyi tar archívum: gyors staging visszanézés.
+4. Gitea dump az AI szerveren: Gitea saját mentése.
+5. Encrypted secrets bundle: kulcsok, tokenek, jelszavak.
+
 ### Hárompéldányos Git modell
 
 A tervezett biztonsági modell így néz ki:
@@ -332,10 +432,11 @@ Napi módban az AI szerver nem kötelező. Ha alszik vagy nem elérhető, a hely
 
 A Backup tabon a `Run Full AI Backup` gomb a teljes AI HDD-s folyamatot kéri:
 
-1. Gitea config snapshot sync.
-2. Gitea dump az AI szerveren.
-3. Kötelező restic backup az AI HDD-re.
-4. Opcionális AI szerver leállítás.
+1. Encrypted secrets bundle frissítés, ha az age réteg már be van állítva.
+2. Gitea config snapshot sync, benne az aktuális encrypted secrets bundle-lel.
+3. Gitea dump az AI szerveren.
+4. Kötelező restic backup az AI HDD-re.
+5. Opcionális AI szerver leállítás, de csak akkor automatikusan, ha a backup ébresztette fel az AI szervert.
 
 A gomb nem közvetlenül a konténerből indít host `systemctl` parancsot. A backend a `backups/full-ai-backup.request` fájlt frissíti, a hoston futó `homecontrol-full-ai-backup-request.path` systemd helper pedig erre elindítja a `weekly_ai_backup.sh` full mentési folyamatot.
 
@@ -348,6 +449,15 @@ Shutdown védelem:
 5. Ha a backup hibával áll le, a gép bekapcsolva marad, hogy a hibát meg lehessen nézni.
 
 A Backup oldali `AI Shutdown Guard` csempe mutatja, hogy fut-e full AI backup vagy van-e sorban álló leállítás. Az AI oldalon a shutdown gomb backup közben `Shutdown After Backup` névre vált.
+
+Két normál full backup ág van:
+
+1. AI szerver már ment induláskor: backup lefut, AI szerver bekapcsolva marad.
+2. AI szerver nem volt elérhető induláskor: HC wake kérést küld, backup lefut, majd sikeres mentés után automatikus shutdown kérés megy az AI szerverre.
+
+Ha backup közben te külön megnyomod az AI oldali `Shutdown After Backup` gombot, az explicit kérésnek számít. Ilyenkor a shutdown akkor is lefut a backup végén, ha az AI szerver már induláskor be volt kapcsolva.
+
+Ha az AI szerver nem érhető el SSH-n, a full/weekly backup várakozás közben 30 másodpercenként státuszt logol, és 60 másodpercenként újraküldi a wake kérést/Wake-on-LAN csomagot. Ha a konnektor bekapcsolt állapotban van, de a PC nem bootol és az SSH nem jön fel 15 percen belül, akkor a hiba már az AI gép fizikai/BIOS/WoL oldalán keresendő.
 
 Telepítés/frissítés:
 
@@ -369,15 +479,19 @@ A heti mentést a `homecontrol-ai-weekly-backup.timer` indítja. Alapértelmezet
 
 Folyamat:
 
-1. Wake kérést küld az AI szerver felé.
-2. SSH-n várja, hogy a szerver elérhető legyen.
-3. Lefuttatja a Gitea config snapshot szinkront.
-4. Az AI szerveren lefuttatja a Gitea dump scriptet, ha elérhető.
-5. `RESTIC_REQUIRED=true` módban indítja a HC backup scriptet.
-6. Ha a restic repo vagy AI HDD nem elérhető, a heti mentés hibára fut.
-7. Siker után alapértelmezetten leállítást kér az AI szerverre.
+1. SSH-n ellenőrzi, hogy az AI szerver már elérhető-e.
+2. Ha nem elérhető, wake kérést küld az AI szerver felé.
+3. SSH-n várja, hogy a szerver elérhető legyen.
+4. Megpróbálja frissíteni az encrypted secrets bundle-t.
+5. Lefuttatja a Gitea config snapshot szinkront.
+6. Az AI szerveren lefuttatja a Gitea dump scriptet, ha elérhető.
+7. `RESTIC_REQUIRED=true` módban indítja a HC backup scriptet.
+8. Ha a restic repo vagy AI HDD nem elérhető, a heti mentés hibára fut.
+9. Siker után csak akkor kér automatikus leállítást, ha a backup induláskor nem találta elérhetőnek az AI szervert.
 
 Ez a kötelező heti mentés az a pont, ami biztosítja, hogy akkor is legyen AI HDD-s snapshot, ha a napi mentések idején az AI szerver általában ki van kapcsolva.
+
+Az encrypted secrets bundle frissítés best-effort lépés. Ha az `age` még nincs telepítve vagy az age kulcs még nincs létrehozva, a script ezt logolja, de a restic/Gitea backup folyamatot nem állítja meg. Miután lefutott a `scripts/init_secrets_age_key.sh` és elkészült az első bundle, a következő full/weekly backup már ezt is viszi Gitea/GitHub felé.
 
 ## Havi restic check részletesen
 

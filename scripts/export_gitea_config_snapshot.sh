@@ -57,6 +57,7 @@ copy_path "$BASE/infra/backend" "$TARGET/infra/backend"
 copy_path "$BASE/infra/frontend" "$TARGET/infra/frontend"
 copy_path "$BASE/scripts" "$TARGET/scripts"
 copy_path "$BASE/apps" "$TARGET/apps"
+copy_path "$BASE/secrets" "$TARGET/secrets"
 copy_path "$BASE/docs/ai/backup-domain.md" "$TARGET/docs/ai/backup-domain.md"
 copy_path "$BASE/docs/backup-restore-runbook.md" "$TARGET/docs/backup-restore-runbook.md"
 
@@ -83,6 +84,13 @@ mqtt/data/
 mqtt/log/
 zigbee2mqtt/data/log/
 infra/ssh/
+secrets/*
+!secrets/.gitignore
+!secrets/README.md
+!secrets/manifest.txt
+!secrets/age-recipient.txt
+!secrets/*.age
+!secrets/*.age.sha256
 tuya-poller/logs/
 tuya-poller/multi_connector_config.json
 xiaomi-x10/x10_maps/captures/

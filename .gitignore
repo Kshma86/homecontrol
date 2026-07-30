@@ -20,6 +20,13 @@ mqtt/data/
 mqtt/log/
 zigbee2mqtt/data/log/
 infra/ssh/
+secrets/*
+!secrets/.gitignore
+!secrets/README.md
+!secrets/manifest.txt
+!secrets/age-recipient.txt
+!secrets/*.age
+!secrets/*.age.sha256
 tuya-poller/logs/
 tuya-poller/multi_connector_config.json
 xiaomi-x10/x10_maps/captures/

@@ -7471,6 +7471,15 @@ function Backup() {
     if (selectedBackup) loadContents(selectedBackup);
   }, [selectedBackup]);
 
+  useEffect(() => {
+    const running = Boolean(state?.ai_shutdown_guard?.backup_running) || ["create", "full-ai", "gitea-commit", "gitea-status", "gitea-restore"].includes(busy);
+    if (!running) return undefined;
+    const timer = window.setInterval(() => {
+      loadBackup();
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [state?.ai_shutdown_guard?.backup_running, busy]);
+
   async function saveSettings(event) {
     event.preventDefault();
     setBusy("settings");
@@ -7654,6 +7663,30 @@ function Backup() {
   const aiShutdownGuard = state?.ai_shutdown_guard || {};
   const aiBackupRunning = Boolean(aiShutdownGuard.backup_running);
   const aiShutdownDeferred = Boolean(aiShutdownGuard.deferred_shutdown);
+  const backupStateDetail = aiShutdownGuard.state?.detail || (aiBackupRunning ? "full AI backup lock is active" : "");
+  const activeBackupUi = aiBackupRunning || ["create", "full-ai", "gitea-commit", "gitea-status", "gitea-restore"].includes(busy);
+  const activeBackupTitle = aiBackupRunning
+    ? "Full AI Backup Running"
+    : busy === "create"
+      ? "Local Backup Creating"
+      : busy === "full-ai"
+        ? "Full AI Backup Queued"
+        : busy?.startsWith("gitea-")
+          ? "Gitea Operation Running"
+          : "Backup Activity";
+  const activeBackupMeta = aiBackupRunning
+    ? backupStateDetail || "Gitea, GitHub, Gitea dump and restic steps may be running"
+    : busy === "create"
+      ? "creating local tar.gz archive"
+      : busy === "full-ai"
+        ? "host systemd helper will start the full AI backup"
+        : busy === "gitea-commit"
+          ? "snapshot commit and push in progress"
+          : busy === "gitea-status"
+            ? "checking current snapshot against Gitea"
+            : busy === "gitea-restore"
+              ? "cloning selected ref to staging"
+              : "";
   const latest = backups[0];
   const settingChecks = [
     ["include_postgres", "PostgreSQL dump"],
@@ -7689,6 +7722,22 @@ function Backup() {
           <IconButton icon={HardDrive} onClick={runFullAiBackup} disabled={busy === "full-ai" || aiBackupRunning}>{busy === "full-ai" ? "Requesting" : aiBackupRunning ? "Full Backup Running" : "Run Full AI Backup"}</IconButton>
         </div>
       </section>
+
+      {activeBackupUi && (
+        <section className="backup-running-banner" aria-live="polite">
+          <div className="backup-running-pulse" aria-hidden="true" />
+          <div>
+            <strong>{activeBackupTitle}</strong>
+            <span>{activeBackupMeta}</span>
+          </div>
+          <div className="backup-running-steps">
+            <span>Gitea</span>
+            <span>GitHub</span>
+            <span>Restic</span>
+            <span>AI HDD</span>
+          </div>
+        </section>
+      )}
 
       <section className="tile-grid stats-tiles">
         <Card title="Latest Backup" value={latest ? dateText(latest.timestamp) : "-"} meta={latest ? latest.name : "no archive"} icon={Archive} />
@@ -7965,7 +8014,7 @@ function Backup() {
               </label>
               <label className="check">
                 <input type="checkbox" checked={Boolean(settings.ai_weekly_shutdown_after)} onChange={(event) => updateSetting("ai_weekly_shutdown_after", event.target.checked)} />
-                Shutdown after weekly backup
+                Shutdown if backup woke AI
               </label>
               <div className="wide actions"><IconButton icon={Save} type="submit" disabled={busy === "settings"}>{busy === "settings" ? "Saving" : "Save Settings"}</IconButton></div>
             </div>

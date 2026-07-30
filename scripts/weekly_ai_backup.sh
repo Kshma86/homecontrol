@@ -137,9 +137,12 @@ AI_BACKUP_HOST="$(setting ai_backup_host 192.168.1.2)"
 AI_BACKUP_USER="$(setting ai_backup_user a)"
 AI_BACKUP_SSH_KEY="$(setting ai_backup_ssh_key /srv/docker/homecontrol/infra/ssh/ai_node_key)"
 AI_BACKUP_WAIT_SECONDS="${AI_BACKUP_WAIT_SECONDS:-900}"
+AI_BACKUP_WAKE_RETRY_SECONDS="${AI_BACKUP_WAKE_RETRY_SECONDS:-60}"
+AI_BACKUP_WAIT_LOG_SECONDS="${AI_BACKUP_WAIT_LOG_SECONDS:-30}"
 AI_BACKUP_SHUTDOWN_AFTER="${AI_BACKUP_SHUTDOWN_AFTER:-true}"
 AI_BACKUP_POWER_OFF_DELAY_SECONDS="${AI_BACKUP_POWER_OFF_DELAY_SECONDS:-300}"
 AI_NODE_STACK_DIR="${AI_NODE_STACK_DIR:-~/homecontrol-ai-node}"
+AI_WAS_REACHABLE=false
 
 mkdir -p "$BACKUP_ROOT"
 exec 8>"$AI_BACKUP_LOCK_FILE"
@@ -157,20 +160,48 @@ if [ -n "$AI_BACKUP_SSH_KEY" ] && [ -f "$AI_BACKUP_SSH_KEY" ]; then
   SSH_OPTS=(-i "$AI_BACKUP_SSH_KEY" "${SSH_OPTS[@]}")
 fi
 
+ssh_ready() {
+  ssh "${SSH_OPTS[@]}" "${AI_BACKUP_USER}@${AI_BACKUP_HOST}" "true" >/dev/null 2>&1
+}
+
 log "== Weekly AI HDD backup indul =="
-log "-- AI szerver ébresztés kérése"
-api_post "/api/ai/node/wake" "{}" || log "-- AI wake API nem válaszolt, SSH várakozás folytatódik"
+if ssh_ready; then
+  AI_WAS_REACHABLE=true
+  log "-- AI szerver már elérhető volt induláskor, backup után nem állítom le automatikusan"
+else
+  log "-- AI szerver nem volt elérhető induláskor, ébresztés kérése"
+  api_post "/api/ai/node/wake" "{}" || log "-- AI wake API nem válaszolt, SSH várakozás folytatódik"
+fi
 
 deadline=$((SECONDS + AI_BACKUP_WAIT_SECONDS))
-until ssh "${SSH_OPTS[@]}" "${AI_BACKUP_USER}@${AI_BACKUP_HOST}" "true" >/dev/null 2>&1; do
+next_wake_retry=$((SECONDS + AI_BACKUP_WAKE_RETRY_SECONDS))
+next_wait_log=$((SECONDS + AI_BACKUP_WAIT_LOG_SECONDS))
+until ssh_ready; do
   if [ "$SECONDS" -ge "$deadline" ]; then
     log "HIBA: AI szerver nem lett elérhető SSH-n ${AI_BACKUP_WAIT_SECONDS} másodperc alatt"
     exit 1
+  fi
+  if [ "$SECONDS" -ge "$next_wait_log" ]; then
+    remaining=$((deadline - SECONDS))
+    log "-- AI szerver SSH még nem elérhető, várakozás folytatódik (${remaining}s maradt)"
+    next_wait_log=$((SECONDS + AI_BACKUP_WAIT_LOG_SECONDS))
+  fi
+  if [ "$SECONDS" -ge "$next_wake_retry" ]; then
+    log "-- AI wake ismétlés, mert SSH még nem elérhető"
+    api_post "/api/ai/node/wake" "{}" || log "-- Ismételt AI wake API nem válaszolt"
+    next_wake_retry=$((SECONDS + AI_BACKUP_WAKE_RETRY_SECONDS))
   fi
   sleep 10
 done
 
 log "-- AI szerver SSH elérhető, kötelező restic backup indul"
+log "-- Encrypted secrets bundle frissítés indul"
+if "$BASE/scripts/create_secrets_bundle.sh"; then
+  log "-- Encrypted secrets bundle frissítés kész"
+else
+  log "-- Encrypted secrets bundle frissítés kihagyva vagy hibás; a full backup folytatódik"
+fi
+
 log "-- Gitea config snapshot sync indul"
 "$BASE/scripts/sync_config_to_gitea.sh"
 log "-- Gitea config snapshot sync kész"
@@ -185,12 +216,14 @@ fi
 log "-- Kötelező restic backup indul"
 RESTIC_REQUIRED=true "$BASE/scripts/backup_hc.sh"
 
-if [ "$AI_BACKUP_SHUTDOWN_AFTER" = "true" ]; then
+if [ "$AI_BACKUP_SHUTDOWN_AFTER" = "true" ] && [ "$AI_WAS_REACHABLE" != "true" ]; then
   if run_shutdown_request "weekly auto" "$AI_BACKUP_POWER_OFF_DELAY_SECONDS"; then
     rm -f "$AI_SHUTDOWN_REQUEST_FILE"
   else
     log "-- AI shutdown API nem válaszolt"
   fi
+elif [ "$AI_WAS_REACHABLE" = "true" ]; then
+  log "-- AI szerver leállítás kihagyva: induláskor már be volt kapcsolva"
 else
   log "-- AI szerver leállítás kihagyva"
 fi

@@ -20,6 +20,9 @@ Primary implementation:
 - `scripts/gitea_config_commit.sh`
 - `scripts/gitea_config_restore.sh`
 - `scripts/export_gitea_config_snapshot.sh`
+- `scripts/init_secrets_age_key.sh`
+- `scripts/create_secrets_bundle.sh`
+- `scripts/restore_secrets_bundle.sh`
 - `scripts/sync_config_to_gitea.sh`
 - `scripts/weekly_ai_backup.sh`
 - `apps/ai-node/backup_gitea.sh`
@@ -110,9 +113,17 @@ Defaults:
   is sleeping or the HDD is unavailable, the local archive still succeeds and
   the restic step is logged as skipped.
 - Weekly AI HDD backup uses `scripts/weekly_ai_backup.sh`: it wakes the AI
-  server through the backend AI-node API, waits for SSH, pushes the filtered
-  Gitea config snapshot, runs `scripts/backup_hc.sh` with
-  `RESTIC_REQUIRED=true`, then requests AI-server shutdown by default.
+  server through the backend AI-node API only when SSH was not reachable at
+  start, waits for SSH, refreshes the encrypted secrets bundle when the age
+  layer is ready, pushes the filtered Gitea config snapshot, runs
+  `scripts/backup_hc.sh` with `RESTIC_REQUIRED=true`, then requests AI-server
+  shutdown only if the backup had to wake the AI server.
+- While waiting for SSH, the weekly/full backup logs progress every 30 seconds
+  and repeats the wake/Wake-on-LAN request every 60 seconds until the 15-minute
+  timeout expires.
+- If the AI server was already reachable when the weekly/full backup started,
+  the backup leaves it running. An explicit deferred shutdown request from the
+  AI page is still honored after the backup completes successfully.
 - The weekly job also asks the AI server to run `apps/ai-node/backup_gitea.sh`
   when that helper exists in the remote `~/homecontrol-ai-node` directory.
 - Monthly `homecontrol-restic-check.timer` runs `scripts/restic_check_ai_backup.sh`
@@ -129,6 +140,18 @@ Defaults:
   that installs `restic` and creates `/etc/homecontrol/restic-password`.
 - Local `homecontrol_*.tar.gz` archives remain as a manual/scheduled fallback
   and keep the existing inspect, compare and staging restore workflow.
+- Secrets are handled as a separate encrypted layer. The cleartext source files
+  stay outside Git/Gitea, while `scripts/create_secrets_bundle.sh` packs the
+  manifest-defined secret paths into `secrets/homecontrol-secrets-*.tar.gz.age`.
+  Only encrypted `.age` files, checksums, the public age recipient and the
+  manifest are allowed into the Gitea/GitHub snapshot.
+- `scripts/init_secrets_age_key.sh` creates the local age identity under
+  `infra/ssh/homecontrol-secrets-age-key.txt` and writes the public recipient to
+  `secrets/age-recipient.txt`. The identity private key must be stored outside
+  the HC machine too, for example in a password manager or offline emergency
+  note.
+- `scripts/restore_secrets_bundle.sh` decrypts the latest secrets bundle to
+  staging by default and writes to `/` only with `--apply --confirm`.
 
 ## Archive Rules
 

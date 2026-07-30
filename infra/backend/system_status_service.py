@@ -156,15 +156,16 @@ BACKUP_RESTORE_DEEP_DIVE = [
     },
     {
         "title": "Heti AI HDD backup folyamata",
-        "body": "A heti feladat a legerősebb automatizált mentési út. Felébreszti vagy megvárja az AI szervert, szinkronizálja a Gitea konfigurációs repositoryt, megpróbál Gitea dumpot készíteni az AI HDD-n, majd kötelező restic snapshotot futtat.",
+        "body": "A heti feladat a legerősebb automatizált mentési út. Ha az AI szerver már megy, használja és bekapcsolva hagyja. Ha nem elérhető, felébreszti, lefuttatja a Gitea/restic mentést, majd siker után leállíthatja.",
         "items": [
-            "1. Backend AI node API wake kérést küld.",
-            "2. A script SSH-n várja az AI szervert legfeljebb 900 másodpercig.",
-            "3. Lefut a sync_config_to_gitea.sh, amely pusholja a szűrt konfigurációkat.",
-            "4. Remote oldalon lefut az apps/ai-node/backup_gitea.sh, ha elérhető.",
-            "5. RESTIC_REQUIRED=true mellett elindul a backup_hc.sh.",
-            "6. Ha a restic repo vagy AI HDD nem elérhető, a heti feladat hibával áll le.",
-            "7. Siker után alapértelmezetten leállítást kér az AI szerverre.",
+            "1. A script SSH-n ellenőrzi, hogy az AI szerver már elérhető-e.",
+            "2. Ha nem elérhető, Backend AI node API wake kérést küld.",
+            "3. A script SSH-n várja az AI szervert legfeljebb 900 másodpercig.",
+            "4. Lefut a sync_config_to_gitea.sh, amely pusholja a szűrt konfigurációkat Gitea-ba és engedélyezve GitHubra.",
+            "5. Remote oldalon lefut az apps/ai-node/backup_gitea.sh, ha elérhető.",
+            "6. RESTIC_REQUIRED=true mellett elindul a backup_hc.sh.",
+            "7. Ha a restic repo vagy AI HDD nem elérhető, a heti feladat hibával áll le.",
+            "8. Siker után csak akkor kér automatikus leállítást, ha ő ébresztette fel az AI szervert.",
         ],
     },
     {
@@ -580,7 +581,7 @@ DOCUMENTATION_BUTTONS = {
     "backup": [
         {"name": "Refresh", "does": "Ujratolti a backup listat, timer/source infot es restore beallitasokat.", "guard": "Csak olvasas."},
         {"name": "Create Backup", "does": "Uj backup archive kesziteset inditja.", "guard": "Backup root es szukseges fajlrendszer jogosultsag kell."},
-        {"name": "Run Full AI Backup", "does": "Full AI HDD mentest ker: Gitea sync, Gitea dump, kotelezo restic backup es opcionális AI leallitas.", "guard": "A hoston telepitett homecontrol-full-ai-backup-request.path helper kell hozza."},
+        {"name": "Run Full AI Backup", "does": "Full AI HDD mentest ker: Gitea sync, Gitea dump, kotelezo restic backup es opcionális AI leallitas.", "guard": "Ha az AI szerver mar ment indulasnal, bekapcsolva marad; ha a backup ebresztette, siker utan leallithatja."},
         {"name": "Gitea Status / Diff", "does": "Osszeveti az aktualis szurt HC snapshotot a Gitea repositoryval, es status/diff stat kimenetet mutat.", "guard": "Csak olvasas a repo szempontjabol; mukodo Gitea SSH kapcsolat kell."},
         {"name": "Gitea Commit & Push", "does": "Kezi commit uzenettel snapshotot keszit es pusholja a Gitea homecontrol/config repoba.", "guard": "Titkokat es runtime adatokat a snapshot exporter kizar; ha nincs valtozas, nincs ures commit."},
         {"name": "Gitea Restore to Staging", "does": "Branch, tag vagy commit refet klonoz a restore_staging ala osszehasonlitashoz.", "guard": "Nem ir felul eles fajlt; visszamasolas csak kulon, kezi dontes utan."},
