@@ -117,6 +117,30 @@ Ez a fájl nincs Gitea snapshotba exportálva, mert az `infra/ssh` kizárt terü
 
 SSH-s külső remote is használható, ha az `Offsite SSH key` egy olyan privát kulcsra mutat, amelynek publikus párja fel van véve a külső Git fiókba.
 
+Aktuális GitHub cél:
+
+```text
+git@github.com:Kshma86/homecontrol.git
+```
+
+Aktuális HC oldali deploy key:
+
+```text
+Private key: /srv/docker/homecontrol/infra/ssh/github_homecontrol_key
+Public key:  /srv/docker/homecontrol/infra/ssh/github_homecontrol_key.pub
+```
+
+GitHub oldali beállítás:
+
+1. Hozd létre a `Kshma86/homecontrol` repositoryt GitHubon.
+2. A repo legyen üresen létrehozva: ne legyen README, license vagy `.gitignore`.
+3. Repo Settings / Deploy keys / Add deploy key.
+4. Title: `homecontrol-hc-offsite-mirror`.
+5. Key: a `github_homecontrol_key.pub` teljes tartalma.
+6. Pipáld be: `Allow write access`.
+7. Ezután a HC Backup Settingsben kapcsold be: `Offsite Git mirror enabled`.
+8. Backup / Gitea Control / `Commit & Push` próba.
+
 Fontos: a külső Git repo törlése külön, kézi megerősítést igénylő művelet. Üres repo-k törlése előtt mindig nézd meg a pontos repo nevet, owner nevet és hogy tényleg nincs-e benne értékes commit.
 
 ### Webes Gitea Control panel
