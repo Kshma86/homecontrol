@@ -246,6 +246,9 @@ BACKUP_RESTORE_DEEP_DIVE = [
         "items": [
             "One-file launcher: scripts/homecontrol_restore_magic.sh.",
             "Alap age key hely one-file módban: a magic script melletti homecontrol-secrets-age-key.txt.",
+            "Gyors restore: cd /tmp; curl -fsSL https://raw.githubusercontent.com/Kshma86/homecontrol/main/scripts/homecontrol_restore_magic.sh -o homecontrol_restore_magic.sh; chmod +x homecontrol_restore_magic.sh.",
+            "Kulcs beillesztése: nano /tmp/homecontrol-secrets-age-key.txt.",
+            "Indítás: sudo /tmp/homecontrol_restore_magic.sh --confirm-new-hc-server.",
             "Új gépen sorrend: cd /tmp; curl -fsSL https://raw.githubusercontent.com/Kshma86/homecontrol/main/scripts/homecontrol_restore_magic.sh -o homecontrol_restore_magic.sh; chmod +x homecontrol_restore_magic.sh.",
             "Másold mellé az age kulcsot: /tmp/homecontrol-secrets-age-key.txt.",
             "Teljes restore új gépen: sudo ./homecontrol_restore_magic.sh --confirm-new-hc-server.",

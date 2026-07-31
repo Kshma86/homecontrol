@@ -641,6 +641,31 @@ homecontrol-secrets-age-key.txt
 
 Ha máshol van a kulcs, továbbra is megadható explicit módon a `--age-key /path/to/key` kapcsolóval.
 
+### Gyors helyreállítás
+
+Ha baj van és egy friss Ubuntu HC gépet gyorsan vissza kell állítani, ezt futtasd:
+
+```bash
+cd /tmp
+curl -fsSL https://raw.githubusercontent.com/Kshma86/homecontrol/main/scripts/homecontrol_restore_magic.sh \
+  -o homecontrol_restore_magic.sh
+chmod +x homecontrol_restore_magic.sh
+```
+
+Másold be az age private key-t a magic fájl mellé:
+
+```bash
+nano /tmp/homecontrol-secrets-age-key.txt
+```
+
+A fájl mentése után indulhat a teljes restore:
+
+```bash
+sudo /tmp/homecontrol_restore_magic.sh --confirm-new-hc-server
+```
+
+Ez a gyors út a GitHubról lehúzza a restore launchert, a mellé tett age kulccsal visszafejti a mentett secrets csomagot, majd az AI szerveren lévő restic mentésből és a GitHub/Gitea projektből újraépíti a HC rendszert.
+
 ### One-file restore friss Ubuntu gépen
 
 Ezt a sorrendet kövesd, ha egy új HC szervert kell felépíteni.
