@@ -641,6 +641,109 @@ homecontrol-secrets-age-key.txt
 
 Ha máshol van a kulcs, továbbra is megadható explicit módon a `--age-key /path/to/key` kapcsolóval.
 
+### One-file restore friss Ubuntu gépen
+
+Ezt a sorrendet kövesd, ha egy új HC szervert kell felépíteni.
+
+1. Az új Ubuntu szerveren lépj ide:
+
+```bash
+cd /tmp
+```
+
+2. Töltsd le a magic restore fájlt:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Kshma86/homecontrol/main/scripts/homecontrol_restore_magic.sh \
+  -o homecontrol_restore_magic.sh
+```
+
+Ha a `curl` még nincs telepítve:
+
+```bash
+sudo apt update
+sudo apt install -y curl ca-certificates
+```
+
+3. Tedd futtathatóvá:
+
+```bash
+chmod +x homecontrol_restore_magic.sh
+```
+
+4. Másold ugyanebbe a könyvtárba az age private key-t ezzel a pontos fájlnévvel:
+
+```text
+/tmp/homecontrol-secrets-age-key.txt
+```
+
+A két fájlnak egymás mellett kell lennie:
+
+```bash
+ls -la /tmp/homecontrol_restore_magic.sh
+ls -la /tmp/homecontrol-secrets-age-key.txt
+```
+
+5. Opcionális, nem romboló staging próba:
+
+```bash
+sudo /tmp/homecontrol_restore_magic.sh --staging-only
+```
+
+Ez csak a clone, secrets decrypt, restic restore és archive kibontás folyamatát ellenőrzi. Éles `/srv/docker/homecontrol` fájlokat nem ír felül.
+
+6. Teljes restore friss gépen:
+
+```bash
+sudo /tmp/homecontrol_restore_magic.sh --confirm-new-hc-server
+```
+
+Ez a teljes folyamat: csomagok telepítése, projekt clone/frissítés, secrets visszafejtés, restic restore az AI HDD-ről, HC fájlok visszaírása, DB restore, majd Docker Compose stackek indítása.
+
+Ha a kulcs nem a magic fájl mellett van:
+
+```bash
+sudo /tmp/homecontrol_restore_magic.sh \
+  --age-key /path/to/homecontrol-secrets-age-key.txt \
+  --confirm-new-hc-server
+```
+
+7. Restore utáni ellenőrzések az új gépen:
+
+```bash
+sudo docker ps --format '{{.Names}} {{.Status}}' | sort
+```
+
+```bash
+curl -sS http://127.0.0.1:8095/health
+```
+
+```bash
+cd /srv/docker/homecontrol/infra
+sudo docker compose ps
+```
+
+```bash
+cd /srv/docker/homecontrol/homeassistant
+sudo docker compose ps
+```
+
+Ha a régi HC-hoz hasonlóan 14 konténert vársz, a `homecontrol-ha-growatt-poller` is fusson. Ezt a restore automatikusan indítja, ha a visszaállított `.env` tartalmaz `HA_GROWATT_TOKEN` értéket. Kézzel így indítható:
+
+```bash
+cd /srv/docker/homecontrol/infra
+sudo docker compose --profile ha-growatt up -d --build homecontrol-ha-growatt-poller
+```
+
+8. Régi HC-ról összehasonlító ellenőrzés:
+
+```bash
+cd /srv/docker/homecontrol
+scripts/compare_restore_tree.sh a@192.168.1.161
+```
+
+Jó eredmény esetén a `Missing on remote` üres. Elfogadható maradék eltérés lehet az új gépen lévő `README.md` extra fájl és a snapshot által generált `.gitignore` különbség.
+
 Mit csinál:
 
 1. Opcionálisan telepíti az alap Ubuntu csomagokat.
