@@ -1,0 +1,12 @@
+{
+  "real_systemd_pid1": true,
+  "hypervisor": "kvm",
+  "blank_hc_target": true,
+  "blocked": {
+    "hc": true,
+    "esp": true,
+    "ai": true,
+    "internet": true,
+    "qemu-host": true
+  }
+}

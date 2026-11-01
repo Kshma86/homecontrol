@@ -1,0 +1,12 @@
+{
+  "infra/backend/app.py": "44d9efbf262719c2479e5fbed2be6835acc341e7d4a3e2a978fec0493f7e2229",
+  "infra/backend/scheduler_service.py": "6e4a4f0795d2be8d36562d75c503a7180acdc291cc0c5391959471223cd80bef",
+  "infra/backend/startup_service.py": "bf5a4a01229064238b9eff239f934be454dff436acfa5adfff99d18691f31d14",
+  "infra/backend/scheduler_audit.py": "58e512587ade0f45fcbf39ddbfa58faabd5c9f8670b83fe852ff45ccb3b1a989",
+  "infra/backend/tests/test_scheduler_service.py": "3eacc5a714a4f853666ad8ddfa44b3093c68b1df6f7beeeadf8b407ab9f75c4a",
+  "infra/backend/tests/test_startup_service.py": "e24abf03d9596f1b8b18fd001c052ded14c1cbef1642e76953c3dd88c29e3a4c",
+  "infra/backend/tests/test_scheduler_audit_postgres.py": "393d9c6dd639bb33d322dfd9f2b37a3967003d1fd9235f1b838207c73ce9b53e",
+  "AUDIT_REPAIR.md": "8dda89730b400f0c6dd5e0abddb354e3c4fc067c7382bef5f9bdbc6957d22425",
+  "DEPLOYMENT_PREP.md": "8ee2b694ae1e050291508b15f67934e00b1f1fb466443df4c225bfad423d5cc4",
+  "docs/hc-08-repair.md": "078710748e865937f855bc3893856a2a9bf4eeaf571d81273d68ce360ae8784c"
+}

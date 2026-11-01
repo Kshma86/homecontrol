@@ -1,0 +1,14 @@
+{
+  "reproduced": true,
+  "pre_repair_executed_values": [
+    false,
+    true
+  ],
+  "expected_fifo_values": [
+    true,
+    false
+  ],
+  "source_sha256": "8efa7c8dfc6fb6348013ca02464ec92cec089b054a548fe51120f1489c70be30",
+  "device_transport": "fixture",
+  "physical_commands": false
+}

@@ -1,0 +1,9 @@
+{
+  "old_climate_callback_order": [
+    "publish",
+    "execution_insert"
+  ],
+  "old_existing_run_skips_chain_repair": true,
+  "transport": "fake",
+  "production_changed": false
+}

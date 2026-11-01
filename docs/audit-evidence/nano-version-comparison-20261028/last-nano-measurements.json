@@ -1,0 +1,62 @@
+[
+  {
+    "key": "valve_state",
+    "ts": "2026-10-25T22:24:43.177189+01:00",
+    "v_bool": null,
+    "v_num": null,
+    "v_text": "UNKNOWN",
+    "meta": {
+      "src": "mqtt",
+      "topic": "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics",
+      "raw_key": "valve",
+      "recv_ts": 1792963483,
+      "retained": false,
+      "topic_base": "homecontrol/tele/irrigation/esp-irrigation-1"
+    }
+  },
+  {
+    "key": "supply_voltage_12v",
+    "ts": "2026-10-25T22:24:43.177189+01:00",
+    "v_bool": null,
+    "v_num": 10.81,
+    "v_text": null,
+    "meta": {
+      "src": "mqtt",
+      "topic": "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics",
+      "raw_key": "voltage_12v",
+      "recv_ts": 1792963483,
+      "retained": false,
+      "topic_base": "homecontrol/tele/irrigation/esp-irrigation-1"
+    }
+  },
+  {
+    "key": "manual_valve_state",
+    "ts": "2026-10-25T22:24:43.177189+01:00",
+    "v_bool": null,
+    "v_num": null,
+    "v_text": "OPEN",
+    "meta": {
+      "src": "mqtt",
+      "topic": "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics",
+      "raw_key": "manual_valve",
+      "recv_ts": 1792963483,
+      "retained": false,
+      "topic_base": "homecontrol/tele/irrigation/esp-irrigation-1"
+    }
+  },
+  {
+    "key": "controller_temp_c",
+    "ts": "2026-10-25T22:24:43.177189+01:00",
+    "v_bool": null,
+    "v_num": 16.75,
+    "v_text": null,
+    "meta": {
+      "src": "mqtt",
+      "topic": "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics",
+      "raw_key": "temp_c",
+      "recv_ts": 1792963483,
+      "retained": false,
+      "topic_base": "homecontrol/tele/irrigation/esp-irrigation-1"
+    }
+  }
+]

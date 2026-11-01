@@ -1,0 +1,50 @@
+{
+  "hc_ingest": [
+    "MQTT_AUTH_REQUIRED",
+    "MQTT_PASSWORD_FILE",
+    "MQTT_PORT",
+    "MQTT_USERNAME"
+  ],
+  "backend": [
+    "HC_HOST_OPS_SOCKET",
+    "HOME",
+    "MQTT_AUTH_REQUIRED",
+    "MQTT_PASSWORD_FILE",
+    "MQTT_PORT",
+    "MQTT_USERNAME"
+  ],
+  "homecontrol-xiaomi-x10": [
+    "MQTT_AUTH_REQUIRED",
+    "MQTT_PASSWORD_FILE",
+    "MQTT_USERNAME",
+    "X10_MQTT_PORT"
+  ],
+  "homecontrol-gree-climate": [
+    "MQTT_AUTH_REQUIRED",
+    "MQTT_PASSWORD_FILE",
+    "MQTT_PORT",
+    "MQTT_USERNAME"
+  ],
+  "homecontrol-tuya-poller": [
+    "MQTT_AUTH_REQUIRED",
+    "MQTT_HOST",
+    "MQTT_PASSWORD_FILE",
+    "MQTT_PORT",
+    "MQTT_USERNAME"
+  ],
+  "pgbouncer": [],
+  "ai-server": [],
+  "postgres": [],
+  "mdns": [],
+  "homecontrol-ha-growatt-poller": [
+    "MQTT_AUTH_REQUIRED",
+    "MQTT_PASSWORD_FILE",
+    "MQTT_PORT",
+    "MQTT_USERNAME"
+  ],
+  "zigbee2mqtt": [
+    "ZIGBEE2MQTT_CONFIG_MQTT_PASSWORD",
+    "ZIGBEE2MQTT_CONFIG_MQTT_SERVER",
+    "ZIGBEE2MQTT_CONFIG_MQTT_USER"
+  ]
+}

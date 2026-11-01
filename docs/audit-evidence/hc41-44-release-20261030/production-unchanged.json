@@ -1,0 +1,15 @@
+{
+  "production_containers_compared": 16,
+  "all_ids_images_startedat_restarts_unchanged": true,
+  "changed_containers": [],
+  "protected_host_files": 37,
+  "changed_protected_files": [],
+  "source_guards": {
+    "HC_REFACTOR_AUDIT.md": true,
+    "infra/backend/combustion_safety_service.py": true,
+    "infra/mqtt/config/mosquitto.conf": true
+  },
+  "active_override": "/srv/docker/homecontrol/backups/releases/hc-ingest-20261028-r9/release.override.json",
+  "new_runtime_not_installed": true,
+  "hostops_unit_not_installed": true
+}

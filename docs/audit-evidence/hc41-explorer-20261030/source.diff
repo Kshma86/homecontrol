@@ -1,0 +1,56 @@
+--- a/scripts/prepare_mqtt_access.py
++++ b/scripts/prepare_mqtt_access.py
+@@ -8,7 +8,7 @@
+ import re
+ import secrets
+ 
+-ROLES = ('backend', 'ingest', 'tuya', 'x10', 'x10_api', 'climate', 'growatt', 'grott', 'dashboard')
++ROLES = ('backend', 'ingest', 'tuya', 'x10', 'x10_api', 'climate', 'growatt', 'grott', 'dashboard', 'explorer')
+ PYTHON_SERVICES = {
+     'backend': 'backend', 'hc_ingest': 'ingest',
+     'homecontrol-tuya-poller': 'tuya', 'homecontrol-xiaomi-x10': 'x10',
+@@ -42,6 +42,7 @@
+         'growatt': [('write', 'homecontrol/tele/growatt/cloud/#')],
+         'grott': [('write', 'homecontrol/tele/growatt/inverter/#')],
+         'dashboard': [('read', tele), ('read', stat), ('write', cmd)],
++        'explorer': [('read', 'homecontrol/#'), ('read', 'zigbee/#'), ('read', '$SYS/broker/#')],
+         'zigbee2mqtt': [('readwrite', 'zigbee/#')],
+     }
+     legacy = [('write', tele), ('write', stat), ('read', cmd)]
+@@ -111,6 +112,13 @@
+     write(root / 'dashboard-client.env', '# Generic client template; adapt to the dashboard configuration schema.\n'
+         'MQTT_HOST=127.0.0.1\nMQTT_PORT=21884\nMQTT_USERNAME=hc_dashboard\n'
+         'MQTT_PASSWORD=' + passwords['dashboard'] + '\n')
++    # Field reference for manual entry, not an application-specific import format.
++    write(root / 'mqtt-explorer.connection.json', json.dumps(dict(
++        name='HC – megfigyelés (SSH)', protocol='mqtt', host='127.0.0.1', port=21884,
++        username='hc_explorer', password=passwords['explorer'],
++        suggested_mqtt_version='5.0', subscriptions=['homecontrol/#', 'zigbee/#', '$SYS/broker/#'],
++        permissions='read_only', active=False, format='manual_connection_field_reference'),
++        indent=2, ensure_ascii=False) + '\n')
+     # Optional profile is not enabled. Upstream verbose logs may expose secrets.
+     write(root / 'grott.optional.env', 'gmqttport=1884\ngmqttauth=True\ngmqttuser=hc_grott\n'
+         'gmqttpassword=' + passwords['grott'] + '\ngverbose=False\n')
+--- a/infra/backend/tests/test_mqtt_credentials.py
++++ b/infra/backend/tests/test_mqtt_credentials.py
+@@ -104,6 +104,20 @@
+             self.assertNotIn('growatt-grott', config['services'])
+             self.assertIn('gverbose=False', (root/'grott.optional.env').read_text())
+ 
++    def test_explorer_is_read_only_and_has_a_separate_private_profile(self):
++        import json
++        rules,_=prepare_module.access_rules('esp-irrigation-1')
++        self.assertEqual(rules['explorer'], [('read','homecontrol/#'),('read','zigbee/#'),('read','$SYS/broker/#')])
++        with tempfile.TemporaryDirectory() as folder:
++            root=Path(folder)/'candidate';prepare_module.prepare(root)
++            path=root/'mqtt-explorer.connection.json';profile=json.loads(path.read_text())
++            self.assertEqual(path.stat().st_mode & 0o777,0o600)
++            self.assertEqual(profile['username'],'hc_explorer')
++            self.assertEqual((profile['host'],profile['port']),('127.0.0.1',21884))
++            self.assertFalse(profile['active'])
++            self.assertEqual(profile['password'],(root/'credentials/explorer.password').read_text().strip())
++            self.assertNotEqual(profile['password'],(root/'credentials/dashboard.password').read_text().strip())
++
+     def test_legacy_network_plan_covers_direct_docker_host_and_ipv6_paths(self):
+         spec=importlib.util.spec_from_file_location('hc41_network', ROOT/'scripts/plan_mqtt_legacy.py')
+         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)

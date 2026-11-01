@@ -1,0 +1,963 @@
+--- before/apps/xiaomi-x10/xiaomi_x10_bridge.py
++++ after/apps/xiaomi-x10/xiaomi_x10_bridge.py
+@@ -3,7 +3,7 @@
+ import json
+ import re
+ import time
+-import subprocess
++import os
+ import base64
+ import threading
+ from pathlib import Path
+@@ -13,6 +13,7 @@
+ 
+ import config
+ from xiaomi_x10_map import XiaomiX10MapClient
++from x10_runtime import ProgressWatchdog, run_miio, run_map_refresh, valid_status_sample
+ 
+ 
+ CONFIG = {
+@@ -73,6 +74,7 @@
+ client = mqtt.Client()
+ command_lock = threading.Lock()
+ live_map_client = None
++progress_watchdog = None
+ LIVE_MAP_IV = "qFKhvoAqRFTPfKN6"
+ LIVE_MAP_POLL_SEC = 1.5
+ LIVE_MAP_ACTIVE_POLL_SEC = 0.3
+@@ -182,36 +184,7 @@
+ 
+ 
+ def miio_cmd(args):
+-    cmd = [
+-        str(config.MIIOCLI),
+-        "dreamevacuum",
+-        "--ip", CONFIG["robot_ip"],
+-        "--token", CONFIG["robot_token"],
+-    ] + args
+-
+-    try:
+-        result = subprocess.run(
+-            cmd,
+-            text=True,
+-            capture_output=True,
+-            timeout=20,
+-        )
+-    except subprocess.TimeoutExpired as exc:
+-        # TimeoutExpired includes the full command (and therefore the robot
+-        # token) in its default string representation.  Keep credentials out
+-        # of MQTT state/API responses.
+-        raise RuntimeError("Robot MIIO command timed out after 20 seconds") from exc
+-
+-    if result.returncode != 0:
+-        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
+-
+-    output = result.stdout.strip()
+-    error_text = result.stderr.strip()
+-    combined = "\n".join(part for part in (output, error_text) if part)
+-    if re.search(r"(^|\n)\s*(Error:|ERROR:)", combined):
+-        raise RuntimeError(combined)
+-
+-    return output
++    return run_miio(args)
+ 
+ 
+ def get_property(siid, piid):
+@@ -223,8 +196,9 @@
+         if line.startswith("[") and line.endswith("]"):
+             data = ast.literal_eval(line)
+ 
+-            if isinstance(data, list) and data:
+-                value = data[0].get("value")
++            if (isinstance(data, list) and data and isinstance(data[0], dict)
++                    and data[0].get("code") == 0 and "value" in data[0]):
++                value = data[0]["value"]
+ 
+                 if isinstance(value, str):
+                     try:
+@@ -233,8 +207,9 @@
+                         return value
+ 
+                 return value
+-
+-    return None
++            raise RuntimeError("X10 MIIO property query failed")
++
++    raise RuntimeError("X10 MIIO property response missing")
+ 
+ 
+ def set_property(siid, piid, value):
+@@ -486,12 +461,35 @@
+     live_tracking_until = max(live_tracking_until, time.time() + seconds)
+ 
+ 
++def live_tracking_active():
++    return (last_state.get("robot_state") in (1, 5, 12, "1", "5", "12")
++            or time.time() < live_tracking_until)
++
++
++def mark_progress(name):
++    if progress_watchdog is not None:
++        progress_watchdog.success(name)
++
++
++def watchdog_worker():
++    while True:
++        progress_watchdog.require("live_map", live_tracking_active())
++        expired = progress_watchdog.expired()
++        if expired:
++            # No MQTT I/O or worker joins here: either can be the stalled path.
++            try:
++                print("[X10 WATCHDOG] no successful progress; exiting for supervisor restart: "
++                      + json.dumps(expired, sort_keys=True), flush=True)
++            finally:
++                os._exit(75)
++        time.sleep(config.WATCHDOG_CHECK_SEC)
++
++
+ def live_map_worker():
+     global live_alignment_map_id
+     failure_count = 0
+     while True:
+-        current_state = last_state.get("robot_state")
+-        tracking = current_state in (1, 5, 12, "1", "5", "12") or time.time() < live_tracking_until
++        tracking = live_tracking_active()
+         if not tracking:
+             if live_alignment_map_id is not None:
+                 print(f"Live map alignment lock released from saved map {live_alignment_map_id}")
+@@ -501,6 +499,7 @@
+         started = time.time()
+         try:
+             request_live_robot_position()
++            mark_progress("live_map")
+             failure_count = 0
+         except Exception as e:
+             failure_count += 1
+@@ -860,12 +859,7 @@
+ def refresh_maps():
+     print("Map refresh indul...")
+ 
+-    subprocess.run(
+-        ["python3", CONFIG["map_script"]],
+-        text=True,
+-        timeout=120,
+-        check=True,
+-    )
++    run_map_refresh(["python3", CONFIG["map_script"]], timeout=120)
+ 
+     index_path = Path(CONFIG["maps_index"])
+ 
+@@ -1335,6 +1329,8 @@
+     publish("suction", suction)
+     publish("water_level", water_level)
+     publish("bridge/last_seen", int(time.time()))
++    if valid_status_sample(robot_state, battery):
++        mark_progress("status")
+ 
+     if robot_state in (6, "6") or charge_status in (1, "1"):
+         publish_robot_at_dock()
+@@ -1359,10 +1355,9 @@
+ 
+     if md5 != last_map_md5:
+         print(f"Map md5 változott: {last_map_md5} -> {md5}")
+-        last_map_md5 = md5
+-
+         try:
+-            refresh_maps()
++            if refresh_maps() is not None:
++                last_map_md5 = md5
+         except Exception as e:
+             publish("error", {"source": "map_refresh", "error": str(e)}, retain=False)
+ 
+@@ -1775,7 +1770,7 @@
+ 
+ 
+ def main():
+-    global last_status_poll, last_map_poll, last_scheduler_watch, last_live_map_poll
++    global last_status_poll, last_map_poll, last_scheduler_watch, last_live_map_poll, progress_watchdog
+ 
+     client.on_connect = on_connect
+     client.on_message = on_message
+@@ -1805,6 +1800,8 @@
+             publish("bridge/last_seen", int(time.time()), force=True)
+             time.sleep(60)
+ 
++    progress_watchdog = ProgressWatchdog(config.WATCHDOG_TIMEOUT_SEC)
++    threading.Thread(target=watchdog_worker, name="x10-watchdog", daemon=True).start()
+     publish("error", {}, retain=True, force=True)
+     try:
+         read_scheduler()
+@@ -1828,6 +1825,7 @@
+             if now - last_status_poll >= poll_sec:
+                 status = read_status()
+                 last_status_poll = now
++                mark_progress("main")
+                 is_cleaning = status["state"] in (1, 5, 12)
+ 
+             map_check_sec = (
+@@ -1838,10 +1836,12 @@
+             if now - last_map_poll >= map_check_sec:
+                 check_map_update()
+                 last_map_poll = now
++                mark_progress("main")
+ 
+             if active_room_clean and now - last_scheduler_watch >= CONFIG["scheduler_watch_sec"]:
+                 watch_room_clean()
+                 last_scheduler_watch = now
++                mark_progress("main")
+ 
+             capture_tick()
+ 
+@@ -1850,6 +1850,8 @@
+         except Exception as e:
+             publish("error", {"source": "main_loop", "error": str(e)}, retain=False)
+             time.sleep(10)
++        finally:
++            mark_progress("main")
+ 
+ 
+ if __name__ == "__main__":
+--- before/apps/xiaomi-x10/xiaomi_x10_map.py
++++ after/apps/xiaomi-x10/xiaomi_x10_map.py
+@@ -5,7 +5,6 @@
+ import hashlib
+ import zlib
+ import sys
+-import subprocess
+ import re
+ from pathlib import Path
+ 
+@@ -15,6 +14,7 @@
+ from PIL import Image, ImageDraw
+ 
+ import config
++from x10_runtime import run_miio
+ 
+ sys.path.append(str(Path(__file__).parent / "Xiaomi-cloud-tokens-extractor"))
+ 
+@@ -67,26 +67,13 @@
+         print(f"Loaded auth from {auth_file}")
+ 
+     def get_robot_property(self, siid, piid):
+-        cmd = [
+-            MIIOCLI,
+-            "dreamevacuum",
+-            "--ip", ROBOT_IP,
+-            "--token", ROBOT_TOKEN,
+-            "get_property_by",
+-            str(siid),
+-            str(piid),
+-        ]
+-
+-        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+-
+-        if result.returncode != 0:
+-            raise RuntimeError(result.stderr or result.stdout)
+-
+-        lines = [line.strip() for line in result.stdout.splitlines()]
++        output = run_miio(["get_property_by", str(siid), str(piid)])
++
++        lines = [line.strip() for line in output.splitlines()]
+         data_line = next((line for line in lines if line.startswith("[{")), None)
+ 
+         if not data_line:
+-            raise RuntimeError(f"Could not parse miiocli output:\n{result.stdout}")
++            raise RuntimeError("Could not parse X10 MIIO property output")
+ 
+         data = ast.literal_eval(data_line)
+ 
+--- before/apps/xiaomi-x10/config.py
++++ after/apps/xiaomi-x10/config.py
+@@ -52,3 +52,16 @@
+ ROOM_CLEAN_PARAM = env_int("X10_ROOM_CLEAN_PARAM", 3)
+ SET_MAP_SIID = env_int("X10_SET_MAP_SIID", 6)
+ SET_MAP_AIID = env_int("X10_SET_MAP_AIID", 2)
++
++# Shared by the bridge and the map subprocess; never remove a held lock file.
++MIIO_LOCK_FILE = env_path("X10_MIIO_LOCK_FILE", "/tmp/homecontrol-x10-miio.lock")
++MIIO_TIMEOUT_SEC = env_int("X10_MIIO_TIMEOUT_SEC", 20)
++MIIO_LOCK_TIMEOUT_SEC = env_int("X10_MIIO_LOCK_TIMEOUT_SEC", 30)
++WATCHDOG_TIMEOUT_SEC = env_int("X10_WATCHDOG_TIMEOUT_SEC", 300)
++WATCHDOG_CHECK_SEC = env_int("X10_WATCHDOG_CHECK_SEC", 5)
++if min(MIIO_TIMEOUT_SEC, MIIO_LOCK_TIMEOUT_SEC, WATCHDOG_TIMEOUT_SEC, WATCHDOG_CHECK_SEC) <= 0:
++    raise ValueError("X10 time limits must be positive seconds")
++if WATCHDOG_CHECK_SEC >= WATCHDOG_TIMEOUT_SEC:
++    raise ValueError("X10 watchdog check interval must be shorter than its timeout")
++if WATCHDOG_TIMEOUT_SEC <= max(POLL_IDLE_SEC, POLL_CLEANING_SEC) + MIIO_LOCK_TIMEOUT_SEC + MIIO_TIMEOUT_SEC:
++    raise ValueError("X10 watchdog timeout must exceed a poll interval plus a MIIO wait/command budget")
+--- before/infra/docker-compose.yml
++++ after/infra/docker-compose.yml
+@@ -325,6 +325,11 @@
+       X10_ROBOT_IP: ${X10_ROBOT_IP:-}
+       X10_ROBOT_TOKEN: ${X10_ROBOT_TOKEN:-}
+       X10_MIIOCLI: ${X10_MIIOCLI:-/usr/local/bin/miiocli}
++      X10_MIIO_LOCK_FILE: /tmp/homecontrol-x10-miio.lock
++      X10_MIIO_TIMEOUT_SEC: ${X10_MIIO_TIMEOUT_SEC:-20}
++      X10_MIIO_LOCK_TIMEOUT_SEC: ${X10_MIIO_LOCK_TIMEOUT_SEC:-30}
++      X10_WATCHDOG_TIMEOUT_SEC: ${X10_WATCHDOG_TIMEOUT_SEC:-300}
++      X10_WATCHDOG_CHECK_SEC: ${X10_WATCHDOG_CHECK_SEC:-5}
+       X10_MAP_OUTPUT_DIR: /app/x10_maps
+       X10_MAP_SCRIPT: /app/xiaomi_x10_map.py
+       X10_MAPS_INDEX: /app/x10_maps/maps_index.json
+--- before/AUDIT_REPAIR.md
++++ after/AUDIT_REPAIR.md
+@@ -1719,3 +1719,52 @@
+ 
+ Részletes szerződés és rollback: [HC-09](docs/hc-09-repair.md).
+ [Tartós, titokmentes bizonyítékok](docs/audit-evidence/hc09-20261027/).
++
++
++## REPAIR-030 — X10 térképfrissítés és kommunikációs beragadás
++
++**Dátum:** 2026-10-27. **Állapot:** helyileg javítva és ellenőrizve, nincs
++élesítve. Felhasználói hibaanalízis alapján célzott X10-javítás. Az eredeti
++audit változatlan; a HC-12/13 teljes feladata nem kapott lezárt státuszt.
++Az összesítés marad 25 ellenőrzött, 22 nyitott, 1 ellenőrzésre váró pont.
++
++**Módosítás:** közös `x10_runtime.py` mögé került a bridge összes MIIO-kérése
++és a külön mapfolyamat robotlekérdezése. Szálzár + közös fájlon tartott
++folyamatközi `flock`; alapból 30 s teljes zárvárakozás és 20 s híváshatár,
++független hibaági zárfelszabadítás. Nincs automatikus MIIO-parancsismétlés.
++A python-miio TypeError hibás művelet marad, nem siker; csomagverzió nem
++változott. A mapexport 120 s-os határán a gyermekfolyamatcsoport is leáll.
++Hibás/hiányzó státuszminta nem frissíti a watchdogot; tokent a transporthiba
++nem exportálhat. Az MD5 csak sikeres térképexport után frissül, így a korábbi
++sikertelen exportot a következő meglévő térképellenőrzés újrapróbálhatja.
++
++A külön watchdog a főciklust, a sikeres státuszt és csak aktív követéskor a
++sikeres élőtérképet külön figyeli. 300 s elmaradás után a következő 5 s-os
++ellenőrzés 75-ös bridge-kilépést kezdeményez; robot-/MQTT-I/O és szálra várás
++nélkül. A meglevő Docker/systemd restartpolicy végzi az újraindítást.
++A limitek konfigurálhatók és ellenőrzöttek. A közös MIIO-zár nem terjed ki
++más, azt nem használó alkalmazásra; a cloud/renderelés nem foglalja a zárat.
++
++**Ellenőrzés:** 31 új célzott teszt az éles X10 image függőségeivel, teljes
++bridge/map importpróbával; 52 HC-09/MQTT/scheduler regresszió. Összesen
++83 sikeres, 0 failure/error/skip. Valódi kétfolyamatos lockpróba, CLI-timeout,
++zártulajdonos megölése utáni folytatás, processzcsoport és gyermek leállítása,
++watchdog 75-ös tényleges folyamatkilépés, hibás/friss státusz, élőtérkép-ágak,
++MD5-hiba utáni újrapróbálás és invalid konfiguráció is ellenőrizve.
++A tesztkonténerek hálózat nélkül, root/Docker socket nélkül futottak és törölve.
++Nem volt valódi robot-/cloudpróba vagy konténer-restart az éles oldalon.
++
++**Éles változatlanság:** a feladat előtti/utáni X10 konténer ID/image/start/
++restart egyezik. A 9 éles konténer és 37 aktív hostfájl a HC-09 checkpointtal
++is egyezik; DB/MQTT health jó, AI-offline profil és safety-forrás megmaradt.
++Az X10 meglévő `unless-stopped` restartpolicy-ja olvasással ellenőrizve.
++
++**Kiadás/függőség:** runtime-modul, bridge, map helper és config együtt
++szükséges; DB-migráció nincs. A helyi bridge HC-09 módosításait is figyelembe
++kell venni a későbbi rögzített kiadásnál. Felügyelt státusz-/pozíció-/két
++szintes térképátvétel és kompatibilis korábbi image/config megőrzése szükséges.
++A watchdog határa éles késésméréssel finomítható; tartós hálózati/cloudhibát
++az újraindítás önmagában nem javít meg. A HC-12/13 többi része nyitott marad.
++
++[Szerződés és visszaállás](docs/x10-map-repair.md),
++[tartós bizonyítékok](docs/audit-evidence/x10-map-20261027/).
+--- before/DEPLOYMENT_PREP.md
++++ after/DEPLOYMENT_PREP.md
+@@ -226,3 +226,21 @@
+ köztük 23 valódi PG16 tranzakciós teszt. A szoftveres ellenőrzés nem éles
+ eszközátvétel. Részletek és bizonyítékok: [HC-09](docs/hc-09-repair.md),
+ AUDIT_REPAIR.md REPAIR-029.
++
++
++## X10 térképjavítás — helyi, nincs élesítve (2026-10-27)
++
++A robotkommunikáció közös szál-/folyamatzárat és időhatárt kapott; a watchdog
++külön figyeli a státuszt és az aktív élőtérképet. Sikertelen térképexport után
++az MD5 nem lép előre, így a következő ellenőrzés újrapróbálhatja. 31 új és
++52 kapcsolódó teszt sikeres; éles robotpróba/bridge-restart nem történt.
++Az aktív r6 és az éles X10 változatlan.
++
++Későbbi kiadásban együtt szükséges az új `x10_runtime.py`, `config.py`,
++`xiaomi_x10_bridge.py` és `xiaomi_x10_map.py`. A bridge a helyi HC-09-et is
++hordozza, ezt a kiadási csomagban össze kell hangolni. DB-migráció nincs.
++Közös lockfájl szükséges a bridge és a mapfolyamat között; a Docker meglévő
++`unless-stopped` szabálya biztosítja a watchdog utáni újraindítást.
++Külön rögzített image/rollback és felügyelt térkép-/pozícióátvétel kell;
++most nem készült új élesítési csomag. A HC-12/13 átfogó javítása továbbra is
++nyitott. [Részletek és limitek](docs/x10-map-repair.md), REPAIR-030.
+--- /dev/null
++++ after/apps/xiaomi-x10/x10_runtime.py
+@@ -0,0 +1,140 @@
++"""Shared, bounded robot transport and independent bridge progress monitoring."""
++from contextlib import contextmanager
++import fcntl
++import math
++import os
++import re
++import signal
++import subprocess
++import threading
++import time
++
++
++def positive_seconds(value):
++    if isinstance(value, bool) or not math.isfinite(value) or value <= 0:
++        raise ValueError('X10 time limits must be positive finite seconds')
++    return float(value)
++
++
++class MiioTransport:
++    def __init__(self, executable, host, token, lock_file, command_timeout=20,
++                 lock_timeout=30, *, runner=subprocess.run, clock=time.monotonic):
++        self.executable, self.host, self.token = str(executable), host, token
++        self.lock_file = str(lock_file)
++        self.command_timeout = positive_seconds(command_timeout)
++        self.lock_timeout = positive_seconds(lock_timeout)
++        self.runner, self.clock = runner, clock
++        self.thread_lock = threading.Lock()
++
++    @contextmanager
++    def locked(self):
++        deadline = self.clock() + self.lock_timeout
++        if not self.thread_lock.acquire(timeout=self.lock_timeout):
++            raise RuntimeError('X10 MIIO lock wait timed out')
++        fd = None
++        try:
++            fd = os.open(self.lock_file, os.O_CREAT | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW, 0o600)
++            while True:
++                try:
++                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++                    break
++                except BlockingIOError:
++                    remaining = deadline - self.clock()
++                    if remaining <= 0:
++                        raise RuntimeError('X10 MIIO lock wait timed out') from None
++                    time.sleep(min(0.05, remaining))
++            yield
++        finally:
++            if fd is not None:
++                os.close(fd)  # Releases the process lock on every failure too.
++            self.thread_lock.release()
++
++    def run(self, args):
++        command = [self.executable, 'dreamevacuum', '--ip', self.host, '--token', self.token, *args]
++        with self.locked():
++            try:
++                result = self.runner(command, text=True, capture_output=True, timeout=self.command_timeout)
++            except subprocess.TimeoutExpired:
++                # TimeoutExpired's default representation contains --token.
++                raise RuntimeError('X10 MIIO command timed out') from None
++            except OSError:
++                raise RuntimeError('X10 MIIO process could not start') from None
++            output, error = result.stdout.strip(), result.stderr.strip()
++            combined = '\n'.join(part for part in (output, error) if part)
++            if result.returncode != 0 or re.search(r'(^|\n)\s*(Error:|ERROR:)', combined):
++                safe = combined.replace(self.token, '[redacted]') if self.token else combined
++                raise RuntimeError(safe or 'X10 MIIO command failed')
++            return output
++
++
++_transport = None
++_transport_guard = threading.Lock()
++
++
++def run_miio(args):
++    global _transport
++    with _transport_guard:
++        if _transport is None:
++            import config
++            _transport = MiioTransport(config.MIIOCLI, config.ROBOT_IP, config.ROBOT_TOKEN,
++                                       config.MIIO_LOCK_FILE, config.MIIO_TIMEOUT_SEC,
++                                       config.MIIO_LOCK_TIMEOUT_SEC)
++    return _transport.run(args)
++
++
++def run_map_refresh(command, timeout=120):
++    """Kill the complete map subprocess group on timeout, including its MIIO child."""
++    timeout = positive_seconds(timeout)
++    process = subprocess.Popen(command, start_new_session=True)
++    try:
++        code = process.wait(timeout=timeout)
++    except subprocess.TimeoutExpired:
++        try:
++            os.killpg(process.pid, signal.SIGKILL)
++        except ProcessLookupError:
++            pass
++        process.wait(timeout=5)
++        raise RuntimeError('X10 map refresh timed out') from None
++    if code:
++        raise RuntimeError(f'X10 map refresh failed with exit code {code}')
++
++
++def valid_status_sample(state, battery):
++    if isinstance(state, bool) or isinstance(battery, bool):
++        return False
++    try:
++        state, battery = float(state), float(battery)
++        return (math.isfinite(state) and state > 0 and state.is_integer()
++                and math.isfinite(battery) and 0 <= battery <= 100)
++    except (ValueError, TypeError, OverflowError):
++        return False
++
++
++class ProgressWatchdog:
++    def __init__(self, timeout=300, *, clock=time.monotonic):
++        self.timeout = positive_seconds(timeout)
++        self.clock = clock
++        self.lock = threading.Lock()
++        now = clock()
++        self.workers = {name: {'required': True, 'last_success': now}
++                        for name in ('main', 'status')}
++
++    def require(self, name, required):
++        with self.lock:
++            previous = self.workers.get(name)
++            if previous is None or (required and not previous['required']):
++                self.workers[name] = {'required': bool(required), 'last_success': self.clock()}
++            else:
++                previous['required'] = bool(required)
++
++    def success(self, name):
++        with self.lock:
++            if name in self.workers:
++                self.workers[name]['last_success'] = self.clock()
++
++    def expired(self):
++        with self.lock:
++            now = self.clock()
++            return {name: round(now - state['last_success'], 3)
++                    for name, state in self.workers.items()
++                    if state['required'] and now - state['last_success'] >= self.timeout}
+--- /dev/null
++++ after/apps/xiaomi-x10/tests/test_x10_runtime.py
+@@ -0,0 +1,325 @@
++"""Synthetic X10 transport/progress tests: never load robot credentials or send packets."""
++import ast
++import fcntl
++import json
++import multiprocessing
++import os
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import threading
++import time
++from types import SimpleNamespace
++import unittest
++from unittest.mock import patch
++
++ROOT=Path(__file__).resolve().parents[1]
++sys.path.insert(0,str(ROOT))
++from x10_runtime import MiioTransport, ProgressWatchdog, run_map_refresh, valid_status_sample
++
++
++def process_call(lock_file, events, gate):
++    def runner(*args,**kwargs):
++        events.put(('start',time.monotonic()));time.sleep(.08)
++        events.put(('end',time.monotonic()))
++        return SimpleNamespace(returncode=0,stdout='ok',stderr='')
++    gate.wait(5)
++    MiioTransport('fake','192.0.2.1','synthetic',lock_file,runner=runner).run(['read'])
++
++
++def bridge_functions(names,namespace):
++    tree=ast.parse((ROOT/'xiaomi_x10_bridge.py').read_text())
++    nodes=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in names]
++    assert len(nodes)==len(names)
++    exec(compile(ast.Module(body=nodes,type_ignores=[]),'<bridge functions>','exec'),namespace)
++    return namespace
++
++
++class MiioTransportTest(unittest.TestCase):
++    def setUp(self):
++        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
++        self.lock=Path(self.temp.name)/'miio.lock'
++
++    def transport(self,runner,**kwargs):
++        return MiioTransport('fake','192.0.2.1','secret-fixture',self.lock,runner=runner,**kwargs)
++
++    def test_threads_and_separate_instances_never_overlap(self):
++        active=0;peak=0;guard=threading.Lock();errors=[]
++        def runner(*a,**kw):
++            nonlocal active,peak
++            with guard:active+=1;peak=max(peak,active)
++            time.sleep(.02)
++            with guard:active-=1
++            return SimpleNamespace(returncode=0,stdout='ok',stderr='')
++        first=self.transport(runner);second=self.transport(runner)
++        gate=threading.Barrier(8,timeout=5)
++        def call(index):
++            try:gate.wait();(first if index%2 else second).run(['read'])
++            except BaseException as exc:errors.append(exc)
++        threads=[threading.Thread(target=call,args=(i,)) for i in range(8)]
++        for t in threads:t.start()
++        for t in threads:t.join(5);self.assertFalse(t.is_alive())
++        self.assertEqual(errors,[]);self.assertEqual(peak,1)
++
++    def test_processes_use_same_file_lock(self):
++        ctx=multiprocessing.get_context('fork');events=ctx.Queue();gate=ctx.Event()
++        workers=[ctx.Process(target=process_call,args=(str(self.lock),events,gate)) for _ in range(2)]
++        try:
++            for w in workers:w.start()
++            gate.set()
++            for w in workers:w.join(5);self.assertEqual(w.exitcode,0)
++            records=sorted([events.get(timeout=2) for _ in range(4)],key=lambda item:item[1])
++            self.assertEqual([event[0] for event in records],['start','end','start','end'])
++        finally:
++            for w in workers:
++                if w.is_alive():w.kill();w.join()
++            events.close();events.join_thread()
++
++    def test_contended_file_lock_times_out_without_sending(self):
++        calls=[]
++        with self.lock.open('w') as held:
++            fcntl.flock(held,fcntl.LOCK_EX)
++            start=time.monotonic()
++            with self.assertRaisesRegex(RuntimeError,'lock wait timed out'):
++                self.transport(lambda *a,**kw:calls.append(a),lock_timeout=.08).run(['write'])
++            self.assertLess(time.monotonic()-start,.8)
++        self.assertEqual(calls,[])
++
++    def test_contended_thread_lock_times_out_without_sending(self):
++        t=self.transport(lambda *a,**kw:self.fail('must not send'),lock_timeout=.05)
++        t.thread_lock.acquire()
++        try:
++            with self.assertRaisesRegex(RuntimeError,'lock wait timed out'):t.run(['write'])
++        finally:t.thread_lock.release()
++
++    def test_timeout_redacts_token_and_releases_lock_for_next_call(self):
++        calls=[]
++        def runner(command,**kw):
++            calls.append(command)
++            self.assertEqual(kw['timeout'],.1)
++            if len(calls)==1:raise subprocess.TimeoutExpired(command,.1)
++            return SimpleNamespace(returncode=0,stdout='ok',stderr='')
++        t=self.transport(runner,command_timeout=.1)
++        with self.assertRaises(RuntimeError) as caught:t.run(['write'])
++        self.assertNotIn('secret-fixture',str(caught.exception))
++        self.assertIsNone(caught.exception.__cause__)
++        self.assertEqual(t.run(['read']),'ok');self.assertEqual(len(calls),2)
++
++    def test_python_miio_typeerror_is_failure_without_automatic_retry(self):
++        calls=[]
++        def runner(*a,**kw):
++            calls.append(a)
++            return SimpleNamespace(returncode=1,stdout='',stderr='TypeError: secret-fixture internal miio failure')
++        with self.assertRaises(RuntimeError) as caught:self.transport(runner).run(['write'])
++        self.assertEqual(len(calls),1);self.assertNotIn('secret-fixture',str(caught.exception))
++        self.assertIn('TypeError',str(caught.exception))
++
++    def test_error_output_with_zero_rc_is_not_success(self):
++        with self.assertRaises(RuntimeError):
++            self.transport(lambda *a,**kw:SimpleNamespace(returncode=0,stdout='ERROR: failed',stderr='')).run(['read'])
++
++    def test_failed_lock_open_releases_thread_lock(self):
++        t=self.transport(lambda *a,**kw:None);t.lock_file=str(Path(self.temp.name)/'missing'/'lock')
++        with self.assertRaises(OSError):t.run(['read'])
++        self.assertTrue(t.thread_lock.acquire(blocking=False));t.thread_lock.release()
++
++    def test_invalid_limits_rejected(self):
++        for value in (0,-1,True,float('nan'),float('inf')):
++            with self.subTest(value=value),self.assertRaises(ValueError):self.transport(None,command_timeout=value)
++
++    def test_killed_owner_releases_process_lock(self):
++        ctx=multiprocessing.get_context('fork');ready=ctx.Event()
++        def hold():
++            t=self.transport(None)
++            with t.locked():ready.set();time.sleep(30)
++        owner=ctx.Process(target=hold);owner.start()
++        try:
++            self.assertTrue(ready.wait(3));owner.kill();owner.join(3)
++            t=self.transport(lambda *a,**kw:SimpleNamespace(returncode=0,stdout='ok',stderr=''),lock_timeout=.1)
++            self.assertEqual(t.run(['read']),'ok')
++        finally:
++            if owner.is_alive():owner.kill();owner.join()
++
++    def test_real_subprocess_timeout_kills_cli_and_unlocks(self):
++        pidfile=Path(self.temp.name)/'cli.pid'
++        cli=Path(self.temp.name)/'fake-miio'
++        cli.write_text('#!'+sys.executable+'\nimport os,time,pathlib\npathlib.Path('+repr(str(pidfile))+').write_text(str(os.getpid()))\ntime.sleep(30)\n')
++        cli.chmod(0o700)
++        transport=MiioTransport(cli,'192.0.2.1','synthetic',self.lock,command_timeout=.3)
++        with self.assertRaisesRegex(RuntimeError,'MIIO command timed out'):transport.run(['read'])
++        pid=int(pidfile.read_text())
++        self.assertFalse((Path('/proc')/str(pid)).exists())
++        self.assertTrue(transport.thread_lock.acquire(blocking=False));transport.thread_lock.release()
++
++
++class WatchdogTest(unittest.TestCase):
++    def setUp(self):
++        self.now=0.;self.w=ProgressWatchdog(30,clock=lambda:self.now)
++
++    def test_transient_failure_below_deadline_and_success_recover(self):
++        self.now=29.;self.assertEqual(self.w.expired(),{})
++        self.w.success('main');self.w.success('status');self.now=40.
++        self.assertEqual(self.w.expired(),{})
++
++    def test_busy_main_does_not_mask_status_failure(self):
++        self.now=31.;self.w.success('main')
++        self.assertEqual(set(self.w.expired()),{'status'})
++
++    def test_healthy_status_does_not_mask_stalled_main(self):
++        self.now=31.;self.w.success('status')
++        self.assertEqual(set(self.w.expired()),{'main'})
++
++    def test_live_map_only_required_while_tracking(self):
++        self.w.require('live_map',False);self.now=40.
++        self.w.success('main');self.w.success('status')
++        self.assertEqual(self.w.expired(),{})
++        self.w.require('live_map',True);self.now=69.
++        self.w.success('main');self.w.success('status');self.assertEqual(self.w.expired(),{})
++        self.now=71.;self.assertEqual(set(self.w.expired()),{'live_map'})
++
++    def test_healthy_map_does_not_mask_missing_status(self):
++        self.w.require('live_map',True);self.now=31.
++        self.w.success('main');self.w.success('live_map')
++        self.assertEqual(set(self.w.expired()),{'status'})
++
++    def test_live_tracking_reactivation_gets_new_grace_period(self):
++        self.w.require('live_map',True);self.now=40.
++        self.w.require('live_map',False);self.now=100.
++        self.w.require('live_map',True);self.w.success('main');self.w.success('status')
++        self.assertEqual(self.w.expired(),{})
++
++    def test_watchdog_exits_without_mqtt_or_robot_operation(self):
++        class Exited(BaseException):pass
++        exits=[]
++        def leave(code):exits.append(code);raise Exited()
++        self.now=31.
++        ns=bridge_functions(['watchdog_worker'],{'progress_watchdog':self.w,'live_tracking_active':lambda:False,
++            'json':json,'os':SimpleNamespace(_exit=leave),'print':lambda *a,**kw:None})
++        with self.assertRaises(Exited):ns['watchdog_worker']()
++        self.assertEqual(exits,[75])
++
++    def test_logging_failure_still_exits(self):
++        class Exited(BaseException):pass
++        def fail(*a,**kw):raise BrokenPipeError()
++        def leave(code):raise Exited()
++        self.now=31.
++        ns=bridge_functions(['watchdog_worker'],{'progress_watchdog':self.w,'live_tracking_active':lambda:False,
++            'json':json,'os':SimpleNamespace(_exit=leave),'print':fail})
++        with self.assertRaises(Exited):ns['watchdog_worker']()
++
++    def test_actual_watchdog_exits_process_with_stalled_worker(self):
++        tree=ast.parse((ROOT/'xiaomi_x10_bridge.py').read_text())
++        worker=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='watchdog_worker')
++        source=("import sys,time,json,os,threading\nfrom types import SimpleNamespace\n"
++                "from x10_runtime import ProgressWatchdog\n"
++                "progress_watchdog=ProgressWatchdog(.15)\n"
++                "live_tracking_active=lambda:False\nconfig=SimpleNamespace(WATCHDOG_CHECK_SEC=.01)\n"
++                +ast.unparse(worker)+"\nthreading.Thread(target=watchdog_worker,daemon=True).start()\n"
++                "time.sleep(10)\n")
++        result=subprocess.run([sys.executable,'-c',source],cwd=ROOT,capture_output=True,text=True,timeout=3)
++        self.assertEqual(result.returncode,75,result.stderr)
++        self.assertIn('X10 WATCHDOG',result.stdout)
++
++
++class MapProcessAndWiringTest(unittest.TestCase):
++    def test_map_timeout_kills_child_process_group(self):
++        with tempfile.TemporaryDirectory() as temp:
++            pidfile=Path(temp)/'child.pid'
++            source=('import subprocess,sys,time,pathlib;'
++                    'p=subprocess.Popen([sys.executable,"-c","import time;time.sleep(30)"]);'
++                    'pathlib.Path(sys.argv[1]).write_text(str(p.pid));time.sleep(30)')
++            with self.assertRaisesRegex(RuntimeError,'map refresh timed out'):
++                run_map_refresh([sys.executable,'-c',source,str(pidfile)],timeout=.5)
++            pid=int(pidfile.read_text())
++            for _ in range(30):
++                status=Path('/proc')/str(pid)/'stat'
++                if not status.exists() or status.read_text().split()[2]=='Z':break
++                time.sleep(.01)
++            else:self.fail('map MIIO child survived timeout')
++
++    def test_invalid_timeout_never_starts_map_process(self):
++        with patch('x10_runtime.subprocess.Popen') as popen:
++            with self.assertRaises(ValueError):run_map_refresh(['fake'],timeout=0)
++            popen.assert_not_called()
++
++    def test_map_failure_exit_is_not_success(self):
++        with self.assertRaisesRegex(RuntimeError,'exit code 7'):
++            run_map_refresh([sys.executable,'-c','raise SystemExit(7)'],timeout=2)
++
++    def test_bridge_and_map_use_same_transport_entrypoint(self):
++        calls=[]
++        ns=bridge_functions(['miio_cmd'],{'run_miio':lambda a:calls.append(a) or 'shared'})
++        self.assertEqual(ns['miio_cmd'](['get_property_by','2','1']),'shared')
++        tree=ast.parse((ROOT/'xiaomi_x10_map.py').read_text())
++        method=next(n for n in ast.walk(tree) if isinstance(n,ast.FunctionDef) and n.name=='get_robot_property')
++        space={'run_miio':lambda a:calls.append(a) or "[{'code': 0, 'value': 42}]",'ast':ast}
++        exec(compile(ast.Module(body=[method],type_ignores=[]),'<map property>','exec'),space)
++        self.assertEqual(space['get_robot_property'](None,6,8),42)
++        self.assertEqual(calls,[['get_property_by','2','1'],['get_property_by','6','8']])
++
++    def test_status_missing_required_fields_does_not_feed_watchdog(self):
++        for state,battery,expected in ((12,80,['status']),(None,None,[]),(12,None,[]),('bad',80,[]),(True,80,[]),(12,101,[]),(12,float('nan'),[])):
++            progress=[]
++            ns=bridge_functions(['read_status'],{'get_property':lambda s,p:state if (s,p)==(2,1) else battery,
++                'STATE_TEXT':{},'time':SimpleNamespace(time=lambda:1.),'publish':lambda *a,**kw:None,
++                'valid_status_sample':valid_status_sample,'mark_progress':progress.append,'get_map_object':lambda:None,'publish_robot_at_dock':lambda:None})
++            ns['read_status']();self.assertEqual(progress,expected)
++
++    def test_invalid_property_reply_is_not_usable_telemetry(self):
++        for output in ("[{'code': -1, 'value': 12}]", '[]', 'None', '[123]'):
++            ns=bridge_functions(['get_property'],{'miio_cmd':lambda a:output,'ast':ast,'json':json})
++            with self.subTest(output=output),self.assertRaises(RuntimeError):ns['get_property'](2,1)
++
++    def test_single_live_error_does_not_feed_watchdog_and_backs_off(self):
++        class EndLoop(BaseException):pass
++        successes=[];sleeps=[]
++        def read():raise RuntimeError('MIIO TypeError fixture')
++        def sleep(seconds):sleeps.append(seconds);raise EndLoop()
++        ns=bridge_functions(['live_map_worker'],{'live_tracking_active':lambda:True,
++            'request_live_robot_position':read,'mark_progress':successes.append,'last_state':{},
++            'time':SimpleNamespace(time=lambda:100.,sleep=sleep),'LIVE_MAP_ACTIVE_POLL_SEC':.3,
++            'publish':lambda *a,**kw:None})
++        with self.assertRaises(EndLoop):ns['live_map_worker']()
++        self.assertEqual(successes,[]);self.assertEqual(sleeps,[5])
++
++    def test_successful_live_frame_feeds_only_live_watchdog(self):
++        class EndLoop(BaseException):pass
++        successes=[]
++        def sleep(seconds):raise EndLoop()
++        ns=bridge_functions(['live_map_worker'],{'live_tracking_active':lambda:True,
++            'request_live_robot_position':lambda:{'map_id':1},'mark_progress':successes.append,
++            'time':SimpleNamespace(time=lambda:100.,sleep=sleep),'LIVE_MAP_ACTIVE_POLL_SEC':.3,
++            'LIVE_MAP_POLL_SEC':1.5})
++        with self.assertRaises(EndLoop):ns['live_map_worker']()
++        self.assertEqual(successes,['live_map'])
++
++    def test_failed_map_refresh_keeps_old_md5_and_next_check_retries(self):
++        calls=[];errors=[]
++        def refresh():
++            calls.append('refresh')
++            if len(calls)==1:raise RuntimeError('transient download failure')
++            return {'maps':[]}
++        ns=bridge_functions(['check_map_update'],{'last_map_md5':'old',
++            'get_map_object':lambda:{'md5':'new'},'refresh_maps':refresh,
++            'publish':lambda *a,**kw:errors.append(a),'print':lambda *a:None})
++        ns['check_map_update']();self.assertEqual(ns['last_map_md5'],'old')
++        ns['check_map_update']();self.assertEqual(ns['last_map_md5'],'new')
++        ns['check_map_update']();self.assertEqual(calls,['refresh','refresh']);self.assertEqual(len(errors),1)
++
++    def test_missing_map_export_does_not_advance_md5(self):
++        ns=bridge_functions(['check_map_update'],{'last_map_md5':'old',
++            'get_map_object':lambda:{'md5':'new'},'refresh_maps':lambda:None,'print':lambda *a:None})
++        ns['check_map_update']();self.assertEqual(ns['last_map_md5'],'old')
++
++    def test_invalid_watchdog_config_rejected_before_start(self):
++        for changes in ({'X10_MIIO_TIMEOUT_SEC':'0'},{'X10_WATCHDOG_CHECK_SEC':'300'},
++                        {'X10_WATCHDOG_TIMEOUT_SEC':'60'}):
++            environment={name:os.environ[name] for name in ('PATH','HOME','PYTHONDONTWRITEBYTECODE') if name in os.environ}
++            environment.update(changes)
++            result=subprocess.run([sys.executable,'-c','import config'],cwd=ROOT,env=environment,
++                                  capture_output=True,text=True,timeout=3)
++            self.assertNotEqual(result.returncode,0);self.assertIn('ValueError',result.stderr)
++
++
++if __name__=='__main__':unittest.main()
+--- /dev/null
++++ after/docs/x10-map-repair.md
+@@ -0,0 +1,109 @@
++# X10 térképfrissítés — közös MIIO-zár és watchdog
++
++2026-10-27. A felhasználó által hozott hibaanalízis alapján készült célzott
++helyi javítás. **Nincs élesítve; az éles bridge nem indult újra.**
++Napló: AUDIT_REPAIR.md REPAIR-030. Az eredeti audit változatlan, a HC-12/13
++átfogó feladatai ettől nem kaptak lezárt státuszt.
++
++## Talált hibák és változás
++
++A státusz-, parancs- és élőtérkép-szál eddig egymástól függetlenül indíthatott
++MIIO-kérést. A mentett térképet letöltő külön Python-folyamat saját,
++időkorlát nélküli miiocli-hívást használt. A konténer futása önmagában nem
++mutatta a sikeres feldolgozás elmaradását. A forrás ezeket a hibalehetőségeket
++igazolta; valódi roboton csomagütközést nem idéztünk elő.
++
++Új `x10_runtime.py` kezeli a robotkommunikációt. A bridge minden MIIO-hívása
++és a térképfolyamat robotlekérdezése ugyanazon belépési ponton halad át.
++A szálzár mellett közös fájlon tartott Linux `flock` működik, így a külön
++folyamatok kérései sem fedik egymást. A zár minden siker-/hibaágon felszabadul;
++folyamatkilépéskor a kernel is elengedi. A lockfájlt nem töröljük vagy cseréljük
++újrainduláskor. A cloudletöltés és képrenderelés nem tartja a robot MIIO-zárját.
++
++A zárra várás és a miiocli futása korlátos. Timeout, nem nulla exit vagy
++miiocli-hibakimenet hibának számít; nincs automatikus parancsismétlés.
++A `python-miio` verzióját nem cseréltük: a belső TypeError továbbra is hibás
++művelet, de nem számít sikeres lekérdezésnek. A timeout és hibakimenet nem
++exportálhatja a robot tokenjét. Hibás/hiányzó property-válaszból nem készül
++sikeres lekérdezés. A watchdogot csak érvényes robotállapot és akkumulátoradat
++frissíti, nem egy lefutott, de értékelhetetlen válasz.
++
++A teljes térképfrissítő folyamat 120 s-os határa megmarad, de timeoutkor a
++saját teljes folyamatcsoportját állítjuk le, a benne futó MIIO-gyermekkel együtt.
++Így egy megállított export nem hagyhat futó robotlekérdezést maga után.
++
++További közvetlen térképhiba: a kód már a letöltés **előtt** mentette az új
++MD5-öt. Ha a letöltés elbukott, ugyanazt a térképet később frissítettnek
++tekintette. Az MD5 most csak a sikeres export és indexbetöltés után változik;
++hiba vagy hiányzó export után a következő meglévő térképellenőrzés újrapróbálja.
++Ez olvasási/exportművelet, nem új takarítási parancs.
++
++## Watchdog
++
++Külön szál figyeli a főciklus haladását, a sikeres státuszmintát és — aktív
++követés/takarítás alatt — a sikeres élőtérkép teljes feldolgozását. Az egyik
++ág sikere nem fedi el a másik beragadását. Inaktív robotnál nem követelünk
++folyamatos élőtérképet; követés aktiválásakor külön türelmi idő indul.
++A meglévő élőtérképes hibavisszalépés és utolsó teljes vászon megőrzése megmarad.
++
++Tartós elmaradáskor a watchdog naplózza az érintett ágat és 75-ös kóddal
++kilépteti a bridge-et. Nem vár beragadt szálra és nem végez MQTT-/robot-I/O-t.
++A meglévő Docker `restart: unless-stopped`, illetve systemd `Restart=always`
++indítja újra. A Dockerben az éles újraindítási szabályt olvasással ellenőriztük;
++valódi újraindítást vagy robotműveletet nem futtattunk.
++Felügyelet nélkül, kézzel indított Python esetén a watchdog kilép, automatikus
++újraindítás nincs. Tartós robot-/hálózati/cloudhiba újraindítás után is fennállhat.
++
++| Beállítás | Alapérték | Jelentés |
++|---|---|---|
++| `X10_MIIO_LOCK_FILE` | `/tmp/homecontrol-x10-miio.lock` | Közös, stabil lockfájl a bridge és export között. |
++| `X10_MIIO_TIMEOUT_SEC` | 20 s | Egy miiocli-hívás futáskorlátja. |
++| `X10_MIIO_LOCK_TIMEOUT_SEC` | 30 s | Teljes szál-/folyamatzár-várakozás korlátja. |
++| `X10_WATCHDOG_TIMEOUT_SEC` | 300 s | Elmaradó siker/haladás megengedett ideje. |
++| `X10_WATCHDOG_CHECK_SEC` | 5 s | Watchdog-ellenőrzések periódusa. |
++
++A watchdog ezért jellemzően a 300 s-os határ utáni következő, legfeljebb
++5 s múlva esedékes ellenőrzéskor lép. Az operációs rendszer ütemezése ezt
++késleltetheti; ez nem kemény valós idejű határ. Érvénytelen limitek indulási
++hibát okoznak. A watchdog-határnak meg kell haladnia a hosszabb státuszpoll
++periódusát és egy MIIO-zárvárakozás+hívás időkeretét. Szokatlanul lassú,
++de még haladó eszköznél a 300 s is lejárhat; éles késések alapján hangolható.
++
++A lock a közös fájlrendszert használó, ezen helperen át kommunikáló HC-hívásokat
++sorosítja. Más alkalmazás vagy másik konténer/host saját zár nélküli robotkéréseit
++nem szabályozza. A teljes parancssor/STOP-prioritás átalakítása HC-12 külön feladat.
++
++## Ellenőrzés
++
++**31 új célzott teszt + 52 kapcsolódó regresszió: 83 sikeres, 0 hiba/kihagyás.**
++A célzott tesztek az éles X10 image rögzített Python-környezetével, a módosított
++forrással futottak. Teljes bridge/map importpróba is sikeres. Az új konténerek
++network-none módban, olvasásra csatolt forrással, rootjog és Docker socket
++nélkül futottak, robot-/cloud-/MQTT-elérés nélkül.
++
++Ellenőrizve a szálak és két folyamat közös zárja; a zárvárakozási határ;
++valódi MIIO-próbafolyamat timeoutja és eltűnése; a megölt zártulajdonos utáni
++felszabadulás; TypeError/hibás válasz; külön watchdog-határidők, inaktív követés,
++naplózási hiba, valódi 75-ös folyamatkilépés; mapfolyamat és gyermeke leállítása;
++MD5-hiba utáni újrapróbálás; konfigurációellenőrzés. A korábbi HC-09
++bridge/frissesség/scheduler/MQTT tesztek is sikeresek.
++
++A 9 éles konténer és 37 aktív hostfájl egyezik a korábbi HC-09 checkpointtal;
++a feladat előtti és utáni X10 ID/image/start/restart adat külön is egyezik.
++DB/MQTT health és AI-offline profil jó. Az eredeti audit és az éles safety-forrás
++hash-e változatlan. A saját tesztkonténerek törölve, éles parancsküldés nem történt.
++[Titokmentes bizonyítékok](audit-evidence/x10-map-20261027/).
++
++## Későbbi kiadás és visszaállás
++
++Együtt szükséges a `x10_runtime.py`, a bridge, a map helper és a `config.py`.
++Új DB-migráció nincs. A munkafabeli bridge a még nem éles HC-09 változásait
++is tartalmazza; a következő rögzített kiadáscsomagban ezek összehangolása kell.
++A teljes MIIO-függőségfrissítés és a HC-12/13 tágabb refaktorja külön munka.
++
++A kiadáskor külön, rögzített X10 image és az előző image megőrzése szükséges;
++felügyelt, robotot nem zavaró ablakban ellenőrizendő a státusz, pozíció és
++mindkét szint térképe. A későbbi bevezetéskor kell igazolni a restart és
++átvétel valós működését. Visszaálláskor a megfelelő korábbi image/config
++választandó, a térképfájlokat és auditadatokat nem kell törölni. A mostani
++munkához nem készült új éles image vagy bevezetési csomag.

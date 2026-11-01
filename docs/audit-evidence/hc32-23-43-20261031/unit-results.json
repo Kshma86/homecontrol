@@ -1,0 +1,31 @@
+{
+  "bridge": {
+    "tests": 54,
+    "passed": true
+  },
+  "x10-candidate": {
+    "tests": 33,
+    "passed": true
+  },
+  "backend-control": {
+    "tests": 339,
+    "passed": true
+  },
+  "ingest": {
+    "tests": 52,
+    "passed": true
+  },
+  "frontend": {
+    "tests": 113,
+    "passed": true
+  },
+  "broad_backend_diagnostic": {
+    "tests_each": 998,
+    "failures_each": 29,
+    "errors_each": 7,
+    "skipped_each": 183,
+    "new_failure_ids": [],
+    "same_failure_ids": true,
+    "passed": false
+  }
+}

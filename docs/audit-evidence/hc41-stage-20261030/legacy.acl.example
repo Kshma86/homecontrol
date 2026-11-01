@@ -1,0 +1,3 @@
+topic write homecontrol/tele/irrigation/esp-irrigation-1/#
+topic write homecontrol/stat/irrigation/esp-irrigation-1/#
+topic read homecontrol/cmd/irrigation/esp-irrigation-1/#

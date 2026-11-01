@@ -83,11 +83,17 @@ Opening sensor policy fields:
 - `room_position`
 - `opening_label`
 - `has_mosquito_net`
+- `rain_alert_enabled`
+- `climate_relevant`: only these opening sensors should be considered by
+  future climate/window guard logic
 
 Admin changes invalidate:
 
 - `power_wall`
 - `tuya`
+- `irrigation`
+- `climate`
+- `home_statistics`
 - `irrigation`
 - `home_statistics`
 

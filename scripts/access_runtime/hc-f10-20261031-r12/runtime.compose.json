@@ -1,0 +1,740 @@
+{
+  "name": "homecontrol",
+  "networks": {
+    "default": {
+      "external": true,
+      "name": "homecontrol_default"
+    }
+  },
+  "services": {
+    "ai-server": {
+      "command": null,
+      "container_name": "homecontrol-ai-server",
+      "entrypoint": null,
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.2"
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "host_ip": "127.0.0.1",
+          "target": 8088,
+          "published": "8095",
+          "protocol": "tcp"
+        }
+      ],
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "ai_server_data",
+          "target": "/data",
+          "volume": {}
+        }
+      ],
+      "pull_policy": "never",
+      "image": "sha256:b7400a6a2bee3d136bf288e0f4d705d366e22294d37cbb9363dc583a3a698ec6",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/ai-server.env",
+          "format": "raw"
+        }
+      ]
+    },
+    "backend": {
+      "command": null,
+      "container_name": "homecontrol-backend",
+      "depends_on": {
+        "ai-server": {
+          "condition": "service_started",
+          "required": true
+        },
+        "mqtt": {
+          "condition": "service_started",
+          "required": true
+        },
+        "pgbouncer": {
+          "condition": "service_healthy",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "image": "sha256:f973391c190c35d6be7ea493723d07fc3f4e08d60709ed42de4256c58a07df23",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.8"
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "target": 5000,
+          "published": "5000",
+          "protocol": "tcp"
+        }
+      ],
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/docs",
+          "target": "/srv/docker/homecontrol/docs",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra",
+          "target": "/srv/docker/homecontrol/infra",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/zigbee2mqtt/data",
+          "target": "/srv/docker/homecontrol/infra/zigbee2mqtt/data",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/backups",
+          "target": "/srv/docker/homecontrol/backups",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/homeassistant",
+          "target": "/srv/docker/homecontrol/homeassistant",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/scripts",
+          "target": "/srv/docker/homecontrol/scripts",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/restore_staging",
+          "target": "/srv/docker/homecontrol/restore_staging",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/apps",
+          "target": "/srv/docker/homecontrol/apps",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/ssh",
+          "target": "/srv/docker/homecontrol/infra/ssh",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/backups/ai-control",
+          "target": "/srv/docker/homecontrol/backups/ai-control"
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/backups/homecontrol-backup.lock",
+          "target": "/srv/docker/homecontrol/backups/homecontrol-backup.lock"
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/backups/ai-backup.lock",
+          "target": "/srv/docker/homecontrol/backups/ai-backup.lock"
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/private",
+          "target": "/srv/docker/homecontrol/infra/private"
+        },
+        {
+          "type": "bind",
+          "source": "/run/homecontrol-hostops",
+          "target": "/run/hc-host-ops",
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/mqtt/credentials/backend.password",
+          "target": "/run/secrets/hc-mqtt.password",
+          "read_only": true
+        }
+      ],
+      "pull_policy": "never",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/backend.env",
+          "format": "raw"
+        }
+      ],
+      "user": "10001:10001",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "tmpfs": [
+        "/tmp:rw,exec,nosuid,nodev,size=128m"
+      ]
+    },
+    "frontend": {
+      "command": null,
+      "container_name": "homecontrol-frontend",
+      "depends_on": {
+        "backend": {
+          "condition": "service_started",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "image": "sha256:6b289cd3aed25ffca09f6efd0ef4b734ded85adc1fe8f74a33ae80ee6ea90c35",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.12"
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "target": 3000,
+          "published": "3000",
+          "protocol": "tcp"
+        }
+      ],
+      "restart": "unless-stopped",
+      "pull_policy": "never"
+    },
+    "hc_ingest": {
+      "command": null,
+      "container_name": "homecontrol-ingest",
+      "depends_on": {
+        "mqtt": {
+          "condition": "service_started",
+          "required": true
+        },
+        "pgbouncer": {
+          "condition": "service_healthy",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "image": "sha256:b872923cb88f42467e2bb982b56e6398f86560f3b2dada157ffb13ece8920c46",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.10"
+        }
+      },
+      "restart": "unless-stopped",
+      "pull_policy": "never",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/hc_ingest.env",
+          "format": "raw"
+        }
+      ],
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/mqtt/credentials/ingest.password",
+          "target": "/run/secrets/hc-mqtt.password",
+          "read_only": true
+        }
+      ]
+    },
+    "homecontrol-gree-climate": {
+      "command": null,
+      "container_name": "homecontrol-gree-climate",
+      "depends_on": {
+        "mqtt": {
+          "condition": "service_started",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "image": "sha256:2ea3fde755f1cf8a02b722fcaeb7807b94cee32d8d70d5f01d6f4208ba5404db",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "network_mode": "host",
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "gree-climate-settings",
+          "target": "/data",
+          "volume": {}
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/mqtt/credentials/climate.password",
+          "target": "/run/secrets/hc-mqtt.password",
+          "read_only": true
+        }
+      ],
+      "pull_policy": "never",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/homecontrol-gree-climate.env",
+          "format": "raw"
+        }
+      ]
+    },
+    "homecontrol-ha-growatt-poller": {
+      "profiles": [
+        "ha-growatt"
+      ],
+      "command": null,
+      "container_name": "homecontrol-ha-growatt-poller",
+      "depends_on": {
+        "mqtt": {
+          "condition": "service_started",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "network_mode": "host",
+      "restart": "unless-stopped",
+      "pull_policy": "never",
+      "image": "sha256:2e486db3ea2764cf2f387d23276dc007e926b6a8929122cceae8ef6e18aeb890",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/homecontrol-ha-growatt-poller.env",
+          "format": "raw"
+        }
+      ],
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/mqtt/credentials/growatt.password",
+          "target": "/run/secrets/hc-mqtt.password",
+          "read_only": true
+        }
+      ]
+    },
+    "homecontrol-tuya-poller": {
+      "command": null,
+      "container_name": "homecontrol-tuya-poller",
+      "depends_on": {
+        "mqtt": {
+          "condition": "service_started",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "image": "sha256:4ebc6b5367aff665f0df2f6ea2e0e98054f98702c87c995d7a0d70becf9186c9",
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.6"
+        }
+      },
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/apps/tuya-poller/multi_connector_config.json",
+          "target": "/app/multi_connector_config.json",
+          "read_only": true,
+          "bind": {}
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/apps/tuya-poller/logs",
+          "target": "/root/hc_logs/tuya",
+          "bind": {}
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/mqtt/credentials/tuya.password",
+          "target": "/run/secrets/hc-mqtt.password",
+          "read_only": true
+        }
+      ],
+      "pull_policy": "never",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/homecontrol-tuya-poller.env",
+          "format": "raw"
+        }
+      ]
+    },
+    "homecontrol-xiaomi-x10": {
+      "command": null,
+      "container_name": "homecontrol-xiaomi-x10",
+      "depends_on": {
+        "mqtt": {
+          "condition": "service_started",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "image": "sha256:dd7822e13afcc231f22fecb99e6b6c4bfcf7058a0abcc75d6b41f2aa8f3c924f",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.3"
+        }
+      },
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/apps/xiaomi-x10/x10_maps",
+          "target": "/app/x10_maps",
+          "bind": {}
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/mqtt/credentials/x10.password",
+          "target": "/run/secrets/hc-mqtt.password",
+          "read_only": true
+        }
+      ],
+      "pull_policy": "never",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/homecontrol-xiaomi-x10.env",
+          "format": "raw"
+        }
+      ]
+    },
+    "mdns": {
+      "command": null,
+      "container_name": "homecontrol-mdns",
+      "entrypoint": null,
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "network_mode": "host",
+      "restart": "unless-stopped",
+      "pull_policy": "never",
+      "image": "sha256:7411c2ca4fffa60cd350e0fe7a94e365166ce2cef697136722535cfe6ecc4569",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-access-20261030-r10/compose-env/mdns.env",
+          "format": "raw"
+        }
+      ]
+    },
+    "mqtt": {
+      "command": null,
+      "container_name": "homecontrol-mqtt",
+      "entrypoint": null,
+      "image": "sha256:077fe4ff4c49df1e860c98335c77dda08360629e0e2a718147027e4db3eace9d",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.9"
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "target": 1883,
+          "published": "1883",
+          "protocol": "tcp"
+        },
+        {
+          "target": 1884,
+          "published": "1884",
+          "host_ip": "127.0.0.1",
+          "protocol": "tcp"
+        }
+      ],
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/mqtt/data",
+          "target": "/mosquitto/data",
+          "bind": {}
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/mqtt/log",
+          "target": "/mosquitto/log",
+          "bind": {}
+        },
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-access-20261030-r10/mqtt/broker",
+          "target": "/mosquitto/config",
+          "read_only": true
+        }
+      ],
+      "pull_policy": "never"
+    },
+    "pgbouncer": {
+      "command": null,
+      "container_name": "homecontrol-pgbouncer",
+      "depends_on": {
+        "postgres": {
+          "condition": "service_healthy",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -p 5432 || exit 1"
+        ],
+        "timeout": "3s",
+        "interval": "10s",
+        "retries": 20
+      },
+      "image": "sha256:7f39cf2f872c8d9a0bb0e6a5440c3bf5814036eccf284102870ab08e2603a2c7",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.7"
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "host_ip": "127.0.0.1",
+          "target": 5432,
+          "published": "6432",
+          "protocol": "tcp"
+        }
+      ],
+      "restart": "unless-stopped",
+      "pull_policy": "never",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-access-20261030-r10/compose-env/pgbouncer.env",
+          "format": "raw"
+        }
+      ]
+    },
+    "postgres": {
+      "command": [
+        "postgres",
+        "-c",
+        "shared_buffers=4GB",
+        "-c",
+        "effective_cache_size=24GB",
+        "-c",
+        "work_mem=8MB",
+        "-c",
+        "maintenance_work_mem=512MB",
+        "-c",
+        "random_page_cost=1.1",
+        "-c",
+        "effective_io_concurrency=200",
+        "-c",
+        "track_io_timing=on",
+        "-c",
+        "shared_preload_libraries=pg_stat_statements",
+        "-c",
+        "pg_stat_statements.track=all",
+        "-c",
+        "pg_stat_statements.max=5000",
+        "-c",
+        "jit=off"
+      ],
+      "container_name": "homecontrol-postgres",
+      "entrypoint": null,
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -U homecontrol -d homecontrol"
+        ],
+        "timeout": "5s",
+        "interval": "10s",
+        "retries": 10
+      },
+      "image": "sha256:f992505e18f114c1e5102ac4dcf00f791b44462f6a423d899320f0bbf80e386f",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.4"
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "host_ip": "127.0.0.1",
+          "target": 5432,
+          "published": "5432",
+          "protocol": "tcp"
+        }
+      ],
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/postgres/data",
+          "target": "/var/lib/postgresql/data",
+          "bind": {}
+        }
+      ],
+      "pull_policy": "never",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-access-20261030-r10/compose-env/postgres.env",
+          "format": "raw"
+        }
+      ]
+    },
+    "proxy": {
+      "command": null,
+      "container_name": "homecontrol-proxy",
+      "depends_on": {
+        "frontend": {
+          "condition": "service_started",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "image": "sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      },
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.5"
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "target": 80,
+          "published": "80",
+          "protocol": "tcp"
+        }
+      ],
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/proxy/nginx.conf",
+          "target": "/etc/nginx/nginx.conf",
+          "read_only": true,
+          "bind": {}
+        }
+      ],
+      "pull_policy": "never"
+    },
+    "zigbee2mqtt": {
+      "command": null,
+      "container_name": "zigbee2mqtt",
+      "entrypoint": null,
+      "image": "sha256:89cf02f379aa743a68494388e3a26fba7b8c9101f8b452038cc07aeff3fc983c",
+      "networks": {
+        "default": {
+          "ipv4_address": "172.19.0.11"
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "target": 8080,
+          "published": "8090",
+          "protocol": "tcp"
+        }
+      ],
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/infra/zigbee2mqtt/data",
+          "target": "/app/data",
+          "bind": {}
+        }
+      ],
+      "pull_policy": "never",
+      "env_file": [
+        {
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-access-20261030-r10/compose-env/zigbee2mqtt.env",
+          "format": "raw"
+        }
+      ]
+    }
+  },
+  "volumes": {
+    "ai_server_data": {
+      "name": "homecontrol_ai_server_data"
+    },
+    "gree-climate-settings": {
+      "name": "homecontrol_gree-climate-settings"
+    }
+  }
+}

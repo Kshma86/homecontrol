@@ -1,0 +1,24 @@
+{
+  "binding_invalid_explicit_target": {
+    "stored_entity_id": 11,
+    "selected_entity_id": 22,
+    "uses_fallback": true
+  },
+  "fan_binding_change": {
+    "current_binding": 2,
+    "pending_after_climate_off": {
+      "1": "due",
+      "2": null
+    },
+    "published": [
+      [
+        2,
+        false
+      ],
+      [
+        1,
+        true
+      ]
+    ]
+  }
+}

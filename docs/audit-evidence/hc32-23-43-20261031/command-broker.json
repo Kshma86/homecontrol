@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "cases_passed": 9,
+  "bridges": [
+    {
+      "bridge": "tuya",
+      "cases_passed": 3,
+      "retained_replay_rejected": true,
+      "queue_full_replies": 13,
+      "queued_intents_cancelled_by_stop": 3,
+      "observed_calls": [
+        true,
+        false
+      ],
+      "reconnect_did_not_replay": true,
+      "stop_admission_seconds": 0.0003,
+      "max_pending_observed": 3,
+      "physical_actuators": false
+    },
+    {
+      "bridge": "gree",
+      "cases_passed": 3,
+      "retained_replay_rejected": true,
+      "queue_full_replies": 13,
+      "queued_intents_cancelled_by_stop": 3,
+      "observed_calls": [
+        "on",
+        "off"
+      ],
+      "reconnect_did_not_replay": true,
+      "stop_admission_seconds": 0.0027,
+      "max_pending_observed": 3,
+      "physical_actuators": false
+    },
+    {
+      "bridge": "x10",
+      "cases_passed": 3,
+      "retained_replay_rejected": true,
+      "queue_full_replies": 13,
+      "queued_intents_cancelled_by_stop": 3,
+      "observed_calls": [
+        "start",
+        "stop"
+      ],
+      "reconnect_did_not_replay": true,
+      "stop_admission_seconds": 0.0026,
+      "max_pending_observed": 3,
+      "physical_actuators": false
+    }
+  ],
+  "isolated_network": true,
+  "host_ports_published": false,
+  "device_transport": "fixture",
+  "actual_connection_callbacks": "fixture adapter; actual bridge on_message and handlers exercised"
+}

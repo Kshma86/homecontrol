@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-01",
+  "status": "source-tested-not-deployed",
+  "tests": {
+    "router": 27,
+    "existing_policy": 19,
+    "existing_backup_restore_units": 50,
+    "frontend_backup": 7,
+    "frontend_build": "passed",
+    "emergency_credential_staging_restore": "passed"
+  },
+  "integration": {
+    "ftp": "localhost only",
+    "restic": "0.12.1",
+    "rclone": "1.75.2",
+    "snapshot_check_restore_sha256": "passed",
+    "wrong_password_and_corruption": "detected"
+  },
+  "production": {
+    "canonical_wrapper_changed": false,
+    "frozen_runtime_changed": false,
+    "live_settings_changed": false,
+    "live_policy_changed": false,
+    "timers_changed": false,
+    "router_restic_test_performed": false
+  },
+  "source_sha256": {
+    "infra/backend/router_backup.py": "7ecdebdaa523c9f8b506db6d198d62b6b81b5ce3d4005b570c362aa6d965d8c9",
+    "infra/backend/deployment_policy.py": "b8f4c1156c430599464fd68237a383863eeb0c32e0977c095138b2dae6b04adc",
+    "infra/backend/backup_service.py": "975e7f10dc53d87866729d9f791320dbf4431d51d9073d3c3c30c1ab3286d540",
+    "infra/backend/backup_export.py": "f6f9e8a49b96875dbd39529000c258b1da82dc3e641a80637a5cebdea326677c",
+    "infra/backend/backup_export_manifest.py": "362ccbec4b9dbcb1ed07bda35c24bd5ca324bbd7567c2c46ebb478e318a3144b",
+    "scripts/backup_runner_impl.py": "4b2520743b80583bc51d2c4f088a71f7cde6d8d21bf85f9f7f7173ab38a8a7d5",
+    "scripts/hostops/backup_runner.py": "ec7dae6d5802d1364774320fb56c5b1f49c8cfbfb0fcd7e0bf9d8e400b5d5d2e",
+    "scripts/backup_archive_worker.sh": "fdd5693216b34aba1fe187a0ce40a7a1f9eff633bcf63617fc73f37c472c86ac",
+    "scripts/backup_weekly_worker.sh": "06edf57a25601c87b63f7a32b6307d3561bc1e886e65c2484763a89064311743",
+    "scripts/backup_check_worker.sh": "c41ae80875dfb780a89e3743df3c94b7aae2e545b94e75d17ef8668b9f3543e8",
+    "scripts/backup_config_sync_worker.sh": "f63495b02642093c09683fb85bb4ab571c35146986460aeb67bb44d99367514a",
+    "scripts/backup_offsite_worker.sh": "6d3c885011e3a9e099543f01e8c946b179237af54d9d8233626bcd1f446a3bbd",
+    "scripts/deployment_policy_cli.py": "f33e34eec9986b1a357b39e82a4db8ba8dacec5a7ebff042ed0c6d66f0f0a40b",
+    "scripts/router_restic.py": "47fd35f9e4f80959a2fa4a610a4723178536acaefa998df1d1bcfdbb2feea8b6",
+    "scripts/configure_router_backup.py": "ff23387615382ebafbd27b8d044ce04ff8e72c38dfb1424af36d6d7506dd1ede",
+    "scripts/install_router_backup_prereqs.py": "cdd5a228182022612d9327b56b2e8fee2569327e24cfc65ed25e7994f3ab6e6a",
+    "scripts/restore_smoke.py": "024d9f7974b624d69ec3952899d470c374433fe8bee30e8f6f996037b6ad4550",
+    "scripts/bootstrap_restore_v0_1.sh": "648da3605207075c4d26d4a5f4871df8d6fb95c05685bae95d633c572fe599cc",
+    "scripts/tests/test_router_backup.py": "b8c2864184496f9ff395e16c77055955677aeb84a730c88248ac450706fbaac0",
+    "infra/backend/tests/test_deployment_policy.py": "c257d3009ad8c008166a192039ab0391be0c9da8d3c59da7ddfba9b83a815231",
+    "infra/frontend/src/features/backup/Backup.jsx": "4e7546c5a50bb73bbdd8e7cc1ed20b57c19e7854a94ea363a65b02639e60f872",
+    "infra/frontend/src/features/backup/backupJobState.mjs": "39d1081b393e608e663fd12128910f1698caac73e33e6283ae903b9d2265575e",
+    "infra/frontend/tests/backup-jobs.test.mjs": "d4053c4d15001f3dba71ccd28653841b535988e2ba919ff5297bb299cb91fba2"
+  }
+}

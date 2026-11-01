@@ -1,0 +1,15 @@
+{
+  "baseline-connect-db.py": "feaf97f814d5248cc3fdb7e09b94aedf3855abd78900b97893fa589eb955f199",
+  "baseline-reproduction.json": "0cf7d932d86e8aea8b5a7eae9df4321d21d03a8bfc8170ff95f093f83a80fbde",
+  "host-before.json": "75d7f5eac741a1dcb1efa45f7931cf7f6059ba7e16a63bdaa1266d05daa128b1",
+  "live-before.json": "eb84916657316bd670bcf74c067a8ab67e696278d68a8582082b00a41ae2e721",
+  "postgres-integration.json": "ac5605b0609ac510b819473240dd4bab72ca8f5f99180c6050abe3d91ec0b35e",
+  "postgres-integration.log": "79ff612048d5345ab86ed16398c24b74a922733aeb6fb90ca8ca595ab8e09cd6",
+  "production-unchanged.json": "26b08b8d0be16f06438401cd1dff3d3714e136fb06dcf46cc43347e830818abe",
+  "repair.patch": "54b3dc35ead972c4a4f13b554e2e7d4c1d7c0bd27c415fa78b051d4689b3edbe",
+  "reproduce.py": "aaf6bcd347a7e9966d149b15993d3c3bbc470fd9863bbaac3d43d0bb0258789a",
+  "run_lab.py": "16dae42e1be05f9c1838d818ac3969bc86066d33f05d405c36c9037526adaf82",
+  "scope.json": "83444890cec381950db773ae54c40fa86b9b7dc17c2d97cf9724bbe0d7078252",
+  "summary.json": "a2a1a7dea7ba2870b2822d120f2194975c819eaca1681abae2bcfa7661ae09df",
+  "tests.log": "a3c9d3c1006737a1d752efd5caa92ebb2bc190132180d43ab8bc31910a6a59c6"
+}

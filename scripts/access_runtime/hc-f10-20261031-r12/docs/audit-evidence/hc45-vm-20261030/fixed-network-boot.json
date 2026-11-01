@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "all_existing_bridge_endpoints_pinned": true,
+  "endpoint_count": 11,
+  "runtime_and_canonical_compose_equal": true,
+  "mqtt_running": true,
+  "endpoint_addresses": {
+    "homecontrol-pgbouncer": "172.19.0.7",
+    "homecontrol-backend": "172.19.0.8",
+    "homecontrol-mqtt": "172.19.0.9",
+    "homecontrol-ai-server": "172.19.0.2",
+    "homecontrol-ingest": "172.19.0.10",
+    "homecontrol-tuya-poller": "172.19.0.6",
+    "homecontrol-frontend": "172.19.0.12",
+    "homecontrol-proxy": "172.19.0.5",
+    "homecontrol-xiaomi-x10": "172.19.0.3",
+    "homecontrol-postgres": "172.19.0.4"
+  },
+  "configured_addresses_verified_in_docker": true,
+  "temporarily_disconnected_bridge_clients": [
+    "zigbee2mqtt"
+  ]
+}

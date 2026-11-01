@@ -1,0 +1,12 @@
+{
+  "verify_exit_code": 0,
+  "unit_files": 16,
+  "docker_base_unit_also_checked": true,
+  "dropins": 9,
+  "live_daemon_reload": false,
+  "live_enable_start": false,
+  "limitations": [
+    "Host dependency/sandbox warnings while checking as UID1000",
+    "Actual PID1/fresh VM restore not exercised"
+  ]
+}

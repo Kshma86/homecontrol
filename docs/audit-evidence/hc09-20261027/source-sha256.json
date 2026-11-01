@@ -1,0 +1,20 @@
+{
+  "infra/backend/app.py": "45fe5d0acfb7c0801b039e887decb3393568a06d4e68339deb7a0ceccbb3fac9",
+  "infra/backend/settings.py": "f16fac2d36f72355ef72d0a11ab8ed94f3c82c244d6106e6d6a39f3ea8ed0777",
+  "infra/backend/mqtt_monitor_service.py": "b9aa2961109324d5e70b665506b63622f8663d9b3ed223f3bcbe07b3f9256b66",
+  "infra/backend/scheduler_service.py": "9711a9cc355063f81beb0dc039936fed5e32514d63a4a5fd6e91d65c7a0d0873",
+  "infra/backend/scheduler_audit.py": "fd04bf55a1a2bd5e05089c2a2182e981ade3e570280b21951ccc98bb64bfea73",
+  "infra/backend/tests/test_scheduler_service.py": "9c04d24be9abdd8ed9fa4d4de240e07539e4d2e3fbd450b17ade97f5aa081bf5",
+  "infra/backend/tests/test_scheduler_audit_postgres.py": "4c1e9ba75264770fe5855eb7cf675051fa086a8db71135e729dfc178f4d2d20c",
+  "apps/gree-climate/gree_climate_bridge.py": "4620cd48dd6a1496cbf4a918ffc12776f1068a1880ffd172068241187d18a7e6",
+  "apps/xiaomi-x10/xiaomi_x10_bridge.py": "b9ecb0b9171a9bf2648efa52132fe9e0e430aa8e1d6e1eeffb90475833282fba",
+  "AUDIT_REPAIR.md": "e1ed9360c29ca21cb8be3e0bb3037c9c913ea42772332991b2f8ed5056a761f7",
+  "DEPLOYMENT_PREP.md": "7d6022d27d4531f4d9b5e6b9acccbf56eae0a1aa542640fb668516d272949d6d",
+  "infra/docker-compose.yml": "9d45a2102fd7dbb0ebcef6a59b4c2ba8a133c72035377d556e4a29db25effacf",
+  "infra/backend/scheduler_feedback.py": "d7f5c9b7a67b0e194286ce8bf2f7621b779b34f4499aa600cdf27c190ec9abd4",
+  "infra/backend/x10_schedule_delivery.py": "1150daccf1e8a41923d8fe0789555835fcf926ece9c6c83f3d614914f3dd1c2a",
+  "infra/backend/tests/test_scheduler_feedback.py": "1efec0c58f98c7d8ed7b1cbcf6618ce57fa7ebe395ac1c708bb4cfa9706a2ac2",
+  "infra/backend/tests/test_scheduler_feedback_postgres.py": "dc13fb4134d38952e21ca3d10e3c32605a1bae6378da36452daa4308dff8de57",
+  "infra/backend/tests/test_scheduler_bridge_samples.py": "da6e902b587108dbb2c79f10c9ef2679e095fdcefd123f2cd7284a129394771d",
+  "docs/hc-09-repair.md": "67322742c312ee1137831a795b7e3d42ae6a73cd875689582ff7c653c5d369ed"
+}

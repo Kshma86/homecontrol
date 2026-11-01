@@ -1,5 +1,6 @@
 import json
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 import sys
 from urllib.error import URLError
@@ -24,6 +25,13 @@ class FakeResponse:
 
 
 class AiProxyServiceTest(unittest.TestCase):
+    def setUp(self):
+        # Provider calls below are in-memory fakes. The active deployment policy
+        # is tested separately and is never modified to run these scenarios.
+        guard = patch('deployment_policy.ai_disabled', return_value=False)
+        guard.start()
+        self.addCleanup(guard.stop)
+
     def service(self, responses=None, error=None, context=None, audit_rows=None, db_count=None):
         calls = []
 

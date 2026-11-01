@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "esp_dnat_allowed": true,
+  "other_lan_denied": true,
+  "direct_docker_peer_denied": true,
+  "host_denied": true,
+  "ipv6_proxy_path_denied": true,
+  "authenticated_port_unchanged": true,
+  "idempotent_reapply": true,
+  "rollback_internal_and_dashboard_allowed": true,
+  "rollback_foreign_lan_still_denied": true,
+  "production_rules_changed": false,
+  "namespace": "unshare -Urn"
+}

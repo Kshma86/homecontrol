@@ -1,0 +1,11 @@
+{
+  "apps/xiaomi-x10/xiaomi_x10_bridge.py": "9cdd8bc63311a1a4d60fe3ab1d658d3c9695be21cf51e56f66266ba186e18022",
+  "apps/xiaomi-x10/xiaomi_x10_map.py": "e4c11606388d3d96fe8cb542bc50c0e80c065dbe316e80721b96e76686eb917e",
+  "apps/xiaomi-x10/config.py": "9619c6f36641be77490fff3d9513b34e18cf24fa94a4bac3a86f5b6466af7c52",
+  "infra/docker-compose.yml": "da88711c10c0628a6a132f654eccf7588b1bd9549ff0033b27b9a918f9303ea9",
+  "AUDIT_REPAIR.md": "31c29373ee4b52098cd6a5a8b670c9f6b8efc805a972600ee2edae9911b2e345",
+  "DEPLOYMENT_PREP.md": "a0b58f3ab9ac5546043f39541785c67817c45665839547b8bc59b95b057369c2",
+  "apps/xiaomi-x10/x10_runtime.py": "ce48d579e24c6fefa7b152988e672e0bcf9480234b9f5986ce9672423257060b",
+  "apps/xiaomi-x10/tests/test_x10_runtime.py": "f4201aa782e2464dee11b351d65a564faa54da029b734cdbf47842449961943b",
+  "docs/x10-map-repair.md": "c61890c6d2b1d279dfb8e191cf618f81e9e82b565b4b93ab3f9ff5b7e4f9e17f"
+}

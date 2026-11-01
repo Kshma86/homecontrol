@@ -90,8 +90,11 @@ Important `current` priority fields:
 - Load power chart covers the last 24 hourly buckets.
 - Production power chart covers the last 24 hourly buckets.
 - Daily production chart covers 30 days including today.
-- Monthly production is calculated from daily max `energy_today_kwh`,
-  `plant_energy_today_kwh`, or `solar_energy_today_kwh`.
+- Daily and monthly production are calculated from daily counter maximums after
+  the first same-day reset sample, so stale pre-reset values just after midnight
+  are ignored.
+- Production prefers `plant_energy_today_kwh`, then `energy_today_kwh`, then
+  `solar_energy_today_kwh`.
 
 ## Editing Guidance
 

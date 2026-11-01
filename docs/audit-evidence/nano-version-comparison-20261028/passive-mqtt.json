@@ -1,0 +1,48 @@
+{
+  "started_utc": "2026-10-28T12:52:10.276491+00:00",
+  "topics": {
+    "homecontrol/tele/irrigation/esp-irrigation-1/nano_config": {
+      "count": 1,
+      "first_utc": "2026-10-28T12:52:10.327801+00:00",
+      "last_utc": "2026-10-28T12:52:10.327801+00:00",
+      "retained_count": 1,
+      "keys": [
+        "config_dirty",
+        "config_source",
+        "current_max_valid_a",
+        "current_zero_v",
+        "heartbeat_timeout_ms",
+        "last_cfg_sec_ago",
+        "pump_max_runtime_ms",
+        "pump_min_off_ms",
+        "pump_start_debounce_ms",
+        "sensor_conflict_clear_ms",
+        "sensor_conflict_fault_ms",
+        "sensor_conflict_warn_ms"
+      ]
+    },
+    "homecontrol/stat/irrigation/esp-irrigation-1/availability": {
+      "count": 1,
+      "first_utc": "2026-10-28T12:52:10.327931+00:00",
+      "last_utc": "2026-10-28T12:52:10.327931+00:00",
+      "retained_count": 1,
+      "value": "online"
+    },
+    "homecontrol/tele/irrigation/esp-irrigation-1/solar": {
+      "count": 2,
+      "first_utc": "2026-10-28T12:52:20.512109+00:00",
+      "last_utc": "2026-10-28T12:52:50.512635+00:00",
+      "retained_count": 0,
+      "keys": [
+        "battery_voltage",
+        "charge_current",
+        "controller_temp",
+        "pv_current",
+        "pv_voltage"
+      ]
+    }
+  },
+  "frames": [],
+  "connection_rc": 0,
+  "ended_utc": "2026-10-28T12:52:55.279699+00:00"
+}

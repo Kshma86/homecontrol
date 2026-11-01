@@ -1,0 +1,152 @@
+[
+  {
+    "path": ".dockerignore",
+    "before_sha256": null,
+    "after_sha256": "ba2dab4492a0de5e3f9db8b5052bc7c8a3fff4ae755241771fafe09f5b3125e4"
+  },
+  {
+    "path": "apps/ai-server/Dockerfile",
+    "before_sha256": "88bcfac6a4a73d4aee3fb0692e1542a596a25d21184f9d5a1803a60bf1be1bdb",
+    "after_sha256": "4a116393956df27dbcac7c90ab3231f889d7b0abe647e9d0794f943a125de648"
+  },
+  {
+    "path": "apps/ai-server/ai_intents.py",
+    "before_sha256": "0a13204f9b3076b9ae38d6b75eb573bde07b047b16f8dedbba89e7d87843645e",
+    "after_sha256": "046b5c9c1148073aeef06cc45fffadb99a316723a82f4e625d96c9e7c92274ec"
+  },
+  {
+    "path": "apps/ai-server/ai_server.py",
+    "before_sha256": "015b55af9ca8fe89691f499a8ccbd2093d0861adc270edc267412410257d3f38",
+    "after_sha256": "c0342ad01ae24f3623cf7c88691d87c4eafe4ef13d6d50ec73866b4730e42aeb"
+  },
+  {
+    "path": "infra/backend/Dockerfile",
+    "before_sha256": "d38f443e6321c387cd1f84f9cfda2f5b451fc3c56ca09c33114ef5e5c75e7f2c",
+    "after_sha256": "d0cf95b29694d5dba9986f49dff471af148de4eaa3ba2c9f4980246efc2b4e71"
+  },
+  {
+    "path": "infra/backend/ai_context_plan.py",
+    "before_sha256": null,
+    "after_sha256": "e0d9525ce27b587bd3159a001cb36049e8c54539538fbe5b249159cbce7625d5"
+  },
+  {
+    "path": "infra/backend/ai_domain_replies.py",
+    "before_sha256": null,
+    "after_sha256": "694eab49d838cf8883ff2279f03b48ef8eb96eb543ed6d91e16ae070cb3be881"
+  },
+  {
+    "path": "infra/backend/ai_node_service.py",
+    "before_sha256": "691eeef6b707461c4c9091fd113de6ef358e052d4bb5971764122d1e93da794c",
+    "after_sha256": "256aeebc0a27d49e880adbddec20a86ee4dca4195d1db2827f12f13b399ee11a"
+  },
+  {
+    "path": "infra/backend/ai_proxy_service.py",
+    "before_sha256": "a0344fd8661270d84d17dbc7c58c55bfa2305d29af462557fb01f7e3739253dd",
+    "after_sha256": "159d67d75f78a0114f25e4df1f23e22a8b34a4a81d5737e31f47641dc6891bd6"
+  },
+  {
+    "path": "infra/backend/app.py",
+    "before_sha256": "cc6c973e07557cb84f4c69152a7d90f3c21992200974b5ea0d56eb2ccaf13ac2",
+    "after_sha256": "85344ca797850e735998d2dd84853b839b7a182ecf074ef16b56c89f5c4081a5"
+  },
+  {
+    "path": "infra/backend/context_service.py",
+    "before_sha256": "8881f7f8ce1d7b96c71ffb87f00afddf0e6cee57a90c80044bd40a1aa4df55b8",
+    "after_sha256": "6dd634563c1edbdd86a837f7f850e9be5da07d102f1ea0481f6f9e77081bd0cf"
+  },
+  {
+    "path": "infra/backend/gunicorn_conf.py",
+    "before_sha256": null,
+    "after_sha256": "55479b29841b76fd436f0cb2274262335319cdd109951f1ed178ad2e61a353a6"
+  },
+  {
+    "path": "infra/backend/irrigation_service.py",
+    "before_sha256": "812d1b13aa8f9a1940b433c60a26923a7673f0f1b3c41e0341d66de6d9aeaa95",
+    "after_sha256": "a5366c45edee083a06f2799cb162ce19de3c2badca0d459844569b9a32f58bf1"
+  },
+  {
+    "path": "infra/backend/irrigation_summary_queries.py",
+    "before_sha256": null,
+    "after_sha256": "11e97f0db99bef76766ac3f9cf3529eddbf8ef221e57c915fb0e7305ca4349c1"
+  },
+  {
+    "path": "infra/backend/mqtt_monitor_service.py",
+    "before_sha256": "b9aa2961109324d5e70b665506b63622f8663d9b3ed223f3bcbe07b3f9256b66",
+    "after_sha256": "299f38bc37f21cd8a7b4fc0bbc6a4d56055ba9d1097e316a25e33a31fc823872"
+  },
+  {
+    "path": "infra/backend/startup_service.py",
+    "before_sha256": "bf5a4a01229064238b9eff239f934be454dff436acfa5adfff99d18691f31d14",
+    "after_sha256": "544d7077df49ada73df5a99a144e4e1074acc23bbc72266738e3a98f60e43a6f"
+  },
+  {
+    "path": "infra/backend/system_status_service.py",
+    "before_sha256": "3d8711206d95d928aaa27aae6c85330cbb2938c2b327f6be078212106439c56b",
+    "after_sha256": "0a572767f97fcc9dec452ddd25d276dbdc4209332c4bfb3a9e1c16e281a3d045"
+  },
+  {
+    "path": "infra/backend/tests/check_read_models_postgres.py",
+    "before_sha256": null,
+    "after_sha256": "b543e9fd194d1f70d905820714f5bb0034366e96f8ebe14fac71799091a86467"
+  },
+  {
+    "path": "infra/backend/tests/test_ai_node_power.py",
+    "before_sha256": "afd8313ad04d62be74d823b16ceea0a07df36f4908cb2e8f1adbf5ff46d9d829",
+    "after_sha256": "416e18e95b6e492c1f52c4595601ce265d9aabd20f7aca29ad04460e206f157d"
+  },
+  {
+    "path": "infra/backend/tests/test_ai_proxy_service.py",
+    "before_sha256": "08b899cf47685cdbbb189a0d97fdb25aa36f5816d794166823217678b66f94ad",
+    "after_sha256": "a6bea2c5a779591d8ef804601f351193a33f31f3f2973b380c93582c4045c410"
+  },
+  {
+    "path": "infra/backend/tests/test_read_runtime_repair.py",
+    "before_sha256": null,
+    "after_sha256": "e87d730a171da054bc823bf87828d475f97260f6b834de005cb1323d152e3142"
+  },
+  {
+    "path": "infra/backend/tests/test_startup_service.py",
+    "before_sha256": "e24abf03d9596f1b8b18fd001c052ded14c1cbef1642e76953c3dd88c29e3a4c",
+    "after_sha256": "02f71ae1dc41c8c16de49f22e9aca630fe0a15487c211f42aeb3b0a5b10c5445"
+  },
+  {
+    "path": "infra/backend/worker_runtime.py",
+    "before_sha256": null,
+    "after_sha256": "962a493378b5a63c85f76fb689a71db661d0e49fa6a4d0a8750024ea66d7e831"
+  },
+  {
+    "path": "infra/backend/wsgi.py",
+    "before_sha256": "0dc7c8a230f8d5b0e41329fdf1cc0230bf5c6ba31413f09e5b0a4e408f9cd300",
+    "after_sha256": "eac47429661d09ebae0b765af855efd7bbe0686fec64ec30bdf9edbaa70ee6bc"
+  },
+  {
+    "path": "infra/docker-compose.yml",
+    "before_sha256": "da88711c10c0628a6a132f654eccf7588b1bd9549ff0033b27b9a918f9303ea9",
+    "after_sha256": "f8329fa706f0b0826030b89108ce2dbee4f927aeefad066343cfd9cfcbf6e65d"
+  },
+  {
+    "path": "infra/frontend/src/apiClient.js",
+    "before_sha256": "8c36859f9ae046a00a66d5008f2034af871e2c10093477690d80f843b833fffa",
+    "after_sha256": "82b2a42eaa76d6cdc0568b83f41aaaa4229afece4327fae7aa3958946c517d0d"
+  },
+  {
+    "path": "infra/frontend/src/contextReads.mjs",
+    "before_sha256": null,
+    "after_sha256": "8e8ef131970c1457940a2187342d5f1987659030ecf0a3d29d1c42303d96d860"
+  },
+  {
+    "path": "infra/frontend/tests/api-client.test.mjs",
+    "before_sha256": null,
+    "after_sha256": "df91b7182693b0e8b944c5b685fb930ee2c847406f935cc6098a03da7f5a2753"
+  },
+  {
+    "path": "infra/frontend/tests/context-reads.test.mjs",
+    "before_sha256": null,
+    "after_sha256": "0a888ff720d9367ed94a3e4f486cb96915f2b5dddfede712b2c7e4601a8a1df0"
+  },
+  {
+    "path": "infra/frontend/tests/helpers/api-hooks-harness.mjs",
+    "before_sha256": null,
+    "after_sha256": "d6dc438e9b496f26bad407f8739783e85d7a6fc83984eea21033207947316a89"
+  }
+]

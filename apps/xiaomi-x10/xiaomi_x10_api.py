@@ -1,3 +1,4 @@
+from mqtt_credentials import configure_mqtt_auth
 import json
 import time
 from flask import Blueprint, jsonify, request
@@ -13,6 +14,7 @@ BASE_TOPIC = config.BASE_TOPIC
 
 state_cache = {}
 mqtt_client = mqtt.Client()
+configure_mqtt_auth(mqtt_client, prefix="X10_MQTT")
 
 
 def parse_payload(payload):

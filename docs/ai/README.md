@@ -23,6 +23,8 @@ Use these files before changing domain behavior:
 - `power-wall-domain.md` and `power-wall-scenarios.md`: smart plug wall,
   always-on guard, auto-climate sync, and randomized scheduler.
 - `tuya-domain.md` and `tuya-scenarios.md`: Tuya read model and switch commands.
+- `mower-domain.md` and `mower-scenarios.md`: mower gateway architecture,
+  MQTT/WebSocket contracts, safety ownership and commissioning behavior.
 - `performance-domain.md` and `performance-scenarios.md`: system health,
   Docker, PostgreSQL, MQTT, workers, and server power.
 - `scheduler-domain.md` and `scheduler-scenarios.md`: scheduler V2 event/plan/

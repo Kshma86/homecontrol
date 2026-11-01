@@ -1,0 +1,760 @@
+--- a/apps/hc_ingest/mqtt_ingest_multi.py
++++ b/apps/hc_ingest/mqtt_ingest_multi.py
+@@ -4,16 +4,17 @@
+ from pathlib import Path
+ import time
+ from dataclasses import dataclass
++from datetime import datetime, timezone
+ from typing import Any, Dict, List, Optional, Tuple
+ 
+ import paho.mqtt.client as mqtt
+ import psycopg2
+ from psycopg2 import OperationalError, InterfaceError
+-from psycopg2.extras import execute_values
+ 
+ from ingest_runtime import DatabaseWorker, InboundMessage, MessageInbox
+ 
+ from mqtt_flood_detector import FloodTransition, MqttFloodDetector
++from measurement_batch import Measurement, MeasurementQueue
+ 
+ 
+ # ====== CONFIG ======
+@@ -168,7 +169,12 @@
+ )
+ flood_state_last_persist: Dict[str, float] = {}
+ 
+-pending_measurements: List[Tuple[int, str, Optional[float], Optional[bool], Optional[str], Optional[str], str]] = []
++pending_measurements = MeasurementQueue(
++    max_messages=int(os.getenv('INGEST_MEASUREMENT_MAX_MESSAGES', '1000')),
++    max_bytes=int(os.getenv('INGEST_MEASUREMENT_MAX_BYTES', str(8*1024*1024))),
++    max_age=float(os.getenv('INGEST_MEASUREMENT_MAX_AGE_SECONDS', '30')),
++    max_attempts=int(os.getenv('INGEST_MEASUREMENT_MAX_ATTEMPTS', '3')),
++)
+ # tuple: (entity_id, key, v_num, v_bool, v_text, v_json_jsonstr, meta_jsonstr)
+ pending_contacts: Dict[Tuple[int, str], Tuple[float, str, Any, Rule, dict]] = {}
+ last_heartbeat_write = 0.0
+@@ -743,7 +749,8 @@
+         return False, "disabled"
+ 
+     key = (entity_id, metric_key)
+-    prev = last_saved.get(key)
++    staged = pending_measurements.latest(entity_id, metric_key)
++    prev = (comparable_value(staged.value), staged.received_at) if staged else last_saved.get(key)
+     if prev is None:
+         return True, "first"
+ 
+@@ -763,7 +770,8 @@
+         elif coerce_bool(value) is True:
+             return True, 'retained_safety_alarm'
+         return False, 'retained_safety_clear'
+-    if safety_event and last_saved_retained.get(key, False) is not False:
++    previous_retained = staged.meta.get('retained') if staged else last_saved_retained.get(key, False)
++    if safety_event and previous_retained is not False:
+         return True, 'live_safety_confirmation'
+ 
+     if metric_key in STATE_CHANGE_KEYS and comparable_value(value) != prev_v:
+@@ -794,8 +802,9 @@
+ 
+ 
+ def persist_metric(cur, entity_id: int, metric_key: str, vtype: str, value: Any,
+-                   rule: Rule, tnow: float, meta: dict, *, co_sensor: bool = False) -> bool:
+-    """Keep bound actuator feedback current without defeating history throttling."""
++                   rule: Rule, tnow: float, meta: dict, *, co_sensor: bool = False,
++                   defer_flush: bool = False) -> bool:
++    """Commit paired state/history together; history cache follows confirmed commit."""
+     retained = meta.get('retained') is not False
+     if not rule.enabled or (rule.live_feedback and retained):
+         return False
+@@ -804,24 +813,54 @@
+     refresh_state = rule.live_feedback and should_store_state(rule)
+     if not write_sample and not refresh_state:
+         return False
++
++    def write_state(cursor):
++        if should_store_state(rule):
++            upsert_entity_state(cursor, entity_id, metric_key, vtype, value, meta, received_at=tnow)
++        if metric_key == 'manual_valve_state' and not retained:
++            track_manual_valve_session(cursor, entity_id, value, meta)
++
+     if write_sample and should_store_measurement(rule):
+-        queue_measurement(entity_id, metric_key, vtype, value, meta)
+-    if should_store_state(rule):
+-        upsert_entity_state(cur, entity_id, metric_key, vtype, value, meta)
+-    if metric_key == 'manual_valve_state' and not retained:
+-        track_manual_valve_session(cur, entity_id, value, meta)
+-    # This is the history/deadband cache. Updating it for state-only refreshes
+-    # would postpone max_interval forever on an unchanged telemetry stream.
+-    if write_sample:
+-        update_last(entity_id, metric_key, value, tnow, retained=retained)
++        has_current_effect = should_store_state(rule) or metric_key == 'manual_valve_state' and not retained
++        queued = queue_measurement(entity_id, metric_key, vtype, value, meta, received_at=tnow,
++            apply_state=write_state if has_current_effect else None,
++            confirm=lambda: update_last(entity_id, metric_key, value, tnow, retained=retained))
++        if not queued:
++            return False
++        if not defer_flush and has_current_effect:
++            flush_measurements(cur)
++    else:
++        # A state-only feedback refresh does not postpone the history max interval.
++        if should_store_state(rule) and pending_measurements.latest(entity_id, metric_key):
++            flush_measurements(cur)
++        write_state(cur)
++        if write_sample:
++            update_last(entity_id, metric_key, value, tnow, retained=retained)
+     return True
+ 
+ 
+ def warm_last_saved_from_entity_state(cur):
++    # History-mode rules must warm from confirmed HISTORY, never a newer feedback refresh.
+     cur.execute("""
+-        select entity_id, key, v_num, v_bool, v_text, v_json::text, extract(epoch from ts), meta
+-        from hc.entity_state
++        select em.entity_id, em.metric_key,
++          case when em.store_mode in ('both','measurement','history') then m.v_num else s.v_num end,
++          case when em.store_mode in ('both','measurement','history') then m.v_bool else s.v_bool end,
++          case when em.store_mode in ('both','measurement','history') then m.v_text else s.v_text end,
++          (case when em.store_mode in ('both','measurement','history') then m.v_json else s.v_json end)::text,
++          extract(epoch from case when em.store_mode in ('both','measurement','history') then m.ts else s.ts end),
++          case when em.store_mode in ('both','measurement','history') then m.meta else s.meta end
++        from hc.entity_metric em
++        left join hc.entity_state s on s.entity_id=em.entity_id and s.key=em.metric_key
++        left join lateral (
++          select ts,v_num,v_bool,v_text,v_json,meta from hc.measurement
++          where entity_id=em.entity_id and key=em.metric_key
++          order by ts desc limit 1
++        ) m on em.store_mode in ('both','measurement','history')
++        where em.is_enabled and (case when em.store_mode in ('both','measurement','history')
++          then m.ts else s.ts end) is not null
+     """)
++    last_saved.clear()
++    last_saved_retained.clear()
+     loaded = 0
+     for entity_id, key, v_num, v_bool, v_text, v_json, ts_epoch, meta in cur.fetchall():
+         if v_num is not None:
+@@ -835,7 +874,7 @@
+         last_saved[(entity_id, key)] = (comparable_value(value), float(ts_epoch))
+         last_saved_retained[(entity_id, key)] = meta.get('retained') if isinstance(meta, dict) else None
+         loaded += 1
+-    print(f"[CACHE] warmed last_saved from entity_state: {loaded} rows")
++    print(f"[CACHE] warmed committed decision cache: {loaded} rows")
+ 
+ 
+ # ====== DB WRITES ======
+@@ -931,13 +970,13 @@
+         )
+ 
+ 
+-def upsert_entity_state(cur, entity_id: int, key: str, vtype: str, value: Any, meta: dict):
++def upsert_entity_state(cur, entity_id: int, key: str, vtype: str, value: Any, meta: dict, *, received_at=None):
+     v_num, v_bool, v_text, v_json_raw = normalize_value(vtype, value)
+     v_json = json.dumps(v_json_raw) if v_json_raw is not None else None
+ 
+     cur.execute("""
+         insert into hc.entity_state (entity_id, key, ts, v_num, v_bool, v_text, v_json, meta)
+-        values (%s, %s, now(), %s, %s, %s, %s::jsonb, %s::jsonb)
++        values (%s, %s, coalesce(%s::timestamptz,now()), %s, %s, %s, %s::jsonb, %s::jsonb)
+         on conflict (entity_id, key) do update set
+           ts = excluded.ts,
+           v_num = excluded.v_num,
+@@ -945,7 +984,8 @@
+           v_text = excluded.v_text,
+           v_json = excluded.v_json,
+           meta = excluded.meta
+-    """, (entity_id, key, v_num, v_bool, v_text, v_json, json.dumps(meta)))
++    """, (entity_id, key, datetime.fromtimestamp(received_at, timezone.utc) if received_at is not None else None,
++          v_num, v_bool, v_text, v_json, json.dumps(meta)))
+ 
+ 
+ def delete_entity_state(cur, entity_id: int, key: str):
+@@ -1271,54 +1311,18 @@
+         )
+ 
+ 
+-def queue_measurement(entity_id: int, key: str, vtype: str, value: Any, meta: dict):
++def queue_measurement(entity_id: int, key: str, vtype: str, value: Any, meta: dict,
++                      *, received_at=None, apply_state=None, confirm=None):
+     v_num, v_bool, v_text, v_json_raw = normalize_value(vtype, value)
+     v_json = json.dumps(v_json_raw) if v_json_raw is not None else None
+-    pending_measurements.append(
+-        (entity_id, key, v_num, v_bool, v_text, v_json, json.dumps(meta))
+-    )
+-
+-
+-def insert_measurement_one(cur, row):
+-    entity_id, key, v_num, v_bool, v_text, v_json, meta = row
+-    cur.execute("""
+-        insert into hc.measurement (ts, entity_id, key, v_num, v_bool, v_text, v_json, meta)
+-        values (now(), %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb)
+-    """, (entity_id, key, v_num, v_bool, v_text, v_json, meta))
++    return pending_measurements.append(Measurement(entity_id, key,
++        (v_num, v_bool, v_text, v_json), dict(meta), value,
++        received_at if received_at is not None else float(meta.get('recv_ts', now())),
++        apply_state=apply_state, confirm=confirm))
+ 
+ 
+ def flush_measurements(cur):
+-    if not pending_measurements:
+-        return 0
+-
+-    rows = pending_measurements[:]
+-    pending_measurements.clear()
+-
+-    sql = """
+-        insert into hc.measurement (ts, entity_id, key, v_num, v_bool, v_text, v_json, meta)
+-        values %s
+-    """
+-    template = "(now(), %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb)"
+-
+-    try:
+-        execute_values(cur, sql, rows, template=template, page_size=MEASUREMENT_BATCH_SIZE)
+-        return len(rows)
+-
+-    except Exception as e:
+-        log_limited("batch_insert_error", f"[BATCH_ERR] execute_values failed, falling back row-by-row: {e}")
+-
+-        inserted = 0
+-        for row in rows:
+-            try:
+-                insert_measurement_one(cur, row)
+-                inserted += 1
+-            except Exception as row_e:
+-                log_limited(
+-                    f"row_insert:{row[0]}:{row[1]}",
+-                    f"[ROW_ERR] entity={row[0]} key={row[1]} error={row_e}"
+-                )
+-                continue
+-        return inserted
++    return pending_measurements.flush(cur, page_size=MEASUREMENT_BATCH_SIZE)
+ 
+ 
+ # ====== MAIN ======
+@@ -1335,6 +1339,19 @@
+         row = cur.fetchone()
+         if not row or row[0] is not True:
+             raise RuntimeError('Ingest requires the restricted HC-39 application role.')
++        cur.execute("""select exists(select 1 from pg_attribute
++          where attrelid='hc.measurement'::regclass and attname='ingest_sample_id'
++            and atttypid='uuid'::regtype and not attisdropped)
++          and exists(select 1 from pg_index i
++            where i.indexrelid=to_regclass('hc.ux_measurement_ingest_sample_id')
++              and i.indrelid='hc.measurement'::regclass and i.indnkeyatts=1
++              and i.indkey[0]=(select attnum from pg_attribute
++                where attrelid=i.indrelid and attname='ingest_sample_id')
++              and pg_get_expr(i.indpred,i.indrelid)='(ingest_sample_id IS NOT NULL)'
++              and i.indisunique and i.indisvalid and i.indisready)""")
++        row = cur.fetchone()
++        if not row or row[0] is not True:
++            raise RuntimeError('Ingest requires explicit HC-33 migration 062 before activation.')
+ 
+ 
+ def main():
+@@ -1361,6 +1378,7 @@
+                     resource.close()
+                 except Exception:
+                     pass
++        pending_measurements.expire()
+         contact_drops += len(pending_contacts)
+         pending_contacts.clear()
+ 
+@@ -1373,6 +1391,7 @@
+             candidate.autocommit = True
+             verify_runtime_role(candidate)
+             cursor = candidate.cursor()
++            flush_measurements(cursor)
+             warm_last_saved_from_entity_state(cursor)
+             conn, cur = candidate, cursor
+             last_flush_at = now()
+@@ -1414,7 +1433,7 @@
+                 last_flush_at = now()
+         except DB_CONNECTION_ERRORS as e:
+             print("[DB] lost during batch flush, reconnecting:", e)
+-            reconnect_db()
++            reconnect_db(e)
+ 
+     def flush_stable_contacts():
+         tnow = now()
+@@ -1434,11 +1453,8 @@
+                 continue
+ 
+             try:
+-                if should_store_measurement(rule):
+-                    queue_measurement(eid, metric_key, vtype, raw_v, meta)
+-                if should_store_state(rule):
+-                    upsert_entity_state(cur, eid, metric_key, vtype, raw_v, meta)
+-                update_last(eid, metric_key, raw_v, tnow, retained=bool(meta.get('retained')))
++                persist_metric(cur, eid, metric_key, vtype, raw_v, rule,
++                               stable_after-CONTACT_DEBOUNCE_SECONDS, meta, defer_flush=True)
+                 pending_contacts.pop(contact_key, None)
+             except DB_CONNECTION_ERRORS as e:
+                 print(
+@@ -1458,6 +1474,9 @@
+                     pass
+                 pending_contacts.pop(contact_key, None)
+ 
++        if conn is not None and any(m.apply_state for m in pending_measurements.items):
++            safe_flush_measurements()
++
+     def on_connect(client, userdata, flags, reason_code, properties=None):
+         global mqtt_connected
+         mqtt_connected = True
+@@ -1649,7 +1668,7 @@
+ 
+                 try:
+                     if not persist_metric(cur, eid, metric_key, vtype, raw_v, rule, tnow, meta,
+-                                          co_sensor=bool(CO_EVENT_KEYS.intersection(rules))):
++                                          co_sensor=bool(CO_EVENT_KEYS.intersection(rules)), defer_flush=True):
+                         continue
+ 
+                 except DB_CONNECTION_ERRORS as e:
+@@ -1671,6 +1690,8 @@
+                         pass
+                     continue
+ 
++            if any(m.apply_state for m in pending_measurements.items):
++                safe_flush_measurements()
+             touch_heartbeat()
+ 
+         except DB_CONNECTION_ERRORS as e:
+@@ -1727,7 +1748,7 @@
+ 
+     def report_status():
+         status = worker.status()
+-        status.update(mqtt_connected=mqtt_connected, contact_candidates_dropped=contact_drops,
++        status.update(measurements=pending_measurements.status(), mqtt_connected=mqtt_connected, contact_candidates_dropped=contact_drops,
+                       legacy_pending_measurements=len(pending_measurements),
+                       received_epoch=now())
+         try:
+@@ -1770,6 +1791,8 @@
+         except Exception:
+             pass
+         stopped = worker.stop(INGEST_SHUTDOWN_TIMEOUT_SECONDS)
++        if stopped:
++            pending_measurements.clear('shutdown')
+         report_status()
+         print('[SYS] shutdown '+('complete' if stopped else 'DB worker still blocked; process exiting with failure'), flush=True)
+     return 0 if stopped else 1
+--- a/apps/hc_ingest/Dockerfile
++++ b/apps/hc_ingest/Dockerfile
+@@ -5,6 +5,6 @@
+ COPY requirements.txt .
+ RUN pip install --no-cache-dir -r requirements.txt
+ 
+-COPY mqtt_ingest_multi.py mqtt_flood_detector.py ingest_runtime.py ./
++COPY mqtt_ingest_multi.py mqtt_flood_detector.py ingest_runtime.py measurement_batch.py ./
+ 
+ CMD ["python", "mqtt_ingest_multi.py"]
+--- /dev/null
++++ b/apps/hc_ingest/measurement_batch.py
+@@ -0,0 +1,156 @@
++"""HC-33 bounded, idempotent history batches, owned only by the DB worker."""
++from collections import Counter
++from dataclasses import dataclass, field
++from datetime import datetime, timezone
++import json
++import time
++from uuid import uuid4
++
++from psycopg2 import DataError, IntegrityError
++from psycopg2.extras import execute_values
++
++
++@dataclass
++class Measurement:
++    entity_id: int
++    key: str
++    values: tuple
++    meta: dict
++    value: object
++    received_at: float
++    apply_state: object = None
++    confirm: object = None
++    sample_id: str = field(default_factory=lambda: str(uuid4()))
++    enqueued: float = field(default_factory=time.monotonic)
++    attempts: int = 0
++
++    def row(self):
++        return (self.sample_id, datetime.fromtimestamp(self.received_at, timezone.utc),
++                self.entity_id, self.key, *self.values, json.dumps(self.meta))
++
++    @property
++    def size(self):
++        # JSON-size cap complements the object-count cap; not a whole-process RSS cap.
++        return len(json.dumps([self.entity_id, self.key, self.values, self.meta], default=str).encode())
++
++
++class MeasurementQueue:
++    def __init__(self, max_messages=1000, max_bytes=8*1024*1024, max_age=30, max_attempts=3):
++        if max_messages < 1 or max_bytes < 1 or max_attempts < 1 or not 0 < max_age < float('inf'):
++            raise ValueError('Measurement limits must be positive and finite')
++        self.max_messages, self.max_bytes = max_messages, max_bytes
++        self.max_age, self.max_attempts = max_age, max_attempts
++        self.items = []
++        self.bytes = 0
++        self.dropped = Counter()
++        self.confirmed = self.duplicates = self.failures = self.high_water = 0
++        self.last_data_error = ''
++
++    def __len__(self):
++        return len(self.items)
++
++    def append(self, item):
++        size = item.size
++        reason = ('oversize' if size > self.max_bytes else 'overflow' if
++                  len(self.items) >= self.max_messages or self.bytes+size > self.max_bytes else None)
++        if reason:
++            self.dropped[reason] += 1
++            return False
++        self.items.append(item)
++        self.bytes += size
++        self.high_water = max(self.high_water, len(self.items))
++        return True
++
++    def clear(self, reason='explicit_clear'):
++        self.dropped[reason] += len(self.items)
++        self.items.clear()
++        self.bytes = 0
++
++    def latest(self, entity_id, key):
++        return next((m for m in reversed(self.items) if (m.entity_id,m.key)==(entity_id,key)), None)
++
++    def remove(self, items):
++        ids = {m.sample_id for m in items}
++        self.items[:] = [m for m in self.items if m.sample_id not in ids]
++        self.bytes = sum(m.size for m in self.items)
++
++    def expire(self):
++        expired = []
++        for m in self.items:
++            reason = ('expired' if time.monotonic()-m.enqueued > self.max_age else
++                      'retry_exhausted' if m.attempts >= self.max_attempts else None)
++            if reason:
++                expired.append(m)
++                self.dropped[reason] += 1
++        self.remove(expired)
++
++    def status(self):
++        return dict(queued_messages=len(self), queued_bytes=self.bytes, max_messages=self.max_messages,
++                    max_bytes=self.max_bytes, max_age_seconds=self.max_age, max_attempts=self.max_attempts,
++                    confirmed=self.confirmed, duplicate_confirmations=self.duplicates,
++                    failed_flushes=self.failures, last_data_error=self.last_data_error, dropped=dict(self.dropped), high_water_messages=self.high_water)
++
++    def flush(self, cur, page_size=100):
++        self.expire()
++        rows = list(self.items)
++        if not rows:
++            return 0
++        for m in rows:
++            m.attempts += 1
++        inserted, rejected = set(), []
++        try:
++            cur.execute('BEGIN')
++            try:
++                inserted = self._insert(cur, rows, page_size)
++                for m in rows:
++                    if m.sample_id in inserted and m.apply_state:
++                        m.apply_state(cur)
++            except (DataError, IntegrityError) as exc:
++                self.last_data_error = exc.pgcode or type(exc).__name__
++                # SQL-data errors only: roll back ALL earlier pages/state writes.
++                # Connection errors are never converted into per-row retries.
++                cur.execute('ROLLBACK')
++                cur.execute('BEGIN')
++                inserted = set()
++                for m in rows:
++                    cur.execute('SAVEPOINT hc33_row')
++                    try:
++                        new = self._insert(cur, [m], 1)
++                        if new and m.apply_state:
++                            m.apply_state(cur)
++                        inserted.update(new)
++                    except (DataError, IntegrityError) as exc:
++                        self.last_data_error = exc.pgcode or type(exc).__name__
++                        cur.execute('ROLLBACK TO SAVEPOINT hc33_row')
++                        rejected.append(m)
++                    cur.execute('RELEASE SAVEPOINT hc33_row')
++            cur.execute('COMMIT')
++        except Exception:
++            self.failures += 1
++            try:
++                cur.execute('ROLLBACK')
++            except Exception:
++                pass
++            # Stable IDs and the original receipt timestamp survive unknown commit.
++            # No queue/cache mutation until COMMIT is positively confirmed.
++            raise
++        rejected_ids = {m.sample_id for m in rejected}
++        good = [m for m in rows if m.sample_id not in rejected_ids]
++        self.remove(rows)
++        self.dropped['invalid_data'] += len(rejected)
++        self.confirmed += len(good)
++        self.duplicates += len(good)-len(inserted)
++        for m in good:
++            if m.confirm:
++                m.confirm()
++        return len(good)
++
++    @staticmethod
++    def _insert(cur, rows, page_size):
++        result = execute_values(cur, '''insert into hc.measurement
++            (ingest_sample_id,ts,entity_id,key,v_num,v_bool,v_text,v_json,meta) values %s
++            on conflict (ingest_sample_id) where ingest_sample_id is not null do nothing
++            returning ingest_sample_id''', [m.row() for m in rows],
++            template='(%s::uuid,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb)',
++            page_size=page_size, fetch=True)
++        return {str(r[0]) for r in result}
+--- /dev/null
++++ b/apps/hc_ingest/test_measurement_batch.py
+@@ -0,0 +1,67 @@
++import time
++import unittest
++from unittest.mock import patch
++from psycopg2 import OperationalError, DataError
++from measurement_batch import Measurement, MeasurementQueue
++
++
++def sample(value=1):
++    return Measurement(1,'temperature',(value,None,None,None),{'retained':False},value,time.time())
++
++
++class QueueTest(unittest.TestCase):
++    def test_count_bytes_and_oversize_reject_newest(self):
++        m=sample();q=MeasurementQueue(2,m.size*2)
++        self.assertTrue(q.append(m));self.assertTrue(q.append(sample(2)))
++        self.assertFalse(q.append(sample(3)));self.assertEqual(q.status()['dropped']['overflow'],1)
++        q=MeasurementQueue(max_bytes=1);self.assertFalse(q.append(m))
++        self.assertEqual(q.status()['dropped']['oversize'],1)
++    def test_age_and_retry_bounds_are_counted(self):
++        q=MeasurementQueue(max_age=1,max_attempts=2);old=sample();old.enqueued-=2
++        retry=sample();retry.attempts=2
++        q.append(old);q.append(retry);q.expire()
++        self.assertEqual(len(q),0);self.assertEqual(q.status()['dropped'],{'expired':1,'retry_exhausted':1})
++    def test_connection_error_preserves_identity_and_cache_without_row_fallback(self):
++        q=MeasurementQueue();m=sample();confirmed=[];m.confirm=lambda:confirmed.append(True);q.append(m)
++        class Cursor:
++            def execute(self,*args):pass
++        with patch('measurement_batch.execute_values',side_effect=OperationalError('fixture connection lost')) as insert:
++            with self.assertRaises(OperationalError):q.flush(Cursor())
++        self.assertEqual(insert.call_count,1);self.assertEqual(q.items,[m]);self.assertFalse(confirmed)
++        self.assertEqual(m.attempts,1)
++    def test_queue_only_removed_after_confirmed_commit(self):
++        q=MeasurementQueue();m=sample();q.append(m);events=[]
++        class Cursor:
++            def execute(self,sql):
++                if sql=='COMMIT':self_outer.assertEqual(q.items,[m]);events.append('commit')
++        self_outer=self;m.apply_state=lambda cur:events.append('state');m.confirm=lambda:events.append('cache')
++        with patch('measurement_batch.execute_values',return_value=[(m.sample_id,)]):self.assertEqual(q.flush(Cursor()),1)
++        self.assertEqual(events,['state','commit','cache']);self.assertEqual(len(q),0)
++    def test_default_retry_limit_stops_after_three_failed_flushes(self):
++        q=MeasurementQueue();q.append(sample())
++        class Cursor:
++            def execute(self,sql):pass
++        with patch('measurement_batch.execute_values',side_effect=OperationalError('fixture down')) as insert:
++            for _ in range(3):
++                with self.assertRaises(OperationalError):q.flush(Cursor())
++            self.assertEqual(q.flush(Cursor()),0)
++        self.assertEqual(insert.call_count,3)
++        self.assertEqual(q.status()['dropped']['retry_exhausted'],1)
++        self.assertEqual(len(q),0)
++    def test_unknown_commit_preserves_queue_then_duplicate_does_not_repeat_state(self):
++        q=MeasurementQueue();m=sample();q.append(m);states=[];m.apply_state=lambda cur:states.append(1)
++        class Cursor:
++            fail=True
++            def execute(self,sql):
++                if sql=='COMMIT' and self.fail:self.fail=False;raise OperationalError('lost commit response')
++        cur=Cursor()
++        with patch('measurement_batch.execute_values',side_effect=[[(m.sample_id,)],[]]):
++            with self.assertRaises(OperationalError):q.flush(cur)
++            self.assertEqual(len(q),1);self.assertEqual(q.flush(cur),1)
++        self.assertEqual(states,[1]);self.assertEqual(q.status()['duplicate_confirmations'],1)
++    def test_invalid_config_rejected(self):
++        for kw in ({'max_messages':0},{'max_bytes':0},{'max_age':0},{'max_age':float('nan')},{'max_attempts':0}):
++            with self.assertRaises(ValueError):MeasurementQueue(**kw)
++
++
++if __name__=='__main__':unittest.main()
+--- /dev/null
++++ b/apps/hc_ingest/test_measurement_batch_postgres.py
+@@ -0,0 +1,172 @@
++"""Real PostgreSQL HC-33 fault injection; only the disposable loopback lab."""
++import json
++import os
++from pathlib import Path
++import time
++import unittest
++from unittest.mock import patch
++
++import psycopg2
++import mqtt_ingest_multi as ingest
++from measurement_batch import MeasurementQueue
++
++
++@unittest.skipUnless(os.getenv('HC33_RECOVERY_LAB')=='1','requires isolated HC-33 lab')
++class BatchPostgresTest(unittest.TestCase):
++    def setUp(self):
++        self.dsn='host=127.0.0.1 dbname=hc11_recovery_test user=postgres'
++        self.conn=self.connect();self.addCleanup(lambda:self.conn.close())
++        with self.conn.cursor() as c:
++            c.execute('select current_database()');self.assertEqual(c.fetchone()[0],'hc11_recovery_test')
++            c.execute('drop schema if exists hc cascade')
++            c.execute((Path(__file__).resolve().parents[2]/'infra/db/baselines/hc_r1_058_v1.sql').read_text())
++            c.execute((Path(__file__).resolve().parents[2]/'infra/db/062_hc33_ingest_sample_identity.sql').read_text())
++            c.execute("insert into hc.device(platform,name) values('system','fixture') returning id");device=c.fetchone()[0]
++            c.execute("insert into hc.entity(device_id,name) values(%s,'fixture') returning id",(device,));self.eid=c.fetchone()[0]
++            c.execute("insert into hc.metric(key,value_type) values('temperature','num')")
++            c.execute("insert into hc.entity_metric(entity_id,metric_key,store_mode,deadband_num,min_interval_sec,max_interval_sec) values(%s,'temperature','both',1,5,300)",(self.eid,))
++        self.queue=MeasurementQueue()
++        p=patch.object(ingest,'pending_measurements',self.queue);p.start();self.addCleanup(p.stop)
++        ingest.last_saved.clear();ingest.last_saved_retained.clear()
++        self.addCleanup(ingest.last_saved.clear);self.addCleanup(ingest.last_saved_retained.clear)
++        self.rule=ingest.Rule('both',0,0,300,True)
++    def connect(self):
++        c=psycopg2.connect(self.dsn);c.autocommit=True;return c
++    def scalar(self,sql):
++        with self.conn.cursor() as cur:cur.execute(sql);return cur.fetchone()[0]
++    def stage(self,value,**kw):
++        return ingest.persist_metric(None,self.eid,'temperature','num',value,self.rule,time.time(),{'retained':False,'recv_ts':time.time()},defer_flush=True,**kw)
++    def flush(self,cur=None):
++        if cur is not None:return ingest.flush_measurements(cur)
++        with self.conn.cursor() as c:return ingest.flush_measurements(c)
++    def test_closed_connection_before_batch_keeps_pending_sample(self):
++        self.stage(5);identity=self.queue.items[0].sample_id
++        cur=self.conn.cursor();self.conn.close()
++        with self.assertRaises(psycopg2.InterfaceError):self.flush(cur)
++        self.assertEqual(self.queue.items[0].sample_id,identity);self.assertFalse(ingest.last_saved)
++        self.conn=self.connect();self.assertEqual(self.flush(),1)
++        self.assertEqual(self.scalar('select count(*) from hc.measurement'),1)
++    def test_missing_or_wrong_identity_index_fails_readiness_check(self):
++        with self.conn.cursor() as c:
++            c.execute('grant usage on schema hc to hc_app')
++            c.execute('grant select,insert,update,delete on all tables in schema hc to hc_app')
++            c.execute('grant usage,select on all sequences in schema hc to hc_app')
++            c.execute('drop index hc.ux_measurement_ingest_sample_id')
++        app=psycopg2.connect(self.dsn.replace('user=postgres','user=hc_app'));app.autocommit=True
++        self.addCleanup(app.close)
++        with self.assertRaisesRegex(RuntimeError,'migration 062'):ingest.verify_runtime_role(app)
++        with self.conn.cursor() as c:c.execute('create unique index ux_measurement_ingest_sample_id on hc.measurement(entity_id)')
++        with self.assertRaisesRegex(RuntimeError,'migration 062'):ingest.verify_runtime_role(app)
++
++    def test_multiple_pages_roll_back_on_connection_failure_then_reconnect_without_duplicate(self):
++        for i in range(7):self.stage(i)
++        ids=[m.sample_id for m in self.queue.items]
++        class Cursor:
++            def __init__(self,inner):self.inner=inner;self.pages=0
++            def __getattr__(self,name):return getattr(self.inner,name)
++            def execute(self,sql,*args):
++                if (sql.decode() if isinstance(sql,bytes) else sql).lstrip().lower().startswith('insert into hc.measurement'):
++                    self.pages+=1
++                    if self.pages==2:raise psycopg2.OperationalError('fixture disconnected before second page')
++                return self.inner.execute(sql,*args)
++        with self.conn.cursor() as cur,patch.object(ingest,'MEASUREMENT_BATCH_SIZE',2):
++            with self.assertRaises(psycopg2.OperationalError):self.flush(Cursor(cur))
++        self.assertEqual(self.scalar('select count(*) from hc.measurement'),0)
++        self.assertEqual(self.scalar('select count(*) from hc.entity_state'),0)
++        self.assertFalse(ingest.last_saved);self.assertEqual([m.sample_id for m in self.queue.items],ids)
++        self.conn.close();self.conn=self.connect();self.assertEqual(self.flush(),7)
++        self.assertEqual(self.scalar('select count(distinct ingest_sample_id) from hc.measurement'),7)
++        self.assertEqual(self.scalar("select v_num from hc.entity_state where key='temperature'"),6)
++        self.assertEqual(ingest.last_saved[self.eid,'temperature'][0],6)
++    def test_commit_response_loss_retries_same_id_without_state_side_effect_or_duplicates(self):
++        self.stage(12);identity=self.queue.items[0].sample_id
++        outer=self
++        class Cursor:
++            def __init__(self,inner):self.inner=inner
++            def __getattr__(self,name):return getattr(self.inner,name)
++            def execute(self,sql,*args):
++                result=self.inner.execute(sql,*args)
++                if sql=='COMMIT':outer.conn.close();raise psycopg2.OperationalError('fixture response lost AFTER real commit')
++                return result
++        cur=self.conn.cursor()
++        with self.assertRaises(psycopg2.OperationalError):self.flush(Cursor(cur))
++        self.assertEqual(self.queue.items[0].sample_id,identity);self.assertFalse(ingest.last_saved)
++        self.conn=self.connect()
++        self.assertEqual(self.scalar('select count(*) from hc.measurement'),1)
++        with self.conn.cursor() as c:c.execute("update hc.entity_state set v_num=999 where key='temperature'")
++        self.assertEqual(self.flush(),1)
++        self.assertEqual(self.scalar('select count(*) from hc.measurement'),1)
++        self.assertEqual(self.scalar("select v_num from hc.entity_state where key='temperature'"),999)
++        self.assertEqual(self.queue.status()['duplicate_confirmations'],1)
++    def test_one_invalid_history_row_does_not_lose_valid_rows(self):
++        self.stage(1);self.stage(2)
++        ingest.queue_measurement(999999,'temperature','num',2,{'retained':False})
++        self.stage(3)
++        with patch.object(ingest,'MEASUREMENT_BATCH_SIZE',2):self.assertEqual(self.flush(),3)
++        self.assertEqual(self.scalar('select count(*) from hc.measurement'),3)
++        self.assertEqual(self.scalar("select v_num from hc.entity_state where key='temperature'"),3)
++        self.assertEqual(self.queue.status()['dropped']['invalid_data'],1)
++        self.assertEqual(ingest.last_saved[self.eid,'temperature'][0],3)
++    def test_invalid_state_rolls_back_paired_history_too(self):
++        with self.conn.cursor() as c:c.execute('alter table hc.entity_state add constraint lab_nonnegative check(v_num>=0)')
++        self.stage(1);self.stage(-1);self.stage(2)
++        self.assertEqual(self.flush(),2)
++        self.assertEqual(self.scalar('select count(*) from hc.measurement where v_num<0'),0)
++        self.assertEqual(self.scalar('select count(*) from hc.measurement'),2)
++        self.assertEqual(self.queue.status()['dropped']['invalid_data'],1)
++    def test_overflow_does_not_advance_state_or_committed_cache(self):
++        self.queue.max_messages=1
++        self.assertTrue(self.stage(1));self.assertFalse(self.stage(2))
++        self.assertFalse(ingest.last_saved);self.assertEqual(self.scalar('select count(*) from hc.entity_state'),0)
++        self.assertEqual(self.flush(),1);self.assertEqual(ingest.last_saved[self.eid,'temperature'][0],1)
++        self.assertTrue(self.stage(2));self.assertEqual(self.flush(),1)
++        self.assertEqual(self.scalar("select v_num from hc.entity_state where key='temperature'"),2)
++    def test_restart_warms_history_cache_instead_of_newer_feedback_state(self):
++        self.stage(10);self.flush()
++        with self.conn.cursor() as c:
++            c.execute("update hc.measurement set ts=now()-interval '400 seconds'")
++            c.execute("update hc.entity_state set ts=now(),v_num=11")
++            ingest.warm_last_saved_from_entity_state(c)
++        self.assertEqual(ingest.last_saved[self.eid,'temperature'][0],10)
++        self.assertGreater(time.time()-ingest.last_saved[self.eid,'temperature'][1],399)
++        self.assertTrue(ingest.should_write(self.eid,'temperature',10,ingest.Rule('both',100,5,300,True),time.time())[0])
++    def test_confirmed_state_and_history_use_original_receipt_timestamp(self):
++        old=time.time()-12
++        ingest.persist_metric(None,self.eid,'temperature','num',10,self.rule,old,{'retained':False,'recv_ts':old},defer_flush=True)
++        self.flush()
++        with self.conn.cursor() as c:
++            c.execute("select s.ts=m.ts and s.ts < now()-interval '11 seconds' from hc.entity_state s join hc.measurement m on m.entity_id=s.entity_id and m.key=s.key")
++            self.assertTrue(c.fetchone()[0])
++    def test_newer_feedback_in_same_message_cannot_be_overwritten_by_earlier_batch(self):
++        rule=ingest.Rule('both',100,60,300,True,True)
++        with self.conn.cursor() as c:
++            ingest.persist_metric(c,self.eid,'temperature','num',19,rule,time.time(),{'retained':False},defer_flush=True)
++            ingest.persist_metric(c,self.eid,'temperature','num',51,rule,time.time(),{'retained':False},defer_flush=True)
++        self.assertEqual(self.scalar("select v_num from hc.entity_state where key='temperature'"),51)
++        self.assertEqual(self.scalar('select v_num from hc.measurement'),19)
++        self.assertEqual(ingest.last_saved[self.eid,'temperature'][0],19)
++    def test_history_only_manual_valve_preserves_session_tracking(self):
++        with self.conn.cursor() as c:
++            c.execute("insert into hc.metric(key,value_type) values('manual_valve_state','text')")
++            ingest.persist_metric(c,self.eid,'manual_valve_state','text','OPEN',
++                ingest.Rule('history',None,0,300,True),time.time(),{'retained':False})
++        self.assertEqual(self.scalar("select count(*) from hc.measurement where key='manual_valve_state'"),1)
++        self.assertEqual(self.scalar('select count(*) from hc.entity_state'),0)
++        self.assertEqual(self.scalar("select count(*) from hc.irrigation_manual_session where started_by='physical_manual' and status='running'"),1)
++    def test_existing_timestamp_key_conflicts_are_counted_without_corrupting_state(self):
++        at=time.time()
++        for value in (1,2,3):
++            ingest.persist_metric(None,self.eid,'temperature','num',value,self.rule,at,{'retained':False},defer_flush=True)
++        self.assertEqual(self.flush(),1)
++        self.assertEqual(self.queue.status()['dropped']['invalid_data'],2)
++        self.assertEqual(self.scalar("select v_num from hc.entity_state where key='temperature'"),1)
++        with self.conn.cursor() as c:ingest.warm_last_saved_from_entity_state(c)
++        self.assertEqual(ingest.last_saved[self.eid,'temperature'][0],1)
++
++    def test_additive_migration_keeps_legacy_writes_and_idempotent_reapply(self):
++        with self.conn.cursor() as c:
++            c.execute((Path(__file__).resolve().parents[2]/'infra/db/062_hc33_ingest_sample_identity.sql').read_text())
++            for i in range(2):c.execute('insert into hc.measurement(ts,entity_id,key,v_num) values(now(),%s,\'temperature\',1)',(self.eid,))
++        self.assertEqual(self.scalar('select count(*) from hc.measurement where ingest_sample_id is null'),2)
++
++if __name__=='__main__':unittest.main()
+--- /dev/null
++++ b/infra/db/062_hc33_ingest_sample_identity.sql
+@@ -0,0 +1,8 @@
++-- HC-33: additive identity for new ingest samples only; old writers remain valid.
++-- Explicit migration, never run by ingest startup. No historical backfill.
++-- Run in a controlled migration window: the unique partial index scans measurement.
++SET LOCAL lock_timeout='5s';
++SET LOCAL statement_timeout='120s';
++ALTER TABLE hc.measurement ADD COLUMN IF NOT EXISTS ingest_sample_id uuid;
++CREATE UNIQUE INDEX IF NOT EXISTS ux_measurement_ingest_sample_id
++  ON hc.measurement (ingest_sample_id) WHERE ingest_sample_id IS NOT NULL;

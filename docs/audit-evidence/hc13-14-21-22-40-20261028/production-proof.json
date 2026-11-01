@@ -1,0 +1,21 @@
+{
+  "live_containers_unchanged": 9,
+  "protected_host_files_unchanged": 37,
+  "active_release": "hc-scheduler-x10-20261027-r7",
+  "active_override_unchanged": true,
+  "safety_source_unchanged": true,
+  "npm_lockfile_unchanged": true,
+  "production_commands_sent": false,
+  "deployed": false,
+  "container_health": {
+    "/homecontrol-backend": "running",
+    "/homecontrol-frontend": "running",
+    "/homecontrol-gree-climate": "running",
+    "/homecontrol-xiaomi-x10": "running",
+    "/homecontrol-postgres": "healthy",
+    "/homecontrol-mqtt": "running",
+    "/homecontrol-pgbouncer": "healthy",
+    "/homecontrol-ingest": "running",
+    "/homecontrol-tuya-poller": "running"
+  }
+}

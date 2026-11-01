@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
+from mqtt_credentials import configure_mqtt_auth
 import ast
 import json
 import re
 import time
-import subprocess
+import os
 import base64
 import threading
 from pathlib import Path
@@ -12,6 +13,10 @@ from datetime import datetime, timedelta
 import paho.mqtt.client as mqtt
 
 import config
+from xiaomi_x10_map import XiaomiX10MapClient
+from x10_runtime import ProgressWatchdog, run_miio as transport_miio, run_map_refresh, valid_status_sample
+from command_dispatcher import CommandDispatcher, CommandRejected
+from worker_health import WorkerHealth
 
 
 CONFIG = {
@@ -25,6 +30,7 @@ CONFIG = {
     "poll_idle_sec": config.POLL_IDLE_SEC,
     "poll_cleaning_sec": config.POLL_CLEANING_SEC,
     "map_check_cleaning_sec": config.MAP_CHECK_CLEANING_SEC,
+    "map_check_idle_sec": config.MAP_CHECK_IDLE_SEC,
     "scheduler_watch_sec": config.SCHEDULER_WATCH_SEC,
 
     "map_script": str(config.MAP_SCRIPT),
@@ -56,6 +62,10 @@ last_map_md5 = None
 last_status_poll = 0
 last_map_poll = 0
 last_scheduler_watch = 0
+last_live_map_poll = 0
+last_live_robot_time = None
+live_tracking_until = 0
+live_alignment_map_id = None
 active_room_clean = None
 capture_session = None
 last_capture_status = 0
@@ -65,7 +75,23 @@ WEEKLY_TASK_IDS = [12, 13, 14, 17, 15, 16, 11]
 ROBOT_DAY_MASK_INDEX_BY_HC_DAY = [1, 2, 3, 4, 5, 6, 0]
 
 client = mqtt.Client()
+configure_mqtt_auth(client, prefix="X10_MQTT")
 command_lock = threading.Lock()
+command_context = threading.local()
+command_dispatcher = None
+live_map_client = None
+progress_watchdog = None
+LIVE_MAP_IV = "qFKhvoAqRFTPfKN6"
+LIVE_MAP_POLL_SEC = 1.5
+LIVE_MAP_ACTIVE_POLL_SEC = 0.3
+COMMAND_NAMES = {"start", "stop", "home", "refresh_map", "status", "check_map",
+    "read_scheduler", "select_map", "set_clean_mode", "set_suction", "set_water_level",
+    "room_clean", "schedule_clean", "schedule_clean_week", "capture_start", "capture_stop"}
+
+
+def run_miio(args):
+    context = getattr(command_context, "current", None)
+    return transport_miio(args, before_send=context.check if context is not None else None)
 
 
 def topic(name):
@@ -90,6 +116,7 @@ def publish_command_result(command, ok=True, message="", extra=None):
         "ok": ok,
         "message": message,
         "ts": int(time.time()),
+        "reported_at": time.time(),
     }
     if extra is not None:
         data["extra"] = extra
@@ -171,30 +198,7 @@ def decode_possible_base64(value):
 
 
 def miio_cmd(args):
-    cmd = [
-        str(config.MIIOCLI),
-        "dreamevacuum",
-        "--ip", CONFIG["robot_ip"],
-        "--token", CONFIG["robot_token"],
-    ] + args
-
-    result = subprocess.run(
-        cmd,
-        text=True,
-        capture_output=True,
-        timeout=20,
-    )
-
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
-
-    output = result.stdout.strip()
-    error_text = result.stderr.strip()
-    combined = "\n".join(part for part in (output, error_text) if part)
-    if re.search(r"(^|\n)\s*(Error:|ERROR:)", combined):
-        raise RuntimeError(combined)
-
-    return output
+    return run_miio(args)
 
 
 def get_property(siid, piid):
@@ -206,8 +210,9 @@ def get_property(siid, piid):
         if line.startswith("[") and line.endswith("]"):
             data = ast.literal_eval(line)
 
-            if isinstance(data, list) and data:
-                value = data[0].get("value")
+            if (isinstance(data, list) and data and isinstance(data[0], dict)
+                    and data[0].get("code") == 0 and "value" in data[0]):
+                value = data[0]["value"]
 
                 if isinstance(value, str):
                     try:
@@ -216,8 +221,9 @@ def get_property(siid, piid):
                         return value
 
                 return value
+            raise RuntimeError("X10 MIIO property query failed")
 
-    return None
+    raise RuntimeError("X10 MIIO property response missing")
 
 
 def set_property(siid, piid, value):
@@ -244,6 +250,309 @@ def call_action_with_params(siid, aiid, params):
         str(aiid),
         json.dumps(params, separators=(",", ":")),
     ])
+
+
+def parse_miio_data(output):
+    for line in reversed(str(output).splitlines()):
+        line = line.strip()
+        if line.startswith(("[", "{")) and line.endswith(("]", "}")):
+            try:
+                return ast.literal_eval(line)
+            except Exception:
+                continue
+    raise RuntimeError(f"Could not parse miiocli output: {output}")
+
+
+def get_live_map_client():
+    global live_map_client
+    if live_map_client is None:
+        live_map_client = XiaomiX10MapClient(
+            country=config.XIAOMI_CLOUD_COUNTRY,
+            output_dir=config.MAP_OUTPUT_DIR,
+        )
+        live_map_client.load_auth(config.XIAOMI_CLOUD_AUTH)
+    return live_map_client
+
+
+def request_live_robot_position():
+    global last_live_robot_time, live_alignment_map_id
+    request_params = {
+            "req_type": 1,
+            "frame_type": "I",
+            "force_type": 1,
+    }
+    if last_live_robot_time:
+        request_params["time"] = last_live_robot_time
+    result = parse_miio_data(call_action_with_params(6, 1, [
+        {"piid": 2, "value": json.dumps(request_params, separators=(",", ":"))},
+    ]))
+    if not isinstance(result, dict) or result.get("code") != 0:
+        raise RuntimeError(f"Live map request rejected: {result}")
+
+    outputs = {item.get("piid"): item.get("value") for item in result.get("out", [])}
+    robot_time = outputs.get(5)
+    if robot_time:
+        last_live_robot_time = int(robot_time)
+    raw_map = outputs.get(1)
+    object_name = outputs.get(3)
+    key = None
+    old_map = outputs.get(13)
+    if old_map:
+        values = str(old_map).split(",")
+        if values[0] == "1" and len(values) >= 3:
+            object_name, key = values[1], values[2]
+        elif values[0] == "0" and len(values) >= 2:
+            raw_map = values[1]
+            key = values[2] if len(values) >= 3 else None
+    if object_name and "," in str(object_name) and not key:
+        object_name, key = str(object_name).split(",", 1)
+    if not raw_map and object_name:
+        raw_map = get_live_map_client().download_object_bytes(object_name)
+    if not raw_map:
+        raise RuntimeError(f"Live map response contains no frame: {result}")
+
+    raw, live_header = get_live_map_client().decode_live_map(raw_map, key=key, iv=LIVE_MAP_IV)
+    header = dict(live_header)
+    active_map = None
+    index_path = Path(CONFIG["maps_index"])
+    if index_path.exists():
+        try:
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            current_id = find_first_existing_key(
+                index, ["curr_id", "current_id", "currentMapId", "current_map_id"]
+            )
+            maps = get_maps_list(index)
+
+            # The cloud map index often keeps the docked floor marked as
+            # current while the robot is manually carried to another floor.
+            # An enabled one-shot room-clean entry is the reliable map hint in
+            # that situation (the live frame's map_id is only a frame-local
+            # slot number, not the saved map header id).
+            scheduled_map_id = None
+            robot_state = last_state.get("robot_state")
+            scheduler_entries = last_state.get("scheduler/entries")
+            if isinstance(scheduler_entries, str):
+                try:
+                    scheduler_entries = json.loads(scheduler_entries)
+                except json.JSONDecodeError:
+                    scheduler_entries = None
+            # A one-shot entry is only a floor hint while cleaning. During
+            # return/relocation the robot may already be back on the docked
+            # floor, so keeping the old hint would overlay that live frame on
+            # the previous floor and make the UI alternate between maps.
+            if robot_state in (1, 12, "1", "12") and isinstance(scheduler_entries, list):
+                def is_active_one_shot(item):
+                    if not isinstance(item, dict):
+                        return False
+                    if str(item.get("days")) != "0000000":
+                        return False
+                    if str(item.get("segments") or "") in {"", "0"}:
+                        return False
+                    # Disabled one-shot entries remain in the robot scheduler
+                    # after they have run. They are history, not evidence of
+                    # the robot's current floor, and must never override the
+                    # current map reported by the map index.
+                    return str(item.get("enabled")) == "1"
+
+                one_shots = [
+                    item for item in scheduler_entries
+                    if is_active_one_shot(item)
+                ]
+                if one_shots:
+                    scheduled_map_id = one_shots[-1].get("map_id")
+
+            proposed_map_id = scheduled_map_id if scheduled_map_id is not None else current_id
+            if live_alignment_map_id is None and proposed_map_id is not None:
+                live_alignment_map_id = proposed_map_id
+                print(f"Live map alignment locked to saved map {live_alignment_map_id}")
+            alignment_map_id = live_alignment_map_id if live_alignment_map_id is not None else proposed_map_id
+            current_map = next(
+                (item for item in maps if str(get_map_id(item)) == str(alignment_map_id)),
+                None,
+            )
+            if current_map and isinstance(current_map.get("header"), dict):
+                active_map = current_map
+                header = dict(current_map["header"])
+                live_grid = live_header.get("grid_size") or header.get("grid_size") or 50
+                target_grid = header.get("grid_size") or live_grid
+                header["robot_x"] = header["left"] + (
+                    (live_header.get("robot_x", live_header["left"]) - live_header["left"])
+                    * target_grid / live_grid
+                )
+                header["robot_y"] = header["top"] + (
+                    (live_header.get("robot_y", live_header["top"]) - live_header["top"])
+                    * target_grid / live_grid
+                )
+                header["robot_angle"] = live_header.get("robot_angle")
+        except Exception as e:
+            print(f"Live map coordinate alignment failed: {e}")
+    active_map = {
+        **(active_map or {}),
+        "header": header,
+        "live_header": live_header,
+        "name": get_map_name(active_map) if active_map else last_state.get("map/current_name", "Live map"),
+    }
+    live_png = None
+    live_meta = {}
+    current_png = get_map_png(active_map) or last_state.get("map/current_png")
+    if current_png and Path(current_png).exists():
+        live_png = str(Path(config.MAP_OUTPUT_DIR) / "live_map.png")
+        _, live_meta = get_live_map_client().render_live_overlay(current_png, raw, live_png, header)
+        live_grid = live_header.get("grid_size") or header["grid_size"]
+        canvas_shift_x = live_meta.get("canvas_shift_x_cells", 0)
+        canvas_shift_y = live_meta.get("canvas_shift_y_cells", 0)
+        if live_meta.get("standalone_live_canvas"):
+            header = dict(live_header)
+            header["map_id"] = get_map_id(active_map) or live_header.get("map_id")
+            header["left"] = live_header["left"] - canvas_shift_x * live_grid
+            header["top"] = live_header["top"] - canvas_shift_y * live_grid
+            header["width"] = live_meta.get("canvas_width_cells", live_header["width"])
+            header["height"] = live_meta.get("canvas_height_cells", live_header["height"])
+        else:
+            header["left"] -= canvas_shift_x * header["grid_size"]
+            header["top"] -= canvas_shift_y * header["grid_size"]
+            header["width"] = live_meta.get("canvas_width_cells", header["width"])
+            header["height"] = live_meta.get("canvas_height_cells", header["height"])
+            robot_cell_x = (live_header.get("robot_x", live_header["left"]) - live_header["left"]) / live_grid
+            robot_cell_y = (live_header.get("robot_y", live_header["top"]) - live_header["top"]) / live_grid
+            if live_meta.get("flip_live"):
+                robot_cell_x = live_header["width"] - 1 - robot_cell_x
+                robot_cell_y = live_header["height"] - 1 - robot_cell_y
+            robot_cell_x += live_meta.get("alignment_dx_cells", 0) + (
+                live_meta.get("alignment_x_px", 0) / 4
+            ) + canvas_shift_x
+            robot_cell_y += live_meta.get("alignment_dy_cells", 0) + (
+                live_meta.get("alignment_y_px", 0) / 4
+            ) + canvas_shift_y
+            header["robot_x"] = header["left"] + robot_cell_x * header["grid_size"]
+            header["robot_y"] = header["top"] + robot_cell_y * header["grid_size"]
+            header["robot_angle"] = (
+                live_header.get("robot_angle", 0) + (180 if live_meta.get("flip_live") else 0)
+            ) % 360
+        active_map = {**active_map, "header": header}
+        publish("robot/live_png", live_png, force=True)
+    publish_robot_and_dock_position(active_map)
+    live_rooms = normalize_rooms(
+        live_meta.get("rooms") or get_map_rooms(active_map)
+    )
+    room_shift_x = live_meta.get("canvas_shift_x_cells", 0)
+    room_shift_y = live_meta.get("canvas_shift_y_cells", 0)
+    if (room_shift_x or room_shift_y) and not live_meta.get("standalone_live_canvas"):
+        live_rooms = [
+            {
+                **room,
+                "center_px": {
+                    "x": room["center_px"]["x"] + room_shift_x,
+                    "y": room["center_px"]["y"] + room_shift_y,
+                },
+            } if isinstance(room.get("center_px"), dict) else room
+            for room in live_rooms
+        ]
+    publish("robot/live_map", {
+        "available": True,
+        "object_name": object_name,
+        "frame_id": live_header.get("frame_id"),
+        "map_id": header.get("map_id"),
+        "map_name": get_map_name(active_map),
+        "header": header,
+        "live_header": live_header,
+        "rooms": live_rooms,
+        "live_map_id": live_header.get("map_id"),
+        "robot_x": live_header.get("robot_x"),
+        "robot_y": live_header.get("robot_y"),
+        "robot_time": last_live_robot_time,
+        "lag_sec": round(max(0, time.time() - (last_live_robot_time / 1000)), 1) if last_live_robot_time else None,
+        "meta_keys": sorted(live_meta.keys()),
+        "has_path": bool(live_meta.get("tr")),
+        "obstacle_count": len(live_meta.get("ai_obstacle", [])),
+        "ts": int(time.time()),
+    }, force=True)
+    return header
+
+
+def arm_live_tracking(seconds=600):
+    global live_tracking_until
+    live_tracking_until = max(live_tracking_until, time.time() + seconds)
+
+
+def live_tracking_active():
+    return (last_state.get("robot_state") in (1, 5, 12, "1", "5", "12")
+            or time.time() < live_tracking_until)
+
+
+def mark_progress(name):
+    if progress_watchdog is not None:
+        progress_watchdog.success(name)
+    if name == 'main':
+        bridge_health.progress()
+    elif name == 'status':
+        bridge_health.progress(success=True)
+
+
+def watchdog_worker():
+    while True:
+        progress_watchdog.require("live_map", live_tracking_active())
+        expired = progress_watchdog.expired()
+        if expired:
+            # No MQTT I/O or worker joins here: either can be the stalled path.
+            try:
+                print("[X10 WATCHDOG] no successful progress; exiting for supervisor restart: "
+                      + json.dumps(expired, sort_keys=True), flush=True)
+            finally:
+                os._exit(75)
+        time.sleep(config.WATCHDOG_CHECK_SEC)
+
+
+def live_map_worker():
+    global live_alignment_map_id
+    failure_count = 0
+    while True:
+        tracking = live_tracking_active()
+        if not tracking:
+            if live_alignment_map_id is not None:
+                print(f"Live map alignment lock released from saved map {live_alignment_map_id}")
+                live_alignment_map_id = None
+            time.sleep(1)
+            continue
+        started = time.time()
+        try:
+            request_live_robot_position()
+            mark_progress("live_map")
+            failure_count = 0
+        except Exception as e:
+            failure_count += 1
+            error_text = str(e)
+            previous_live = last_state.get("robot/live_map")
+            if isinstance(previous_live, str):
+                try:
+                    previous_live = json.loads(previous_live)
+                except json.JSONDecodeError:
+                    previous_live = None
+            if isinstance(previous_live, dict) and previous_live.get("available"):
+                # A single empty MIIO response is common during cleaning.
+                # Preserve the last complete canvas instead of making the UI
+                # alternate between the expanded live map and the old saved
+                # map until the next successful frame arrives.
+                publish("robot/live_map", {
+                    **previous_live,
+                    "stale": True,
+                    "error": error_text,
+                    "ts": int(time.time()),
+                }, force=True)
+            else:
+                publish("robot/live_map", {
+                    "available": False,
+                    "error": error_text,
+                    "ts": int(time.time()),
+                }, force=True)
+        elapsed = time.time() - started
+        if failure_count:
+            # Cloud auth failures and robot timeouts must not hammer the MIIO
+            # endpoint; status polling and commands share the same device.
+            retry_sec = min(60, 5 * (2 ** min(failure_count - 1, 4)))
+            time.sleep(max(LIVE_MAP_ACTIVE_POLL_SEC, retry_sec - elapsed))
+        else:
+            time.sleep(max(LIVE_MAP_ACTIVE_POLL_SEC, LIVE_MAP_POLL_SEC - elapsed))
 
 
 def get_map_object():
@@ -367,6 +676,7 @@ def normalize_room(room_item):
         "name": get_room_name(room_item),
         "type": room_item.get("type") if isinstance(room_item, dict) else None,
         "neighbors": room_item.get("neighbors", []) if isinstance(room_item, dict) else [],
+        "center_px": room_item.get("center_px") if isinstance(room_item, dict) else None,
     }
 
 
@@ -491,6 +801,32 @@ def publish_robot_and_dock_position(active_map):
             })
 
 
+def publish_robot_at_dock():
+    index_path = Path(CONFIG["maps_index"])
+    if not index_path.exists():
+        return
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        current_id = find_first_existing_key(
+            index, ["curr_id", "current_id", "currentMapId", "current_map_id"]
+        )
+        active_map = next(
+            (item for item in get_maps_list(index) if str(get_map_id(item)) == str(current_id)),
+            None,
+        )
+        if not active_map or not isinstance(active_map.get("header"), dict):
+            return
+        header = dict(active_map["header"])
+        if header.get("dock_x") in (None, 32767) or header.get("dock_y") in (None, 32767):
+            return
+        header["robot_x"] = header["dock_x"]
+        header["robot_y"] = header["dock_y"]
+        header["robot_angle"] = (header.get("dock_angle", 0) + 180) % 360
+        publish_robot_and_dock_position({**active_map, "header": header})
+    except Exception as e:
+        print(f"Docked robot position publish failed: {e}")
+
+
 def publish_map_info(index):
     if not isinstance(index, dict):
         return
@@ -541,12 +877,7 @@ def publish_map_info(index):
 def refresh_maps():
     print("Map refresh indul...")
 
-    subprocess.run(
-        ["python3", CONFIG["map_script"]],
-        text=True,
-        timeout=120,
-        check=True,
-    )
+    run_map_refresh(["python3", CONFIG["map_script"]], timeout=120)
 
     index_path = Path(CONFIG["maps_index"])
 
@@ -560,9 +891,15 @@ def refresh_maps():
 
 
 def read_scheduler():
+    sampled_at = time.time()
     scheduler = get_property(8, 2)
+    entries = parse_scheduler_entries_payload(scheduler)
     publish("scheduler/raw", scheduler)
-    publish("scheduler/entries", parse_scheduler_entries_payload(scheduler))
+    publish("scheduler/entries", entries)
+    # A fresh device read, even when the legacy retained list did not change.
+    if (isinstance(scheduler, str) and
+            len(entries) == len([item for item in scheduler.split(";") if item.strip()])):
+        publish("scheduler/observation", {"sampled_at": sampled_at, "entries": entries}, retain=False, force=True)
     publish("scheduler/last_read", int(time.time()))
     return scheduler
 
@@ -693,6 +1030,18 @@ def find_scheduler_task(raw, task_id):
     return None
 
 
+def is_stale_one_shot_room_clean_entry(parsed, active_task_id):
+    if not parsed:
+        return False
+    if parsed["task_id"] == str(active_task_id):
+        return True
+    return (
+        parsed.get("enabled") == "0"
+        and parsed.get("days") == "0000000"
+        and parsed.get("segments") not in {"", "0"}
+    )
+
+
 def build_schedule_entry(map_id, segments, start_time, enabled=1, days="0000000", task_id=None, clean_mode=0, suction=None, clean_param=None):
     task_id = task_id if task_id is not None else CONFIG["room_clean_task_id"]
     suction = suction if suction is not None else CONFIG["room_clean_suction"]
@@ -744,7 +1093,7 @@ def set_room_clean_schedule(map_id, segments, delay_min=None, clean_mode=0, suct
     for entry in entries:
         parsed = parse_scheduler_entry(entry)
 
-        if parsed and parsed["task_id"] == str(task_id):
+        if is_stale_one_shot_room_clean_entry(parsed, task_id):
             continue
 
         kept_entries.append(entry)
@@ -755,7 +1104,7 @@ def set_room_clean_schedule(map_id, segments, delay_min=None, clean_mode=0, suct
 
     publish("scheduler/write_candidate", new_scheduler, retain=False, force=True)
 
-    result = set_property(8, 2, new_scheduler)
+    result = ensure_miio_success(set_property(8, 2, new_scheduler), "quick clean scheduler")
 
     publish("scheduler/write_result", result, retain=False, force=True)
 
@@ -773,14 +1122,34 @@ def set_clean_schedule(map_id, segments, start_time, enabled=1, days="1111111", 
     current = read_scheduler()
     entries = parse_scheduler_entries(current)
 
-    task_id = CONFIG["room_clean_task_id"]
+    configured_task_id = str(CONFIG["room_clean_task_id"])
+    weekly_task_ids = {str(value) for value in WEEKLY_TASK_IDS}
+    parsed_entries = [
+        parsed for parsed in (parse_scheduler_entry(entry) for entry in entries) if parsed
+    ]
+    existing_ids = {parsed["task_id"] for parsed in parsed_entries}
+    reusable_ids = [
+        parsed["task_id"] for parsed in parsed_entries
+        if parsed["task_id"] not in weekly_task_ids
+    ]
+
+    # This X10 firmware keeps ten persistent scheduler slots even after a
+    # successful shorter write. Reuse an existing non-weekly slot instead of
+    # appending a new task that would exceed the fixed slot capacity.
+    task_id = configured_task_id if configured_task_id in existing_ids else (
+        reusable_ids[-1] if reusable_ids else configured_task_id
+    )
     new_entry = build_schedule_entry(
         map_id=map_id,
         segments=segments,
         start_time=start_time,
         enabled=enabled,
         days=days,
-        clean_mode=clean_mode,
+        # X10 one-shot entries (days=0000000) require scheduler flag 0.
+        # Cleaning preferences are carried by suction/clean_param and the
+        # robot's active cleaning mode; flag 2 is accepted only for recurring
+        # custom-room entries.
+        clean_mode=0 if normalize_days(days) == "0000000" else clean_mode,
         task_id=task_id,
         suction=suction,
         clean_param=clean_param,
@@ -791,16 +1160,19 @@ def set_clean_schedule(map_id, segments, start_time, enabled=1, days="1111111", 
     for entry in entries:
         parsed = parse_scheduler_entry(entry)
 
-        if parsed and parsed["task_id"] == str(task_id):
+        # HomeControl owns the complete scheduler layout: seven stable weekly
+        # slots plus one reusable quick-clean slot.  Do not carry old one-shot
+        # or foreign slots forward, otherwise the X10's ten persistent slots
+        # eventually fill up and a newly written quick clean does not run.
+        if not parsed or parsed["task_id"] not in weekly_task_ids:
             continue
-
         kept_entries.append(entry)
 
     kept_entries.append(new_entry)
     new_scheduler = ";".join(kept_entries)
 
     publish("scheduler/write_candidate", new_scheduler, retain=False, force=True)
-    result = set_property(8, 2, new_scheduler)
+    result = ensure_miio_success(set_property(8, 2, new_scheduler), "quick clean scheduler")
     publish("scheduler/write_result", result, retain=False, force=True)
 
     time.sleep(1)
@@ -905,6 +1277,33 @@ def watch_room_clean():
         )
         active_room_clean = None
     else:
+        if str(active_room_clean.get("days")) == "0000000" and not active_room_clean.get("direct_start_sent"):
+            try:
+                hour, minute = map(int, str(active_room_clean.get("start_time")).split(":"))
+                now_local = datetime.now()
+                due_minutes = hour * 60 + minute
+                now_minutes = now_local.hour * 60 + now_local.minute
+                overdue_minutes = (now_minutes - due_minutes) % (24 * 60)
+                if overdue_minutes <= 10:
+                    requested_map_id = int(active_room_clean.get("map_id"))
+                    _, map_item = resolve_select_map_id(requested_map_id)
+                    activation_map_id = get_map_id(map_item) if map_item else requested_map_id
+                    action_payload = json.dumps({"sm": {}, "mapid": activation_map_id}, separators=(",", ":"))
+                    ensure_miio_success(
+                        call_action_with_params(
+                            CONFIG["set_map_siid"],
+                            CONFIG["set_map_aiid"],
+                            [{"piid": 4, "value": action_payload}],
+                        ),
+                        "quick clean map select",
+                    )
+                    time.sleep(2)
+                    ensure_miio_success(call_action(2, 1), "quick clean direct start")
+                    active_room_clean["direct_start_sent"] = True
+                    active_room_clean["direct_start_ts"] = int(time.time())
+                    publish_room_clean_status("direct_start_sent", {"task": task, "active": active_room_clean})
+            except Exception as e:
+                publish("error", {"source": "quick_clean_direct_start", "error": str(e)}, retain=False)
         publish_room_clean_status(
             "active",
             {
@@ -948,6 +1347,11 @@ def read_status():
     publish("suction", suction)
     publish("water_level", water_level)
     publish("bridge/last_seen", int(time.time()))
+    if valid_status_sample(robot_state, battery):
+        mark_progress("status")
+
+    if robot_state in (6, "6") or charge_status in (1, "1"):
+        publish_robot_at_dock()
 
     get_map_object()
 
@@ -969,16 +1373,15 @@ def check_map_update():
 
     if md5 != last_map_md5:
         print(f"Map md5 változott: {last_map_md5} -> {md5}")
-        last_map_md5 = md5
-
         try:
-            refresh_maps()
+            if refresh_maps() is not None:
+                last_map_md5 = md5
         except Exception as e:
             publish("error", {"source": "map_refresh", "error": str(e)}, retain=False)
 
 
 def handle_room_clean(payload):
-    global active_room_clean
+    global active_room_clean, live_alignment_map_id, last_live_robot_time
 
     try:
         data = json.loads(payload) if payload else {}
@@ -986,6 +1389,9 @@ def handle_room_clean(payload):
         data = {"segments": payload}
 
     map_id = data.get("map_id", 3)
+    live_alignment_map_id = int(map_id)
+    last_live_robot_time = None
+    print(f"Live map alignment explicitly set to saved map {live_alignment_map_id} for room clean")
     segments = data.get("segments") or data.get("segment_id") or data.get("segment")
 
     if segments is None:
@@ -1013,6 +1419,7 @@ def handle_room_clean(payload):
         suction=suction,
         clean_param=clean_param,
     )
+    arm_live_tracking((int(delay_min) * 60) + 600)
 
     active_room_clean = {
         "task_id": CONFIG["room_clean_task_id"],
@@ -1039,6 +1446,7 @@ def handle_room_clean(payload):
 
 
 def handle_schedule_clean(payload):
+    global active_room_clean, live_alignment_map_id, last_live_robot_time
     try:
         data = json.loads(payload) if payload else {}
     except Exception:
@@ -1076,6 +1484,11 @@ def handle_schedule_clean(payload):
         suction=suction,
         clean_param=clean_param,
     )
+    if str(days) == "0000000":
+        live_alignment_map_id = int(map_id)
+        last_live_robot_time = None
+        print(f"Live map alignment explicitly set to saved map {live_alignment_map_id} for quick clean")
+        arm_live_tracking(900)
 
     request = {
         "task_id": CONFIG["room_clean_task_id"],
@@ -1090,6 +1503,7 @@ def handle_schedule_clean(payload):
         "water_level": clean_param,
         "created_ts": int(time.time()),
     }
+    active_room_clean = request if str(days) == "0000000" else None
 
     publish("room_clean/request", request, retain=False, force=True)
     publish_room_clean_status("scheduled", {"active": request, "result": result})
@@ -1128,7 +1542,8 @@ def handle_schedule_clean_week(payload):
             "result": result,
         },
     )
-    publish_command_result("schedule_clean_week", True, "weekly clean schedule written", result)
+    publish_command_result("schedule_clean_week", True, "weekly clean schedule written",
+                           {**result, "hc_execution_id": data.get("hc_execution_id")})
 
 
 def parse_command_payload(payload):
@@ -1153,6 +1568,7 @@ def command_int(payload, key="value"):
 
 
 def handle_select_map(payload):
+    global live_alignment_map_id, last_live_robot_time
     requested_map_id = command_int(payload, "map_id")
     saved_map_id, map_item = resolve_select_map_id(requested_map_id)
     header_map_id = get_map_id(map_item) if map_item else None
@@ -1168,6 +1584,9 @@ def handle_select_map(payload):
         ),
         "select map",
     )
+    live_alignment_map_id = int(activation_map_id)
+    last_live_robot_time = None
+    print(f"Live map alignment explicitly switched to saved map {live_alignment_map_id}")
     publish("map/selected_request", {
         "map_id": requested_map_id,
         "saved_map_id": saved_map_id,
@@ -1233,6 +1652,7 @@ def wait_for_map_object_change(previous_md5, activation_map_id, timeout_sec=20):
 
 
 def handle_command(command, payload):
+    global active_room_clean
     print(f"Command: {command} payload={payload}")
 
     if command == "start":
@@ -1240,6 +1660,10 @@ def handle_command(command, payload):
         publish_command_result(command, True, "start sent")
 
     elif command == "stop":
+        # Stop also withdraws HC's local delayed direct-start fallback. Saved robot
+        # schedules remain a separate, explicit scheduling operation.
+        active_room_clean = None
+        publish_room_clean_status("finished_or_cancelled", {"active": None, "reason": "stop"})
         call_action(2, 2)
         publish_command_result(command, True, "stop sent")
 
@@ -1322,10 +1746,18 @@ def handle_command(command, payload):
 
 def on_connect(client, userdata, flags, rc):
     print("MQTT connected:", rc)
+    if command_dispatcher is not None:
+        command_dispatcher.set_online(rc == 0)
+    if rc != 0:
+        return
     client.subscribe(topic("command/#"))
-    publish("bridge/online", 1)
-    publish("bridge/status", "online")
-    publish("bridge/last_seen", int(time.time()))
+    # connect_async may have cached an unsuccessful pre-CONNACK publish.
+    # Always replace the retained LWT after a successful connection.
+    publish("bridge/online", 1, force=True)
+    publish("bridge/status", "online", force=True)
+    publish("bridge/last_seen", int(time.time()), force=True)
+    if not active_room_clean:
+        publish_room_clean_status("idle", {"active": None})
 
 
 def on_message(client, userdata, msg):
@@ -1333,6 +1765,8 @@ def on_message(client, userdata, msg):
     try:
         if msg.retain:
             print(f"Ignored retained command: {msg.topic}")
+            publish_command_result(msg.topic.rsplit("/", 1)[-1], False,
+                "command rejected", {"code": "retained"})
             return
 
         prefix = topic("command/")
@@ -1341,37 +1775,86 @@ def on_message(client, userdata, msg):
             return
 
         command = msg.topic.replace(prefix, "", 1)
+        if command not in COMMAND_NAMES:
+            publish_command_result(command, False, "unknown command")
+            return
+        if command_dispatcher is None:
+            publish_command_result(command, False, "command rejected", {"code": "offline"})
+            return
+        if len(msg.payload) > command_dispatcher.max_payload:
+            publish_command_result(command, False, "command rejected", {"code": "payload_too_large"})
+            return
         payload = msg.payload.decode("utf-8").strip()
-
-        threading.Thread(
-            target=run_command_worker,
-            args=(command, payload),
-            name=f"x10-command-{command}",
-            daemon=True,
-        ).start()
+        command_dispatcher.submit("robot", (command, payload), size=len(msg.payload),
+            priority=command == "stop",
+            cancellable=command not in {"status", "read_scheduler", "check_map", "refresh_map"})
 
     except Exception as e:
         publish("error", {"source": "mqtt_message", "error": str(e)}, retain=False)
         publish_command_result(command, False, str(e))
 
 
-def run_command_worker(command, payload):
+def on_disconnect(client, userdata, rc, properties=None):
+    if command_dispatcher is not None:
+        command_dispatcher.set_online(False)
+
+
+def run_command_worker(item):
+    command, payload = item.payload
     try:
         with command_lock:
-            handle_command(command, payload)
+            item.check()
+            command_context.current = item
+            if command == "_watch_room_clean":
+                watch_room_clean()
+            else:
+                handle_command(command, payload)
+    except CommandRejected:
+        raise
     except Exception as e:
         publish("error", {"source": "command_worker", "command": command, "error": str(e)}, retain=False)
+        if command in {"room_clean", "schedule_clean"}:
+            publish_room_clean_status("error", {"active": None, "error": str(e)})
         publish_command_result(command, False, str(e))
+    finally:
+        command_context.current = None
+
+
+def reject_queued_command(item, code):
+    command, payload = item.payload
+    publish_command_result(command, False, "command rejected", {"code": code})
+
+
+def enqueue_room_watch():
+    if command_dispatcher is None or not active_room_clean:
+        return False
+    state = command_dispatcher.snapshot()
+    # Periodic observations wait for an idle owner, rather than accumulating
+    # automatic start work while an external command is slow.
+    if not state["online"] or state["pending"] or state["in_flight"]:
+        return False
+    return command_dispatcher.submit("robot", ("_watch_room_clean", ""), size=0)
+
+
+bridge_health = WorkerHealth(maximum=300)
 
 
 def main():
-    global last_status_poll, last_map_poll, last_scheduler_watch
+    global last_status_poll, last_map_poll, last_scheduler_watch, last_live_map_poll, progress_watchdog, command_dispatcher
+
+    command_dispatcher = CommandDispatcher.configured(run_command_worker,
+        reject_queued_command, name="x10-command-worker", prefix="X10", default_max_age=180)
+    command_dispatcher.start()
+    bridge_health.start(lambda: {'connected': client.is_connected(),
+        'commands': command_dispatcher.snapshot(),
+        'configured': bool(CONFIG['robot_ip'] and CONFIG['robot_token'])})
 
     client.on_connect = on_connect
     client.on_message = on_message
+    client.on_disconnect = on_disconnect
     client.will_set(topic("bridge/online"), "0", retain=True)
 
-    client.connect(CONFIG["mqtt_host"], CONFIG["mqtt_port"], 60)
+    client.connect_async(CONFIG["mqtt_host"], CONFIG["mqtt_port"], 60)
     client.loop_start()
 
     publish("bridge/online", 1)
@@ -1395,7 +1878,18 @@ def main():
             publish("bridge/last_seen", int(time.time()), force=True)
             time.sleep(60)
 
+    progress_watchdog = ProgressWatchdog(config.WATCHDOG_TIMEOUT_SEC)
+    threading.Thread(target=watchdog_worker, name="x10-watchdog", daemon=True).start()
     publish("error", {}, retain=True, force=True)
+    try:
+        read_scheduler()
+    except Exception as e:
+        publish(
+            "error",
+            {"source": "scheduler_initial_read", "error": str(e)},
+            retain=False,
+        )
+    threading.Thread(target=live_map_worker, name="x10-live-map", daemon=True).start()
 
     while True:
         try:
@@ -1409,15 +1903,23 @@ def main():
             if now - last_status_poll >= poll_sec:
                 status = read_status()
                 last_status_poll = now
+                mark_progress("main")
                 is_cleaning = status["state"] in (1, 5, 12)
 
-            if is_cleaning and now - last_map_poll >= CONFIG["map_check_cleaning_sec"]:
+            map_check_sec = (
+                CONFIG["map_check_cleaning_sec"]
+                if is_cleaning
+                else CONFIG["map_check_idle_sec"]
+            )
+            if now - last_map_poll >= map_check_sec:
                 check_map_update()
                 last_map_poll = now
+                mark_progress("main")
 
             if active_room_clean and now - last_scheduler_watch >= CONFIG["scheduler_watch_sec"]:
-                watch_room_clean()
-                last_scheduler_watch = now
+                if enqueue_room_watch():
+                    last_scheduler_watch = now
+                mark_progress("main")
 
             capture_tick()
 
@@ -1426,7 +1928,16 @@ def main():
         except Exception as e:
             publish("error", {"source": "main_loop", "error": str(e)}, retain=False)
             time.sleep(10)
+        finally:
+            mark_progress("main")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        bridge_health.close()
+        if command_dispatcher is not None:
+            command_dispatcher.close()
+        client.loop_stop()
+        client.disconnect()

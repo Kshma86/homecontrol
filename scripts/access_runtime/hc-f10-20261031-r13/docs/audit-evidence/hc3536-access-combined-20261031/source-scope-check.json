@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "candidate_images_rebuilt": [
+    "backend",
+    "hc_ingest",
+    "homecontrol-tuya-poller",
+    "homecontrol-xiaomi-x10",
+    "homecontrol-gree-climate",
+    "homecontrol-ha-growatt-poller",
+    "frontend"
+  ],
+  "five_bridge_application_sources_unchanged": [
+    "hc_ingest",
+    "homecontrol-tuya-poller",
+    "homecontrol-xiaomi-x10",
+    "homecontrol-gree-climate",
+    "homecontrol-ha-growatt-poller"
+  ],
+  "systemd_units_unchanged_from_vm_checked_candidate": true,
+  "syntax_checks_passed": true
+}

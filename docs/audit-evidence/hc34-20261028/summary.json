@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-28",
+  "checked_epoch": 1793221797.765781,
+  "audit_point": "HC-34",
+  "status": "verified locally; r9 prepared, not deployed",
+  "partial_audit_point": "HC-23 ingest version/image/health only; global point remains open",
+  "release": "hc-ingest-20261028-r9",
+  "ingest_image": "sha256:47b7aad02fe45cc5fd40a0f3a34b90b8bc7883ddb0ef5f8052d281b0cb5d8503",
+  "tests": {
+    "unit_regression": 52,
+    "postgres_mqtt": 15,
+    "handover": 14,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "preflight": {
+    "phase": "release",
+    "ready_to_apply": true,
+    "blockers": [],
+    "migration_pending": true,
+    "services_changed": [
+      "hc_ingest"
+    ],
+    "preserved_services": 8,
+    "production_changed": false
+  },
+  "full_size_migration": {
+    "rows": 6840083,
+    "old_content_hash": "-9292514374540360387490",
+    "dump_sha256": "39c3a2131fc4b6503a1a2ab62fa317222e13d0c6a4b5c61bd1b4b8dfd764fabc",
+    "owners_acls_restored": true,
+    "network": "none",
+    "migration_seconds": 3.796077638864517,
+    "blocked_lock_seconds": 5.086402907036245,
+    "lock_timeout_failed_without_schema_change": true,
+    "idempotent_reapply": true,
+    "historical_rows_unchanged": true,
+    "operator_config_and_safety_unchanged": true,
+    "production_changed": false
+  },
+  "source_rule_contract_verified": true,
+  "live_production_unchanged": true,
+  "new_migration_applied_to_production": false,
+  "remaining_out_of_scope": [
+    "HC-12",
+    "HC-32",
+    "global HC-23",
+    "HC-43"
+  ]
+}

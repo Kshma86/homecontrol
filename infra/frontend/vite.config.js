@@ -6,10 +6,12 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 3000,
+    allowedHosts: ["hc.local"],
     proxy: {
       "/api": {
         target: "http://backend:5000",
         changeOrigin: true,
+        ws: true,
       },
       "/health": {
         target: "http://backend:5000",

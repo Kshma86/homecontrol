@@ -1,0 +1,3434 @@
+{
+  "cutoff": "2026-10-31",
+  "catalog_records": 26146,
+  "matches": [],
+  "unknown": [
+    {
+      "id": "OSV-2022-1074",
+      "aliases": [],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "Invalid-free in _dealloc",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "bb2016794f1f9bf9e4726727080e1beb789823fb"
+            },
+            {
+              "fixed": "f7363c1091c70356d92e56abfca6b65bef9e7b26"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=52587"
+        }
+      ]
+    },
+    {
+      "id": "OSV-2022-715",
+      "aliases": [],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "Segv on unknown address in jpeg_read_scanlines",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "c58d2817bc891c26e6b8098b8909c0eb2e7ce61b"
+            },
+            {
+              "fixed": "9887544fafcd13cc8afcfa0c6d0f2e6facc1a8b8"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=50217"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2014-10",
+      "aliases": [
+        "CVE-2014-3589",
+        "GHSA-cfmr-38g9-f2h7"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "205e056f8f9b06ed7b925cf8aa0874bc4aaf8a7d"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.3.2"
+            },
+            {
+              "introduced": "2.5"
+            },
+            {
+              "fixed": "2.5.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://pypi.python.org/pypi/Pillow/2.5.2"
+        },
+        {
+          "type": "WEB",
+          "url": "https://pypi.python.org/pypi/Pillow/2.3.2"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://www.debian.org/security/2014/dsa-3009"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/205e056f8f9b06ed7b925cf8aa0874bc4aaf8a7d"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-updates/2015-04/msg00056.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://secunia.com/advisories/59825"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-cfmr-38g9-f2h7"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2014-22",
+      "aliases": [
+        "CVE-2014-1932",
+        "GHSA-x895-2wrm-hvp7"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-imaging/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "4e9f367dfd3f04c8f5d23f7f759ec12782e10ee7"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.3.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "http://www.openwall.com/lists/oss-security/2014/02/11/1"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://www.ubuntu.com/usn/USN-2168-1"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-imaging/Pillow/commit/4e9f367dfd3f04c8f5d23f7f759ec12782e10ee7"
+        },
+        {
+          "type": "WEB",
+          "url": "https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=737059"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-updates/2014-05/msg00002.html"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.securityfocus.com/bid/65511"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://security.gentoo.org/glsa/201612-52"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-x895-2wrm-hvp7"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2014-23",
+      "aliases": [
+        "CVE-2014-1933",
+        "GHSA-r854-96gq-rfg3"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-imaging/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "4e9f367dfd3f04c8f5d23f7f759ec12782e10ee7"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.3.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "http://www.ubuntu.com/usn/USN-2168-1"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.openwall.com/lists/oss-security/2014/02/10/15"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.openwall.com/lists/oss-security/2014/02/11/1"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-imaging/Pillow/commit/4e9f367dfd3f04c8f5d23f7f759ec12782e10ee7"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-updates/2014-05/msg00002.html"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.securityfocus.com/bid/65513"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://security.gentoo.org/glsa/201612-52"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-r854-96gq-rfg3"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2014-82",
+      "aliases": [
+        "CVE-2014-0012",
+        "GHSA-fqh9-2qgg-h84h"
+      ],
+      "package": "jinja2",
+      "version": "3.1.6",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/mitsuhiko/jinja2",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "acb672b6a179567632e032f547582f30fa2f4aa7"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.7.3"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://bugzilla.redhat.com/show_bug.cgi?id=1051421"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/mitsuhiko/jinja2/pull/292"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/mitsuhiko/jinja2/commit/acb672b6a179567632e032f547582f30fa2f4aa7"
+        },
+        {
+          "type": "WEB",
+          "url": "http://seclists.org/oss-sec/2014/q1/73"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/mitsuhiko/jinja2/pull/296"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://secunia.com/advisories/60738"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.gentoo.org/security/en/glsa/glsa-201408-13.xml"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://secunia.com/advisories/56328"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-fqh9-2qgg-h84h"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2015-17",
+      "aliases": [
+        "CVE-2015-2296",
+        "GHSA-pg2w-x9wp-vw92"
+      ],
+      "package": "requests",
+      "version": "2.34.2",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/kennethreitz/requests",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "3bd8afbff29e50b38f889b2f688785a669b9aafc"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "2.1.0"
+            },
+            {
+              "fixed": "2.6.0"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "http://www.openwall.com/lists/oss-security/2015/03/15/1"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://www.ubuntu.com/usn/USN-2531-1"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.openwall.com/lists/oss-security/2015/03/14/4"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/kennethreitz/requests/commit/3bd8afbff29e50b38f889b2f688785a669b9aafc"
+        },
+        {
+          "type": "WEB",
+          "url": "https://warehouse.python.org/project/requests/2.6.0/"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.fedoraproject.org/pipermail/package-announce/2015-March/153594.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://advisories.mageia.org/MGASA-2015-0120.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://www.mandriva.com/security/advisories?name=MDVSA-2015:133"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-pg2w-x9wp-vw92"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2016-19",
+      "aliases": [
+        "CVE-2016-2533",
+        "GHSA-3c5c-7235-994j"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow#diff-8ff6909c159597e22288ad818938fd6b",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "5bdf54b5a76b54fb00bd05f2d733e0a4173eefc9"
+            },
+            {
+              "fixed": "ae453aa18b66af54e7ff716f4ccb33adca60afd4"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "3.1.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "http://www.debian.org/security/2016/dsa-3499"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/5bdf54b5a76b54fb00bd05f2d733e0a4173eefc9#diff-8ff6909c159597e22288ad818938fd6b"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.openwall.com/lists/oss-security/2016/02/22/2"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.openwall.com/lists/oss-security/2016/02/02/5"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/blob/c3cb690fed5d4bf0c45576759de55d054916c165/CHANGES.rst"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/ae453aa18b66af54e7ff716f4ccb33adca60afd4#diff-8ff6909c159597e22288ad818938fd6b"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/pull/1706"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.oracle.com/technetwork/topics/security/bulletinjan2016-2867206.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://security.gentoo.org/glsa/201612-52"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-3c5c-7235-994j"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2016-5",
+      "aliases": [
+        "CVE-2016-0740",
+        "GHSA-hggx-3h72-49ww"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6dcbf5bd96b717c58d7b642949da8d323099928e"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "3.1.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "http://www.debian.org/security/2016/dsa-3499"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/6dcbf5bd96b717c58d7b642949da8d323099928e"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/blob/c3cb690fed5d4bf0c45576759de55d054916c165/CHANGES.rst"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://security.gentoo.org/glsa/201612-52"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-hggx-3h72-49ww"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2016-6",
+      "aliases": [
+        "CVE-2016-0775",
+        "GHSA-8xjv-v9xq-m5h9"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "893a40850c2d5da41537958e40569c029a6e127b"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "3.1.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "http://www.debian.org/security/2016/dsa-3499"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/893a40850c2d5da41537958e40569c029a6e127b"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/blob/c3cb690fed5d4bf0c45576759de55d054916c165/CHANGES.rst"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://security.gentoo.org/glsa/201612-52"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-8xjv-v9xq-m5h9"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2016-7",
+      "aliases": [
+        "CVE-2016-4009",
+        "GHSA-hvr8-466p-75rh"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "4e0d9b0b9740d258ade40cce248c93777362ac1e"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "3.1.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/4e0d9b0b9740d258ade40cce248c93777362ac1e"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/pull/1714"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/blob/c3cb690fed5d4bf0c45576759de55d054916c165/CHANGES.rst"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.securityfocus.com/bid/86064"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://security.gentoo.org/glsa/201612-52"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-hvr8-466p-75rh"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2017-8",
+      "aliases": [
+        "CVE-2016-9243",
+        "GHSA-q3cj-2r34-2cwc"
+      ],
+      "package": "cryptography",
+      "version": "50.0.0",
+      "components": [
+        "homecontrol-tuya-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pyca/cryptography",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "b924696b2e8731f39696584d12cceeb3aeb2d874"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1.5.3"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/WQ5G7KHKZC4SI23JE7277KZXM57GEQKT/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/U23KDR2M2N7W2ZSREG63BVW7D4VC6CIZ/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/5R2ZOBMPWDFFHUZ6QOZZY36A6H5CGJXL/"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/pyca/cryptography/issues/3211"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/commit/b924696b2e8731f39696584d12cceeb3aeb2d874"
+        },
+        {
+          "type": "WEB",
+          "url": "https://cryptography.io/en/latest/changelog"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://www.ubuntu.com/usn/USN-3138-1"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.securityfocus.com/bid/94216"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.openwall.com/lists/oss-security/2016/11/09/2"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-q3cj-2r34-2cwc"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2017-8",
+      "aliases": [
+        "CVE-2016-9243",
+        "GHSA-q3cj-2r34-2cwc"
+      ],
+      "package": "cryptography",
+      "version": "50.0.1",
+      "components": [
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pyca/cryptography",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "b924696b2e8731f39696584d12cceeb3aeb2d874"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1.5.3"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/WQ5G7KHKZC4SI23JE7277KZXM57GEQKT/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/U23KDR2M2N7W2ZSREG63BVW7D4VC6CIZ/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/5R2ZOBMPWDFFHUZ6QOZZY36A6H5CGJXL/"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/pyca/cryptography/issues/3211"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/commit/b924696b2e8731f39696584d12cceeb3aeb2d874"
+        },
+        {
+          "type": "WEB",
+          "url": "https://cryptography.io/en/latest/changelog"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "http://www.ubuntu.com/usn/USN-3138-1"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.securityfocus.com/bid/94216"
+        },
+        {
+          "type": "WEB",
+          "url": "http://www.openwall.com/lists/oss-security/2016/11/09/2"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-q3cj-2r34-2cwc"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2018-28",
+      "aliases": [
+        "CVE-2018-18074",
+        "GHSA-x84v-xcm2-53pg"
+      ],
+      "package": "requests",
+      "version": "2.34.2",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/requests/requests",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "c45d7c49ea75133e52ab22a8e9e13173938e36ff"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.20.0"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/requests/requests/pull/4718"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/requests/requests/issues/4716"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/requests/requests/commit/c45d7c49ea75133e52ab22a8e9e13173938e36ff"
+        },
+        {
+          "type": "WEB",
+          "url": "https://bugs.debian.org/910766"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/3790-1/"
+        },
+        {
+          "type": "WEB",
+          "url": "http://docs.python-requests.org/en/master/community/updates/#release-and-version-history"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/3790-2/"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-security-announce/2019-07/msg00024.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2019:2035"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-x84v-xcm2-53pg"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2019-140",
+      "aliases": [
+        "CVE-2019-14806",
+        "GHSA-gq9m-qvpx-68hc"
+      ],
+      "package": "werkzeug",
+      "version": "3.1.9",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pallets/werkzeug",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "00bc43b1672e662e5e3b8cecd79e67fc968fa246"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "0.15.3"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "FIX",
+          "url": "https://github.com/pallets/werkzeug/commit/00bc43b1672e662e5e3b8cecd79e67fc968fa246"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pallets/werkzeug/blob/7fef41b120327d3912fbe12fb64f1951496fcf3e/src/werkzeug/debug/__init__.py#L168"
+        },
+        {
+          "type": "ARTICLE",
+          "url": "https://palletsprojects.com/blog/werkzeug-0-15-3-released/"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-security-announce/2019-09/msg00034.html"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-security-announce/2019-09/msg00047.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-gq9m-qvpx-68hc"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2019-220",
+      "aliases": [
+        "CVE-2016-10745",
+        "GHSA-hj2j-77xm-mc5v"
+      ],
+      "package": "jinja2",
+      "version": "3.1.6",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pallets/jinja",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "9b53045c34e61013dc8f09b7e52a555fa16bed16"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.8.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ARTICLE",
+          "url": "https://palletsprojects.com/blog/jinja-281-released/"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pallets/jinja/commit/9b53045c34e61013dc8f09b7e52a555fa16bed16"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2019:1022"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-security-announce/2019-05/msg00030.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2019:1237"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2019:1260"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4011-1/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4011-2/"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-security-announce/2019-06/msg00064.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2019:3964"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2019:4062"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-hj2j-77xm-mc5v"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2020-148",
+      "aliases": [
+        "CVE-2020-26137",
+        "GHSA-wqvq-5m8c-6g24"
+      ],
+      "package": "urllib3",
+      "version": "2.8.0",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/urllib3/urllib3",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1dd69c5c5982fae7c87a620d487c2ebf7a6b436b"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1.25.9"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://bugs.python.org/issue39603"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/commit/1dd69c5c5982fae7c87a620d487c2ebf7a6b436b"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/urllib3/urllib3/pull/1800"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4570-1/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-wqvq-5m8c-6g24"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2020-149",
+      "aliases": [
+        "CVE-2020-7212",
+        "GHSA-hmv2-79q8-fv6g"
+      ],
+      "package": "urllib3",
+      "version": "2.8.0",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/urllib3/urllib3",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "a74c9cfbaed9f811e7563cfc3dce894928e0221a"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "1.25.2"
+            },
+            {
+              "fixed": "1.25.8"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/urllib3/urllib3/blob/master/CHANGES.rst"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://pypi.org/project/urllib3/1.25.8/"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/commit/a74c9cfbaed9f811e7563cfc3dce894928e0221a"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-hmv2-79q8-fv6g"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2020-173",
+      "aliases": [
+        "CVE-2019-20916",
+        "GHSA-gpvv-69j7-gwj8"
+      ],
+      "package": "pip",
+      "version": "26.2.2",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-ingest",
+        "homecontrol-tuya-poller",
+        "homecontrol-gree-climate",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/gzpan123/pip",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "a4c735b14a62f9cb864533808ac63936704f2ace"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "19.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://github.com/pypa/pip/issues/6413"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/gzpan123/pip/commit/a4c735b14a62f9cb864533808ac63936704f2ace"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pypa/pip/compare/19.1.1...19.2"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.debian.org/debian-lts-announce/2020/09/msg00010.html"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-security-announce/2020-10/msg00005.html"
+        },
+        {
+          "type": "WEB",
+          "url": "http://lists.opensuse.org/opensuse-security-announce/2020-10/msg00010.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-gpvv-69j7-gwj8"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2020-77",
+      "aliases": [
+        "BIT-pillow-2020-10378",
+        "CVE-2020-10378",
+        "GHSA-3xv8-3j54-hgrp"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6a83e4324738bb0452fbe8074a995b1c73f08de7"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "7.1.0"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://pillow.readthedocs.io/en/stable/releasenotes/7.1.0.html"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/commits/master/src/libImaging"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/6a83e4324738bb0452fbe8074a995b1c73f08de7#diff-9478f2787e3ae9668a15123b165c23ac"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/pull/4538"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/HOKHNWV2VS5GESY7IBD237E7C6T3I427/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/BEBCPE4F2VHTIT6EZA2YZQZLPVDEBJGD/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4430-1/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4430-2/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-3xv8-3j54-hgrp"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2020-78",
+      "aliases": [
+        "BIT-pillow-2020-10379",
+        "CVE-2020-10379",
+        "GHSA-8843-m7mw-mxqm"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "46f4a349b88915787fea3fb91348bb1665831bbb"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "7.1.0"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://pillow.readthedocs.io/en/stable/releasenotes/7.1.0.html"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/commits/master/src/libImaging"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/46f4a349b88915787fea3fb91348bb1665831bbb#diff-9478f2787e3ae9668a15123b165c23ac"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/pull/4538"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/HOKHNWV2VS5GESY7IBD237E7C6T3I427/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/BEBCPE4F2VHTIT6EZA2YZQZLPVDEBJGD/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4430-2/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-8843-m7mw-mxqm"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2020-81",
+      "aliases": [
+        "BIT-pillow-2020-5310",
+        "CVE-2020-5310",
+        "GHSA-vcqg-3p29-xw73"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "4e2def2539ec13e53a82e06c4b3daf00454100c4"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6.2.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://pillow.readthedocs.io/en/stable/releasenotes/6.2.2.html"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/4e2def2539ec13e53a82e06c4b3daf00454100c4"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/2MMU3WT2X64GS5WHDPKKC2WZA7UIIQ3A/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4272-1/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/3DUMIBUYGJRAVJCTFUWBRLVQKOUTVX5P/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-vcqg-3p29-xw73"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2020-82",
+      "aliases": [
+        "BIT-pillow-2020-5311",
+        "CVE-2020-5311",
+        "GHSA-r7rm-8j6h-r933"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "a79b65c47c7dc6fe623aadf09aa6192fc54548f3"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6.2.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://pillow.readthedocs.io/en/stable/releasenotes/6.2.2.html"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/a79b65c47c7dc6fe623aadf09aa6192fc54548f3"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/2MMU3WT2X64GS5WHDPKKC2WZA7UIIQ3A/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4272-1/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2020:0566"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/3DUMIBUYGJRAVJCTFUWBRLVQKOUTVX5P/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://www.debian.org/security/2020/dsa-4631"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2020:0580"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-r7rm-8j6h-r933"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2020-83",
+      "aliases": [
+        "BIT-pillow-2020-5312",
+        "CVE-2020-5312",
+        "GHSA-p49h-hjvm-jg3h"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "93b22b846e0269ee9594ff71a72bec02d2bea8fd"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6.2.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://pillow.readthedocs.io/en/stable/releasenotes/6.2.2.html"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/93b22b846e0269ee9594ff71a72bec02d2bea8fd"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/2MMU3WT2X64GS5WHDPKKC2WZA7UIIQ3A/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4272-1/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2020:0566"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/3DUMIBUYGJRAVJCTFUWBRLVQKOUTVX5P/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://www.debian.org/security/2020/dsa-4631"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2020:0580"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2020:0578"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2020:0683"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2020:0681"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://access.redhat.com/errata/RHSA-2020:0694"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-p49h-hjvm-jg3h"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2020-84",
+      "aliases": [
+        "BIT-pillow-2020-5313",
+        "CVE-2020-5313",
+        "GHSA-hj69-c76v-86wr"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "a09acd0decd8a87ccce939d5ff65dab59e7d365b"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6.2.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/a09acd0decd8a87ccce939d5ff65dab59e7d365b"
+        },
+        {
+          "type": "WEB",
+          "url": "https://pillow.readthedocs.io/en/stable/releasenotes/6.2.2.html"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/2MMU3WT2X64GS5WHDPKKC2WZA7UIIQ3A/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://usn.ubuntu.com/4272-1/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/3DUMIBUYGJRAVJCTFUWBRLVQKOUTVX5P/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://www.debian.org/security/2020/dsa-4631"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-hj69-c76v-86wr"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2021-108",
+      "aliases": [
+        "CVE-2021-33503",
+        "GHSA-q2q7-5pp4-w6pg"
+      ],
+      "package": "urllib3",
+      "version": "2.8.0",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/urllib3/urllib3",
+          "events": [
+            {
+              "introduced": "5b047b645f5f93900d5e2fc31230848c25eb1f5f"
+            },
+            {
+              "fixed": "2d4a3fee6de2fa45eb82169361918f759269b4ec"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "1.25.4"
+            },
+            {
+              "fixed": "1.26.5"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-q2q7-5pp4-w6pg"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/commit/2d4a3fee6de2fa45eb82169361918f759269b4ec"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2021-317",
+      "aliases": [
+        "BIT-pillow-2021-23437",
+        "CVE-2021-23437",
+        "GHSA-98vv-pw6r-q6q4",
+        "SNYK-PYTHON-PILLOW-1319443"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "9e08eb8f78fdfd2f476e1b20b7cf38683754866b"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "8.3.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://pillow.readthedocs.io/en/stable/releasenotes/8.3.2.html"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/9e08eb8f78fdfd2f476e1b20b7cf38683754866b"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://snyk.io/vuln/SNYK-PYTHON-PILLOW-1319443"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-98vv-pw6r-q6q4"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2021-59",
+      "aliases": [
+        "CVE-2021-28363",
+        "GHSA-5phf-pp7p-vc2r"
+      ],
+      "package": "urllib3",
+      "version": "2.8.0",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/urllib3/urllib3",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "8d65ea1ecf6e2cdc27d42124e587c1b83a3118b0"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "1.26.0"
+            },
+            {
+              "fixed": "1.26.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/urllib3/urllib3/commits/main"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://pypi.org/project/urllib3/1.26.4/"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/commit/8d65ea1ecf6e2cdc27d42124e587c1b83a3118b0"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-5phf-pp7p-vc2r"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2022-203",
+      "aliases": [
+        "CVE-2022-29361"
+      ],
+      "package": "werkzeug",
+      "version": "3.1.9",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pallets/werkzeug",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "9a3a981d70d2e9ec3344b5192f86fcaf3210cd85"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.1.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "FIX",
+          "url": "https://github.com/pallets/werkzeug/commit/9a3a981d70d2e9ec3344b5192f86fcaf3210cd85"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/pallets/werkzeug/issues/2420"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2022-42979",
+      "aliases": [
+        "BIT-pillow-2022-45198",
+        "CVE-2022-45198",
+        "GHSA-m2vv-5vj5-2hm7"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "11918eac0628ec8ac0812670d9838361ead2d6a4"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "9.2.0"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://bugs.gentoo.org/855683"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/11918eac0628ec8ac0812670d9838361ead2d6a4"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/pull/6402"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/releases/tag/9.2.0"
+        },
+        {
+          "type": "WEB",
+          "url": "https://cwe.mitre.org/data/definitions/409.html"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-m2vv-5vj5-2hm7"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2022-42980",
+      "aliases": [
+        "BIT-pillow-2022-45199",
+        "CVE-2022-45199",
+        "GHSA-q4mp-jvh2-76fj"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2444cddab2f83f28687c7c20871574acbb6dbcf3"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "9.2.0"
+            },
+            {
+              "fixed": "9.3.0"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/pull/6700"
+        },
+        {
+          "type": "WEB",
+          "url": "https://bugs.gentoo.org/878769"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/releases/tag/9.3.0"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/2444cddab2f83f28687c7c20871574acbb6dbcf3"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-q4mp-jvh2-76fj"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2022-43012",
+      "aliases": [
+        "BIT-setuptools-2022-40897",
+        "CVE-2022-40897",
+        "GHSA-r9hx-vwmv-q579"
+      ],
+      "package": "setuptools",
+      "version": "84.2.1",
+      "components": [
+        "homecontrol-ingest",
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pypa/setuptools",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "43a9c9bfa6aa626ec2a22540bea28d2ca77964be"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "65.5.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/pypa/setuptools/blob/fe8a98e696241487ba6ac9f91faa38ade939ec5d/setuptools/package_index.py#L200"
+        },
+        {
+          "type": "WEB",
+          "url": "https://pyup.io/posts/pyup-discovers-redos-vulnerabilities-in-top-python-packages/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pypa/setuptools/compare/v65.5.0...v65.5.1"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pypa/setuptools/commit/43a9c9bfa6aa626ec2a22540bea28d2ca77964be"
+        },
+        {
+          "type": "WEB",
+          "url": "https://pyup.io/vulnerabilities/CVE-2022-40897/52495/"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-r9hx-vwmv-q579"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-11",
+      "aliases": [
+        "CVE-2023-23931",
+        "GHSA-w7pp-m8wf-vj6r"
+      ],
+      "package": "cryptography",
+      "version": "50.0.0",
+      "components": [
+        "homecontrol-tuya-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pyca/cryptography",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "94a50a9731f35405f0357fa5f3b177d46a726ab3"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "1.8"
+            },
+            {
+              "fixed": "39.0.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "EVIDENCE",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-w7pp-m8wf-vj6r"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-w7pp-m8wf-vj6r"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/pull/8230/commits/94a50a9731f35405f0357fa5f3b177d46a726ab3"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-11",
+      "aliases": [
+        "CVE-2023-23931",
+        "GHSA-w7pp-m8wf-vj6r"
+      ],
+      "package": "cryptography",
+      "version": "50.0.1",
+      "components": [
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pyca/cryptography",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "94a50a9731f35405f0357fa5f3b177d46a726ab3"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "1.8"
+            },
+            {
+              "fixed": "39.0.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "EVIDENCE",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-w7pp-m8wf-vj6r"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-w7pp-m8wf-vj6r"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/pull/8230/commits/94a50a9731f35405f0357fa5f3b177d46a726ab3"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-192",
+      "aliases": [
+        "CVE-2023-43804",
+        "GHSA-v845-jxx5-vc9f"
+      ],
+      "package": "urllib3",
+      "version": "2.8.0",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/urllib3/urllib3",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "644124ecd0b6e417c527191f866daa05a5a2056d"
+            },
+            {
+              "fixed": "01220354d389cd05474713f8c982d05c9b17aafb"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "2.0.0"
+            },
+            {
+              "fixed": "2.0.6"
+            },
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1.26.17"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/commit/644124ecd0b6e417c527191f866daa05a5a2056d"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-v845-jxx5-vc9f"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/commit/01220354d389cd05474713f8c982d05c9b17aafb"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.debian.org/debian-lts-announce/2023/10/msg00012.html"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-207",
+      "aliases": [
+        "CVE-2018-25091",
+        "GHSA-gwvm-45gx-3cf8"
+      ],
+      "package": "urllib3",
+      "version": "2.8.0",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/urllib3/urllib3",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "adb358f8e06865406d1f05e581a16cbea2136fbc"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1.24.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/compare/1.24.1...1.24.2"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/urllib3/urllib3/issues/1510"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/issues/1510"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/urllib3/urllib3/issues/1510"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/commit/adb358f8e06865406d1f05e581a16cbea2136fbc"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-gwvm-45gx-3cf8"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-212",
+      "aliases": [
+        "CVE-2023-45803",
+        "GHSA-g4mx-q9vg-27p4"
+      ],
+      "package": "urllib3",
+      "version": "2.8.0",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/urllib3/urllib3",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "4e98d57809dacab1cbe625fddeec1a290c478ea9"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "2.0.0"
+            },
+            {
+              "fixed": "2.0.7"
+            },
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1.26.18"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-g4mx-q9vg-27p4"
+        },
+        {
+          "type": "WEB",
+          "url": "https://www.rfc-editor.org/rfc/rfc9110.html#name-get"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/urllib3/urllib3/commit/4e98d57809dacab1cbe625fddeec1a290c478ea9"
+        },
+        {
+          "type": "ARTICLE",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/PPDPLM6UUMN55ESPQWJFLLIZY4ZKCNRX/"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-221",
+      "aliases": [
+        "CVE-2023-46136",
+        "GHSA-hrfv-mqp8-q5rw"
+      ],
+      "package": "werkzeug",
+      "version": "3.1.9",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pallets/werkzeug",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "f3c803b3ade485a45f12b6d6617595350c0f03e2"
+            },
+            {
+              "fixed": "f2300208d5e2a5076cbbb4c2aad71096fd040ef9"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.3.8"
+            },
+            {
+              "introduced": "3.0.0"
+            },
+            {
+              "fixed": "3.0.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "FIX",
+          "url": "https://github.com/pallets/werkzeug/commit/f3c803b3ade485a45f12b6d6617595350c0f03e2"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pallets/werkzeug/security/advisories/GHSA-hrfv-mqp8-q5rw"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-227",
+      "aliases": [
+        "BIT-pillow-2023-44271",
+        "CVE-2023-44271",
+        "GHSA-8ghj-p4vj-mr35"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/Pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1fe1bb49c452b0318cad12ea9d97c3bef188e9a7"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "10.0.0"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://devhub.checkmarx.com/cve-details/CVE-2023-44271/"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/pull/7244"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/1fe1bb49c452b0318cad12ea9d97c3bef188e9a7"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-8ghj-p4vj-mr35"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-254",
+      "aliases": [
+        "CVE-2023-49083",
+        "GHSA-jfhm-5ghh-2f97"
+      ],
+      "package": "cryptography",
+      "version": "50.0.0",
+      "components": [
+        "homecontrol-tuya-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pyca/cryptography",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "f09c261ca10a31fe41b1262306db7f8f1da0e48a"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "3.1"
+            },
+            {
+              "fixed": "41.0.6"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-jfhm-5ghh-2f97"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/pull/9926"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/commit/f09c261ca10a31fe41b1262306db7f8f1da0e48a"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/QMNTYMUGFJSDBYBU22FUYBHFRZODRKXV/"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-254",
+      "aliases": [
+        "CVE-2023-49083",
+        "GHSA-jfhm-5ghh-2f97"
+      ],
+      "package": "cryptography",
+      "version": "50.0.1",
+      "components": [
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pyca/cryptography",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "f09c261ca10a31fe41b1262306db7f8f1da0e48a"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "3.1"
+            },
+            {
+              "fixed": "41.0.6"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-jfhm-5ghh-2f97"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/pull/9926"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/commit/f09c261ca10a31fe41b1262306db7f8f1da0e48a"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/QMNTYMUGFJSDBYBU22FUYBHFRZODRKXV/"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-57",
+      "aliases": [
+        "CVE-2023-23934",
+        "GHSA-px8h-6qxv-m22q"
+      ],
+      "package": "werkzeug",
+      "version": "3.1.9",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pallets/werkzeug",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "cf275f42acad1b5950c50ffe8ef58fe62cdce028"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.2.3"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pallets/werkzeug/security/advisories/GHSA-px8h-6qxv-m22q"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pallets/werkzeug/commit/cf275f42acad1b5950c50ffe8ef58fe62cdce028"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pallets/werkzeug/releases/tag/2.2.3"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-58",
+      "aliases": [
+        "CVE-2023-25577",
+        "GHSA-xg9f-g7g7-2323"
+      ],
+      "package": "werkzeug",
+      "version": "3.1.9",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pallets/werkzeug",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "517cac5a804e8c4dc4ed038bb20dacd038e7a9f1"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.2.3"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "FIX",
+          "url": "https://github.com/pallets/werkzeug/commit/517cac5a804e8c4dc4ed038bb20dacd038e7a9f1"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pallets/werkzeug/releases/tag/2.2.3"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pallets/werkzeug/security/advisories/GHSA-xg9f-g7g7-2323"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-62",
+      "aliases": [
+        "CVE-2023-30861",
+        "GHSA-m2qf-hxjv-5gpq"
+      ],
+      "package": "flask",
+      "version": "3.1.3",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pallets/flask",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "70f906c51ce49c485f1d355703e9cc3386b1cc2b"
+            },
+            {
+              "fixed": "afd63b16170b7c047f5758eb910c416511e9c965"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "2.2.5"
+            },
+            {
+              "introduced": "2.3.0"
+            },
+            {
+              "fixed": "2.3.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "FIX",
+          "url": "https://github.com/pallets/flask/commit/70f906c51ce49c485f1d355703e9cc3386b1cc2b"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pallets/flask/releases/tag/2.3.2"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pallets/flask/releases/tag/2.2.5"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pallets/flask/security/advisories/GHSA-m2qf-hxjv-5gpq"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pallets/flask/commit/afd63b16170b7c047f5758eb910c416511e9c965"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2023-74",
+      "aliases": [
+        "CVE-2023-32681",
+        "GHSA-j8r2-6x86-q33q"
+      ],
+      "package": "requests",
+      "version": "2.34.2",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/psf/requests",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "74ea7cf7a6a27a4eeb2ae24e162bcc942a6706d5"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "2.3.0"
+            },
+            {
+              "fixed": "2.31.0"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/psf/requests/security/advisories/GHSA-j8r2-6x86-q33q"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/psf/requests/releases/tag/v2.31.0"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/psf/requests/commit/74ea7cf7a6a27a4eeb2ae24e162bcc942a6706d5"
+        },
+        {
+          "type": "WEB",
+          "url": "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/AW7HNFGYP44RT3DUDQXG2QT3OEV2PJ7Y/"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2024-225",
+      "aliases": [
+        "CVE-2024-26130",
+        "GHSA-6vqw-3v5j-54x4"
+      ],
+      "package": "cryptography",
+      "version": "50.0.0",
+      "components": [
+        "homecontrol-tuya-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pyca/cryptography",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "97d231672763cdb5959a3b191e692a362f1b9e55"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "38.0.0"
+            },
+            {
+              "fixed": "42.0.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-6vqw-3v5j-54x4"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/commit/97d231672763cdb5959a3b191e692a362f1b9e55"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/pull/10423"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/pyca/cryptography/pull/10423"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-6vqw-3v5j-54x4"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2024-225",
+      "aliases": [
+        "CVE-2024-26130",
+        "GHSA-6vqw-3v5j-54x4"
+      ],
+      "package": "cryptography",
+      "version": "50.0.1",
+      "components": [
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pyca/cryptography",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "97d231672763cdb5959a3b191e692a362f1b9e55"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "38.0.0"
+            },
+            {
+              "fixed": "42.0.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/pyca/cryptography/security/advisories/GHSA-6vqw-3v5j-54x4"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/commit/97d231672763cdb5959a3b191e692a362f1b9e55"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pyca/cryptography/pull/10423"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/pyca/cryptography/pull/10423"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-6vqw-3v5j-54x4"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2024-230",
+      "aliases": [
+        "CVE-2024-39689",
+        "GHSA-248v-346w-9cwc"
+      ],
+      "package": "certifi",
+      "version": "2026.10.18",
+      "components": [
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/certifi/python-certifi",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "bd8153872e9c6fc98f4023df9c2deaffea2fa463"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "2021.5.30"
+            },
+            {
+              "fixed": "2024.7.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/certifi/python-certifi/security/advisories/GHSA-248v-346w-9cwc"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://security.netapp.com/advisory/ntap-20241206-0001/"
+        },
+        {
+          "type": "ARTICLE",
+          "url": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/XpknYMPO8dI"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/certifi/python-certifi/commit/bd8153872e9c6fc98f4023df9c2deaffea2fa463"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-248v-346w-9cwc"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2024-60",
+      "aliases": [
+        "CVE-2024-3651",
+        "GHSA-jjg7-2v4v-x38h"
+      ],
+      "package": "idna",
+      "version": "3.19",
+      "components": [
+        "homecontrol-tuya-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/kjd/idna",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1d365e17e10d72d0b7876316fc7b9ca0eebdd38d"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0.1"
+            },
+            {
+              "fixed": "3.7"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "EVIDENCE",
+          "url": "https://huntr.com/bounties/93d78d07-d791-4b39-a845-cbfabc44aadb"
+        },
+        {
+          "type": "FIX",
+          "url": "https://huntr.com/bounties/93d78d07-d791-4b39-a845-cbfabc44aadb"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/kjd/idna/commit/1d365e17e10d72d0b7876316fc7b9ca0eebdd38d"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-jjg7-2v4v-x38h"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2024-60",
+      "aliases": [
+        "CVE-2024-3651",
+        "GHSA-jjg7-2v4v-x38h"
+      ],
+      "package": "idna",
+      "version": "3.20",
+      "components": [
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/kjd/idna",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1d365e17e10d72d0b7876316fc7b9ca0eebdd38d"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0.1"
+            },
+            {
+              "fixed": "3.7"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "EVIDENCE",
+          "url": "https://huntr.com/bounties/93d78d07-d791-4b39-a845-cbfabc44aadb"
+        },
+        {
+          "type": "FIX",
+          "url": "https://huntr.com/bounties/93d78d07-d791-4b39-a845-cbfabc44aadb"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/kjd/idna/commit/1d365e17e10d72d0b7876316fc7b9ca0eebdd38d"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-jjg7-2v4v-x38h"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2024-60",
+      "aliases": [
+        "CVE-2024-3651",
+        "GHSA-jjg7-2v4v-x38h"
+      ],
+      "package": "idna",
+      "version": "3.18",
+      "components": [
+        "homecontrol-ha-growatt-poller"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/kjd/idna",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "1d365e17e10d72d0b7876316fc7b9ca0eebdd38d"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0.1"
+            },
+            {
+              "fixed": "3.7"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "EVIDENCE",
+          "url": "https://huntr.com/bounties/93d78d07-d791-4b39-a845-cbfabc44aadb"
+        },
+        {
+          "type": "FIX",
+          "url": "https://huntr.com/bounties/93d78d07-d791-4b39-a845-cbfabc44aadb"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/kjd/idna/commit/1d365e17e10d72d0b7876316fc7b9ca0eebdd38d"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-jjg7-2v4v-x38h"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2025-49",
+      "aliases": [
+        "BIT-setuptools-2025-47273",
+        "CVE-2025-47273",
+        "GHSA-5rjg-fvgr-3xxf"
+      ],
+      "package": "setuptools",
+      "version": "84.2.1",
+      "components": [
+        "homecontrol-ingest",
+        "homecontrol-tuya-poller",
+        "homecontrol-xiaomi-x10"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/pypa/setuptools",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "250a6d17978f9f6ac3ac887091f2d32886fbbb0b"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "78.1.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "EVIDENCE",
+          "url": "https://github.com/pypa/setuptools/security/advisories/GHSA-5rjg-fvgr-3xxf"
+        },
+        {
+          "type": "ARTICLE",
+          "url": "https://lists.debian.org/debian-lts-announce/2025/05/msg00035.html"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/pypa/setuptools/issues/4946"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/pypa/setuptools/commit/250a6d17978f9f6ac3ac887091f2d32886fbbb0b"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/pypa/setuptools/blob/6ead555c5fb29bc57fe6105b1bffc163f56fd558/setuptools/package_index.py#L810C1-L825C88"
+        }
+      ]
+    },
+    {
+      "id": "PYSEC-2025-61",
+      "aliases": [
+        "BIT-pillow-2025-48379",
+        "CVE-2025-48379",
+        "GHSA-xg8h-j46f-w952"
+      ],
+      "package": "pillow",
+      "version": "13.0.0",
+      "components": [
+        "homecontrol-backend",
+        "homecontrol-xiaomi-x10",
+        "homecontrol-ai-server"
+      ],
+      "summary": "",
+      "ranges": [
+        {
+          "type": "GIT",
+          "repo": "https://github.com/python-pillow/pillow",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "89f1f4626a2aaf5f3d5ca6437f41def2998fbe09"
+            },
+            {
+              "fixed": "ef98b3510e3e4f14b547762764813d7e5ca3c5a4"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "11.2.0"
+            },
+            {
+              "fixed": "11.3.0"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/python-pillow/Pillow/security/advisories/GHSA-xg8h-j46f-w952"
+        },
+        {
+          "type": "FIX",
+          "url": "https://github.com/python-pillow/Pillow/commit/ef98b3510e3e4f14b547762764813d7e5ca3c5a4"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/pull/9041"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/python-pillow/Pillow/releases/tag/11.3.0"
+        }
+      ]
+    }
+  ],
+  "private_inventory_uploaded": false
+}

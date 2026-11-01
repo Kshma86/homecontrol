@@ -2,6 +2,14 @@ import json
 from typing import Any, Callable, Dict
 
 
+CLIMATE_FAN_SPEEDS = ("auto", "low", "mediumlow", "medium", "mediumhigh", "high", "quiet", "turbo")
+CLIMATE_FAN_SPEED_SET = set(CLIMATE_FAN_SPEEDS)
+CLIMATE_FAN_SPEED_TEXT = ", ".join(CLIMATE_FAN_SPEEDS)
+CLIMATE_SCHEDULE_FAN_SPEED_SET = {"keep", *CLIMATE_FAN_SPEEDS}
+CLIMATE_SCHEDULE_FAN_SPEED_TEXT = ", ".join(("keep", *CLIMATE_FAN_SPEEDS))
+CLIMATE_EXTRA_SWITCHES = ("quiet", "turbo", "sleep", "xfan", "power_save")
+
+
 class ClimateService:
     def __init__(
         self,
@@ -22,9 +30,11 @@ class ClimateService:
         power_meter_ext_id: str,
         power_meter_divisor: float,
         sync_auto_power_wall: Callable[[str], Any],
+        window_guard=None,
         process_binding_payload: Callable[[str], Any] = None,
         process_binding_entity_id: Callable[[str], Any] = None,
     ):
+        self.window_guard = window_guard
         self.fetch_all = fetch_all
         self.fetch_one = fetch_one
         self.execute_one = execute_one
@@ -59,7 +69,7 @@ class ClimateService:
 
     def power_meter_payload(self):
         binding_entity_id = self.process_binding_entity_id("climate_power_meter") if self.process_binding_entity_id else None
-        if not binding_entity_id and not self.power_meter_ext_id:
+        if (self.process_binding_entity_id and binding_entity_id is None) or (not binding_entity_id and not self.power_meter_ext_id):
             return {"ok": False, "error": "climate power meter is not configured"}
 
         row = self.fetch_one(
@@ -220,16 +230,71 @@ class ClimateService:
             """,
             (entity_id,),
         )
+        extra_fan = self._extra_fan_power_history_payload()
         return {
             "ok": True,
             "meter": meter,
             "power_24h": power_rows,
             "daily_30d": daily_rows,
+            "extra_fan": extra_fan,
             "summary": {
                 "power_samples": len(power_rows),
                 "daily_days": len(daily_rows),
                 "today_energy_kwh": (daily_rows[-1].get("energy_kwh") if daily_rows else None),
                 "max_power_w": max((row.get("power_w") or 0 for row in power_rows), default=0),
+            },
+        }
+
+    def _extra_fan_power_history_payload(self):
+        entity_id = self.process_binding_entity_id("climate_extra_fan_socket") if self.process_binding_entity_id else None
+        if entity_id is None:
+            return {"ok": False, "error": "extra fan socket binding not found", "power_24h": [], "daily_30d": []}
+
+        entity = self.fetch_one(
+            """select e.id as entity_id, e.name as entity_name, coalesce(wp.display_name, e.name) as display_name
+               from hc.entity e left join hc.power_wall_policy wp on wp.entity_id = e.id
+               where e.id = %s and e.is_active = true""",
+            (entity_id,),
+        )
+        if not entity:
+            return {"ok": False, "error": "extra fan socket entity not found", "power_24h": [], "daily_30d": []}
+
+        power_rows = self.fetch_all(
+            """select ts, v_num as power_w from hc.measurement
+               where entity_id = %s and key in ('power_w', 'power')
+                 and ts >= now() - interval '24 hours' and v_num is not null order by ts""",
+            (entity_id,),
+        )
+        daily_rows = self.fetch_all(
+            """
+            with days as (
+              select generate_series(date_trunc('day', now()) - interval '29 days', date_trunc('day', now()), interval '1 day')::date as day
+            ), energy as (
+              select date_trunc('day', ts)::date as day,
+                     greatest(coalesce(max(v_num) - min(v_num), 0), 0) as energy_kwh,
+                     count(*) as sample_count
+              from hc.measurement where entity_id = %s and key = 'energy_kwh'
+                and ts >= date_trunc('day', now()) - interval '29 days' and v_num is not null group by 1
+            )
+            select d.day, coalesce(e.energy_kwh, 0) as energy_kwh, coalesce(e.sample_count, 0) as sample_count
+            from days d left join energy e on e.day = d.day order by d.day
+            """,
+            (entity_id,),
+        )
+        current = self.fetch_one(
+            """select v_num as power_w from hc.entity_state
+               where entity_id = %s and key in ('power_w', 'power') order by case when key = 'power_w' then 0 else 1 end limit 1""",
+            (entity_id,),
+        ) or {}
+        return {
+            "ok": True,
+            "device": entity,
+            "power_24h": power_rows,
+            "daily_30d": daily_rows,
+            "summary": {
+                "current_power_w": current.get("power_w"),
+                "today_energy_kwh": daily_rows[-1].get("energy_kwh") if daily_rows else None,
+                "power_samples": len(power_rows),
             },
         }
 
@@ -244,6 +309,7 @@ class ClimateService:
             state = self.latest_parameter_state()
         return {
             "ok": bool(state.get("ok")),
+            "window_guard": self.window_guard().status() if self.window_guard else {},
             "bridge_online": availability == "online",
             "base_topic": self.base_topic,
             "name": state.get("name") or self.name,
@@ -255,9 +321,15 @@ class ClimateService:
             "target_temperature": state.get("target_temperature"),
             "current_temperature": state.get("current_temperature"),
             "fan_speed": state.get("fan_speed"),
+            "quiet": state.get("quiet"),
+            "turbo": state.get("turbo"),
+            "sleep": state.get("sleep"),
+            "xfan": state.get("xfan"),
+            "power_save": state.get("power_save"),
             "current_humidity": state.get("current_humidity"),
             "target_humidity": state.get("target_humidity"),
             "light": state.get("light"),
+            "buzzer": state.get("buzzer"),
             "raw_properties": state.get("raw_properties") or {},
             "updated_at": state.get("updated_at"),
             "error": state.get("error"),
@@ -500,9 +572,15 @@ class ClimateService:
             payload["target_temperature"] = target_temperature
         fan = self.normalize_text(data.get("fan_speed"))
         if fan:
-            if fan not in {"auto", "low", "mediumlow", "medium", "mediumhigh", "high"}:
-                raise ValueError("fan_speed must be one of: auto, low, mediumlow, medium, mediumhigh, high")
+            if fan not in CLIMATE_FAN_SPEED_SET:
+                raise ValueError(f"fan_speed must be one of: {CLIMATE_FAN_SPEED_TEXT}")
             payload["fan_speed"] = fan
+        for field in (*CLIMATE_EXTRA_SWITCHES, "buzzer"):
+            value = self.normalize_text(data.get(field))
+            if value:
+                if value not in {"on", "off"}:
+                    raise ValueError(f"{field} must be on or off")
+                payload[field] = value
         light = self.normalize_text(data.get("light"))
         if light:
             if light not in {"on", "off"}:
@@ -513,14 +591,19 @@ class ClimateService:
         return payload
 
     def queue_command(self, data: Dict[str, Any]):
+        extra_fan = self.normalize_text(data.get("extra_fan") or data.get("extraFan"), "keep")
+        if extra_fan not in {"keep", "on", "off"}:
+            raise ValueError("extra_fan must be keep, on or off")
         payload = self.command_payload(data)
         ok, message = self.publish_mqtt(f"{self.base_topic}/command", payload)
-        auto_power_wall = self.sync_auto_power_wall(payload["power"]) if ok and payload.get("power") in {"on", "off"} else []
+        fan_power = extra_fan if extra_fan in {"on", "off"} else payload.get("power")
+        auto_power_wall = self.sync_auto_power_wall(fan_power) if ok and fan_power in {"on", "off"} else []
         self.invalidate_context("climate", "power_wall")
         return {
             "ok": ok,
             "message": message,
             "queued": payload,
+            "extra_fan": extra_fan,
             "state": self.state_payload(),
             "auto_power_wall": auto_power_wall,
             "context": self.context_meta("climate", "power_wall"),
@@ -534,18 +617,24 @@ class ClimateService:
         target_temperature = int(data.get("target_temperature"))
         fan_speed = self.normalize_text(data.get("fan_speed"), "auto")
         light = self.normalize_text(data.get("light"), default_light)
+        extra_fan = self.normalize_text(data.get("extra_fan") or data.get("extraFan"), "keep")
+        season_profile = self.normalize_text(data.get("season_profile"), "summer")
         if day_of_week < 0 or day_of_week > 6:
             raise ValueError("day_of_week must be between 0 and 6")
-        if power not in {"on", "off"}:
-            raise ValueError("power must be on or off")
-        if mode not in {"auto", "cool", "dry", "fan", "heat"}:
-            raise ValueError("mode must be one of: auto, cool, dry, fan, heat")
+        if power not in {"keep", "on", "off"}:
+            raise ValueError("power must be keep, on or off")
+        if mode not in {"keep", "auto", "cool", "dry", "fan", "heat"}:
+            raise ValueError("mode must be one of: keep, auto, cool, dry, fan, heat")
         if target_temperature < 8 or target_temperature > 30:
             raise ValueError("target_temperature must be between 8 and 30")
-        if fan_speed not in {"auto", "low", "mediumlow", "medium", "mediumhigh", "high"}:
-            raise ValueError("fan_speed must be one of: auto, low, mediumlow, medium, mediumhigh, high")
-        if light not in {"on", "off"}:
-            raise ValueError("light must be on or off")
+        if fan_speed not in CLIMATE_SCHEDULE_FAN_SPEED_SET:
+            raise ValueError(f"fan_speed must be one of: {CLIMATE_SCHEDULE_FAN_SPEED_TEXT}")
+        if light not in {"keep", "on", "off"}:
+            raise ValueError("light must be keep, on or off")
+        if extra_fan not in {"keep", "on", "off"}:
+            raise ValueError("extra_fan must be keep, on or off")
+        if season_profile not in {"summer", "winter"}:
+            raise ValueError("season_profile must be summer or winter")
         enabled_value = data.get("is_enabled")
         rule_engine = data.get("rule_engine") if isinstance(data.get("rule_engine"), dict) else {"rule_engine": "manual_schedule"}
         return {
@@ -558,6 +647,8 @@ class ClimateService:
             "target_temperature": target_temperature,
             "fan_speed": fan_speed,
             "light": light,
+            "extra_fan": extra_fan,
+            "season_profile": season_profile,
             "rule_engine": json.dumps(rule_engine),
         }
 
@@ -567,25 +658,26 @@ class ClimateService:
             """
             insert into hc.climate_schedule_rule (
                 label, day_of_week, start_time, is_enabled, power, mode,
-                target_temperature, fan_speed, light, rule_engine
+                target_temperature, fan_speed, light, extra_fan, season_profile, rule_engine
             )
-            values (%s, %s, %s::time, %s, %s, %s, %s, %s, %s, %s::jsonb)
+            values (%s, %s, %s::time, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
             returning id
             """,
             (
                 payload["label"], payload["day_of_week"], payload["start_time"], payload["is_enabled"],
                 payload["power"], payload["mode"], payload["target_temperature"], payload["fan_speed"],
-                payload["light"], payload["rule_engine"],
+                payload["light"], payload["extra_fan"], payload["season_profile"], payload["rule_engine"],
             ),
         )
-        schedules = fetch_schedules()
+        schedules = fetch_schedules(payload["season_profile"])
         created_id = int(row.get("id")) if row else 0
         created = next((item for item in schedules if int(item.get("id") or 0) == created_id), None)
         self.invalidate_context("climate_schedules")
         return {"ok": True, "schedule": created, "schedules": schedules, "context": self.context_meta("climate_schedules")}
 
     def update_schedule(self, schedule_id: int, data: Dict[str, Any], fetch_schedules: Callable[[], Any]):
-        existing = self.fetch_one("select light from hc.climate_schedule_rule where id = %s", (schedule_id,)) or {}
+        existing = self.fetch_one("select light, season_profile from hc.climate_schedule_rule where id = %s", (schedule_id,)) or {}
+        data = {**data, "season_profile": data.get("season_profile") or existing.get("season_profile") or "summer"}
         payload = self.schedule_payload(data, self.normalize_text(existing.get("light"), "off"))
         row = self.execute_one(
             """
@@ -599,6 +691,8 @@ class ClimateService:
                 target_temperature = %s,
                 fan_speed = %s,
                 light = %s,
+                extra_fan = %s,
+                season_profile = %s,
                 rule_engine = %s::jsonb,
                 updated_at = now()
             where id = %s
@@ -607,22 +701,22 @@ class ClimateService:
             (
                 payload["label"], payload["day_of_week"], payload["start_time"], payload["is_enabled"],
                 payload["power"], payload["mode"], payload["target_temperature"], payload["fan_speed"],
-                payload["light"], payload["rule_engine"], schedule_id,
+                payload["light"], payload["extra_fan"], payload["season_profile"], payload["rule_engine"], schedule_id,
             ),
         )
         if not row:
             return None
-        schedules = fetch_schedules()
+        schedules = fetch_schedules(payload["season_profile"])
         saved = next((item for item in schedules if int(item.get("id") or 0) == schedule_id), None)
         self.invalidate_context("climate_schedules")
         return {"ok": True, "schedule": saved, "schedules": schedules, "context": self.context_meta("climate_schedules")}
 
     def delete_schedule(self, schedule_id: int, fetch_schedules: Callable[[], Any]):
-        row = self.execute_one("delete from hc.climate_schedule_rule where id = %s returning id", (schedule_id,))
+        row = self.execute_one("delete from hc.climate_schedule_rule where id = %s returning id, season_profile", (schedule_id,))
         if not row:
             return None
         self.invalidate_context("climate_schedules")
-        return {"ok": True, "deleted_id": schedule_id, "schedules": fetch_schedules(), "context": self.context_meta("climate_schedules")}
+        return {"ok": True, "deleted_id": schedule_id, "schedules": fetch_schedules(row.get("season_profile")), "context": self.context_meta("climate_schedules")}
 
 
 def _state_value(row: Dict[str, Any]):

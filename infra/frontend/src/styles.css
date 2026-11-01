@@ -303,6 +303,7 @@ label {
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24), 0 0 36px color-mix(in srgb, var(--tone-blue) 8%, transparent);
   backdrop-filter: blur(18px);
   overflow: hidden;
+  min-height: 0;
 }
 
 .sidebar-brand {
@@ -343,9 +344,24 @@ label {
 }
 
 .side-nav {
+  flex: 1 1 auto;
   display: grid;
   gap: 6px;
   padding-top: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--tone-blue) 46%, transparent) transparent;
+}
+
+.side-nav::-webkit-scrollbar {
+  width: 7px;
+}
+
+.side-nav::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--tone-blue) 42%, transparent);
+  border-radius: 999px;
 }
 
 .side-nav-btn {
@@ -1249,6 +1265,13 @@ main {
 .tone-cyan { --tone: #22d3ee; }
 .tone-violet { --tone: #8b5cf6; }
 .tone-lime { --tone: #a3e635; }
+.tone-safety { --tone: #dfff00; }
+
+.combustion-status-card.tone-safety,
+.mobile-dashboard .home-secu-card.tone-safety {
+  border-color: color-mix(in srgb, #dfff00 52%, var(--line));
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24), 0 0 24px rgba(223, 255, 0, 0.1);
+}
 
 .home-panel-water {
   --tone: #52d67a;
@@ -1328,6 +1351,51 @@ main {
   font-style: normal;
   font-weight: 760;
   overflow-wrap: anywhere;
+}
+
+.combustion-status-card {
+  align-items: center;
+  min-height: 172px;
+}
+
+.combustion-status-icon {
+  margin-top: 0;
+}
+
+.combustion-signal-lamp {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid color-mix(in srgb, var(--signal-color) 42%, #67727e);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--signal-color) 14%, #111820);
+  opacity: 0.42;
+  transition: background 80ms linear, box-shadow 80ms linear, opacity 80ms linear;
+}
+
+.combustion-signal-lamp.lit {
+  background: var(--signal-color);
+  opacity: var(--signal-opacity);
+  box-shadow: 0 0 8px var(--signal-color), 0 0 22px var(--signal-color);
+}
+
+.combustion-signal-lamp.disabled {
+  border-style: dashed;
+  filter: grayscale(0.75);
+}
+
+.home-status-card .combustion-status-label {
+  min-height: 0;
+  margin-top: 6px;
+  color: var(--tone, var(--accent));
+  font-weight: 800;
+}
+
+.home-status-card .combustion-status-reason {
+  min-height: 30px;
+  margin-top: 3px;
+  color: var(--text);
+  line-height: 1.35;
 }
 
 .home-panel {
@@ -1410,6 +1478,11 @@ main {
   align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
+}
+
+.home-sensor-values > strong {
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .home-sensor-values > span {
@@ -1513,7 +1586,7 @@ main {
 }
 
 .home-irrigation-feedback-card small {
-  display: none;
+  display: block;
 }
 
 .home-sparkline {
@@ -1660,6 +1733,40 @@ main {
   left: 17px;
 }
 
+.home-pressure-sparkline .weather-pressure-line {
+  stroke: var(--tone-purple);
+}
+
+.home-pressure-sparkline .local-pressure-line {
+  stroke: var(--tone-green);
+}
+
+.home-pressure-legend {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  display: flex;
+  gap: 8px;
+  font-size: 9px;
+}
+
+.home-pressure-legend span::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 2px;
+  margin: 0 3px 2px 0;
+  background: currentColor;
+}
+
+.home-pressure-legend .weather {
+  color: var(--tone-purple);
+}
+
+.home-pressure-legend .local {
+  color: var(--tone-green);
+}
+
 .home-side-card {
   padding: 18px;
 }
@@ -1695,6 +1802,10 @@ main {
 
 .home-thermo-row:last-child {
   border-bottom: 0;
+}
+
+.home-thermo-row.missing-climate {
+  opacity: 0.78;
 }
 
 .home-thermo-row svg {
@@ -1848,9 +1959,13 @@ main {
 
 .home-inline-sparkline.empty {
   min-width: 48px;
-  height: 1px;
-  background: color-mix(in srgb, var(--tone, var(--accent)) 24%, transparent);
-  opacity: 0.55;
+  height: 20px;
+  color: color-mix(in srgb, var(--muted) 62%, transparent);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 20px;
+  opacity: 0.78;
+  text-align: center;
 }
 
 .home-thermo-row small,
@@ -2054,7 +2169,7 @@ main {
 
 .home-solar-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: auto;
   padding-top: 12px;
@@ -2819,6 +2934,19 @@ main {
   font-size: 21px;
 }
 
+.mobile-dashboard .home-sensor-card.tone-purple .home-sensor-values {
+  gap: 4px;
+}
+
+.mobile-dashboard .home-sensor-card.tone-purple .home-sensor-values > strong {
+  font-size: 18px;
+}
+
+.mobile-dashboard .home-sensor-card.tone-purple .home-sensor-values > span {
+  gap: 3px;
+  font-size: 11px;
+}
+
 .mobile-dashboard .home-irrigation-feedback-card {
   min-height: 122px;
 }
@@ -2850,6 +2978,145 @@ main {
   text-align: center;
 }
 
+@media (max-width: 860px) {
+  .notes-page {
+    min-height: 0;
+    gap: 10px;
+  }
+
+  .notes-entry-panel,
+  .notes-panel {
+    padding: 12px;
+  }
+
+  .notes-entry-panel .panel-head,
+  .notes-panel .panel-head {
+    align-items: flex-start;
+    gap: 4px;
+    flex-direction: column;
+  }
+
+  .notes-entry-form {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .notes-type-toggle {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .notes-entry-form textarea {
+    width: 100%;
+    min-height: 112px;
+    resize: vertical;
+  }
+
+  .table-wrap.notes-table-wrap {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .notes-table,
+  .notes-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .notes-table thead {
+    display: none;
+  }
+
+  .notes-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .notes-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--tone, var(--accent)) 5%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--tone, var(--accent)) 24%, var(--line));
+    border-radius: 8px;
+  }
+
+  .notes-table tbody tr > td {
+    display: block;
+    width: auto !important;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .notes-table tbody tr > td::before {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .notes-table td:nth-child(1)::before { content: "Type"; }
+  .notes-table td:nth-child(2)::before { content: "Status"; }
+  .notes-table td:nth-child(3)::before { content: "Note"; }
+  .notes-table td:nth-child(4)::before { content: "Comment"; }
+  .notes-table td:nth-child(5)::before { content: "Created"; }
+  .notes-table td:nth-child(6)::before { content: "Action"; }
+
+  .notes-table tbody tr > td:nth-child(3),
+  .notes-table tbody tr > td:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+
+  .notes-table td:nth-child(2) {
+    display: grid;
+    gap: 5px;
+  }
+
+  .notes-row-input,
+  .notes-row-comment,
+  .notes-status-select {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .notes-row-input {
+    min-height: 42px;
+    padding: 8px 10px;
+    background: color-mix(in srgb, var(--tone, var(--accent)) 4%, var(--input));
+    border-color: var(--line);
+  }
+
+  .notes-row-comment {
+    min-height: 88px;
+    padding: 9px 10px;
+    border-color: var(--line);
+  }
+
+  .notes-delete {
+    min-height: 40px;
+  }
+
+  .notes-table tbody tr > td[colspan] {
+    grid-column: 1 / -1;
+    padding: 18px;
+    text-align: center;
+  }
+
+  .notes-table tbody tr > td[colspan]::before {
+    display: none;
+  }
+}
+
 .mobile-dashboard .home-irrigation-feedback-card .home-sparkline,
 .mobile-dashboard .home-irrigation-feedback-card .home-sparkline-empty {
   height: 36px;
@@ -2860,6 +3127,147 @@ main {
 .mobile-dashboard .home-sparkline-empty {
   height: 44px;
   margin: 8px 0 5px;
+}
+
+.mobile-dashboard .mobile-dash-side {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.mobile-dashboard .mobile-dash-side .home-thermo-card {
+  grid-column: 1 / -1;
+}
+
+.mobile-dashboard .home-solar-card,
+.mobile-dashboard .home-secu-card {
+  min-height: 0;
+}
+
+.mobile-dashboard .home-solar-card.home-compact-info-card {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.mobile-dashboard .home-sensor-grid {
+  grid-auto-rows: auto;
+}
+
+.mobile-dashboard .home-sensor-grid > article {
+  min-height: 0;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+.mobile-dashboard .home-compact-info-card {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.mobile-dashboard .home-compact-info-card .home-sensor-top {
+  margin-bottom: 4px;
+}
+
+.home-compact-main-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.home-compact-main-row strong {
+  color: var(--tone);
+  font-size: 18px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.home-compact-main-row span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-dashboard .home-solar-bottom-stats span {
+  font-size: 11px;
+}
+
+.mobile-dashboard .home-solar-card .home-sparkline,
+.mobile-dashboard .home-solar-card .home-sparkline-empty {
+  min-height: 0;
+  height: 72px;
+  margin: 3px 0 1px;
+}
+
+.mobile-dashboard .home-solar-heading {
+  display: grid;
+  justify-items: end;
+  min-width: 0;
+  margin-left: auto;
+  text-align: right;
+}
+
+.mobile-dashboard .home-solar-updated {
+  max-width: 100%;
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 760;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-dashboard .home-compact-info-card > small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-secu-card {
+  border-color: color-mix(in srgb, var(--tone) 38%, var(--line));
+}
+
+.home-secu-value {
+  flex-wrap: wrap;
+}
+
+.home-secu-value strong {
+  color: var(--tone);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-dashboard .home-secu-card {
+  grid-template-rows: auto auto 1fr auto;
+}
+
+.home-secu-system-state {
+  align-self: center;
+  min-width: 0;
+  padding: 5px 7px;
+  overflow: hidden;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tone) 48%, var(--line));
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .home-field input,
@@ -3070,6 +3478,10 @@ select {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.irrigation-stat-tiles {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .about-tiles {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -3173,6 +3585,104 @@ select {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface-2) 58%, transparent);
+}
+
+.debug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.debug-actions select {
+  min-height: 38px;
+}
+
+.debug-log-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.3fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.debug-log-list {
+  position: sticky;
+  top: 10px;
+}
+
+.debug-log-links {
+  display: grid;
+  gap: 7px;
+  max-height: min(72vh, 760px);
+  overflow-y: auto;
+  padding-right: 3px;
+}
+
+.debug-log-links button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 9px;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+  color: var(--text);
+  text-align: left;
+}
+
+.debug-log-links button.active {
+  border-color: color-mix(in srgb, var(--tone-rose) 48%, var(--line));
+  background: color-mix(in srgb, var(--tone-rose) 16%, var(--surface));
+}
+
+.debug-log-links svg {
+  grid-row: span 2;
+  color: var(--tone-rose);
+}
+
+.debug-log-links span,
+.debug-log-links small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.debug-log-links small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.debug-log-detail {
+  min-width: 0;
+}
+
+.debug-log-output {
+  min-height: min(68vh, 760px);
+  max-height: min(68vh, 760px);
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, #020617 72%, var(--surface));
+  color: #d6e4ff;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.debug-log-empty {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
 }
 
 .documentation-section h3 {
@@ -3411,6 +3921,22 @@ select {
   color: var(--tone);
   background: color-mix(in srgb, var(--tone) 13%, var(--accent-soft));
   border-color: color-mix(in srgb, var(--tone) 35%, var(--line));
+}
+
+.mqtt-flood-panel.active {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.3), 0 12px 32px rgba(127, 29, 29, 0.18);
+}
+
+.mqtt-flood-panel.active .panel-head h2,
+.mqtt-flood-panel.active .panel-head span {
+  color: #ef4444;
+}
+
+.mqtt-flood-panel .panel-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .platform-pill.zigbee {
@@ -3752,6 +4278,86 @@ select {
 .legend-item.green::before,
 .tooltip-line.green::before {
   background: #22c55e;
+}
+
+.legend-item.yellow::before,
+.tooltip-line.yellow::before {
+  background: #eab308;
+}
+
+.legend-item.cyan::before,
+.tooltip-line.cyan::before {
+  background: #06b6d4;
+}
+
+.legend-item.purple::before,
+.tooltip-line.purple::before {
+  background: #a855f7;
+}
+
+.legend-item.orange::before,
+.tooltip-line.orange::before {
+  background: #f97316;
+}
+
+.legend-item.teal::before,
+.tooltip-line.teal::before {
+  background: #14b8a6;
+}
+
+.line-chart path.yellow,
+.line-chart.climate path.yellow {
+  stroke: #eab308;
+}
+
+.line-chart circle.yellow,
+.line-chart.climate circle.yellow {
+  fill: #fde047;
+  stroke: var(--surface);
+}
+
+.line-chart path.cyan,
+.line-chart.climate path.cyan {
+  stroke: #06b6d4;
+}
+
+.line-chart circle.cyan,
+.line-chart.climate circle.cyan {
+  fill: #22d3ee;
+  stroke: var(--surface);
+}
+
+.line-chart path.purple,
+.line-chart.climate path.purple {
+  stroke: #a855f7;
+}
+
+.line-chart circle.purple,
+.line-chart.climate circle.purple {
+  fill: #c084fc;
+  stroke: var(--surface);
+}
+
+.line-chart path.orange,
+.line-chart.climate path.orange {
+  stroke: #f97316;
+}
+
+.line-chart circle.orange,
+.line-chart.climate circle.orange {
+  fill: #fb923c;
+  stroke: var(--surface);
+}
+
+.line-chart path.teal,
+.line-chart.climate path.teal {
+  stroke: #14b8a6;
+}
+
+.line-chart circle.teal,
+.line-chart.climate circle.teal {
+  fill: #2dd4bf;
+  stroke: var(--surface);
 }
 
 .line-chart .hover-line {
@@ -4360,9 +4966,38 @@ select {
   margin: 0 0 0 auto;
 }
 
+.sensor-range-switch {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 168px;
+  margin: 0 0 0 auto;
+}
+
+.sensor-range-switch.with-custom {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 58px;
+  width: 238px;
+}
+
 .moisture-range-switch button {
   min-height: 32px;
   padding: 6px 10px;
+}
+
+.sensor-range-switch button,
+.sensor-range-switch input {
+  min-height: 32px;
+  padding: 6px 10px;
+}
+
+.sensor-range-switch input {
+  width: 100%;
+  min-width: 0;
+  color: var(--text);
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 760;
 }
 
 .scheduler-note {
@@ -4604,12 +5239,48 @@ select {
 
 .x10-map-panel {
   min-width: 0;
+  grid-column: 1;
+  grid-row: 1 / span 3;
+}
+
+.x10-map-quick-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr);
+  align-items: start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.x10-quick-panel {
+  min-width: 0;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.x10-active-map-panel {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.x10-control-panel {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.x10-quick-panel .x10-quick-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.x10-quick-panel > button {
+  width: 100%;
 }
 
 .x10-map-frame {
   position: relative;
-  min-height: 320px;
-  overflow: auto;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  overflow: hidden;
   background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -4617,27 +5288,117 @@ select {
 
 .x10-map-frame img {
   display: block;
-  max-width: none;
+  width: auto;
+  max-width: 100%;
   height: auto;
   image-rendering: auto;
 }
 
-.x10-map-pin {
+.x10-map-canvas {
+  position: relative;
+  width: max-content;
+  max-width: 100%;
+  transform-origin: center;
+}
+
+.x10-map-canvas.mirrored {
+  transform: scaleY(-1);
+}
+
+.x10-map-marker {
   position: absolute;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 2px 5px rgb(0 0 0 / 55%));
+}
+
+.x10-map-marker.robot {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  transform: translate(-50%, -50%) rotate(calc(var(--robot-angle) + 270deg));
+}
+
+.x10-vacuum-glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transform: scaleY(-1);
+}
+
+.x10-vacuum-glyph svg {
+  width: 32px;
+  height: 32px;
+  overflow: visible;
+}
+
+.x10-vacuum-shell {
+  fill: #f8fafc;
+  stroke: #94a3b8;
+  stroke-width: 1.4;
+}
+
+.x10-vacuum-bumper,
+.x10-vacuum-panel {
+  fill: none;
+  stroke: #94a3b8;
+  stroke-linecap: round;
+  stroke-width: 1.3;
+}
+
+.x10-vacuum-lidar-ring {
+  fill: #e2e8f0;
+  stroke: #64748b;
+  stroke-width: 1.2;
+}
+
+.x10-vacuum-lidar-cap {
+  fill: #64748b;
+}
+
+.x10-vacuum-heading {
+  fill: #475569;
+}
+
+.x10-map-marker.dock {
+  width: 23px;
+  height: 23px;
+  color: #fff;
+  background: #36b84a;
+  border: 2px solid #d9f99d;
+}
+
+.x10-map-marker.dock svg {
   width: 14px;
   height: 14px;
-  border: 2px solid var(--surface);
-  border-radius: 999px;
-  box-shadow: 0 3px 10px var(--shadow);
-  transform: translate(-50%, -50%);
+  fill: currentColor;
+  transform: scaleY(-1);
 }
 
-.x10-map-pin.robot {
-  background: #ef4444;
+.x10-map-room-label {
+  position: absolute;
+  padding: 2px 5px;
+  color: #fff;
+  background: rgb(15 23 42 / 62%);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px #000;
+  transform: translate(-50%, -50%) scaleY(-1);
+  white-space: nowrap;
 }
 
-.x10-map-pin.dock {
-  background: #3b82f6;
+.x10-map-live-status {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .x10-room-grid {
@@ -4758,6 +5519,20 @@ select {
   margin-bottom: 12px;
 }
 
+@media (max-width: 1050px) {
+  .x10-map-quick-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .x10-map-panel,
+  .x10-quick-panel,
+  .x10-active-map-panel,
+  .x10-control-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
 .x10-schedule-box {
   display: grid;
   gap: 5px;
@@ -4821,6 +5596,26 @@ select {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.climate-buzzer-toggle {
+  display: flex;
+  align-items: center;
+  grid-column: -2 / -1;
+  gap: 6px;
+  padding: 6px 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.climate-buzzer-toggle input[type="checkbox"] {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  min-height: 14px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
 .climate-form {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -4834,6 +5629,31 @@ select {
 
 .climate-plug-device .tuya-metrics {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.climate-plug-device .tuya-device-meta {
+  position: relative;
+  padding-right: 34%;
+}
+
+.climate-fan-delay {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 32%;
+  display: grid;
+  grid-template-columns: minmax(48px, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.climate-fan-delay label {
+  grid-column: 1 / -1;
+}
+
+.climate-fan-delay input {
+  width: 100%;
+  min-width: 0;
 }
 
 .climate-plug-toggles {
@@ -4891,7 +5711,7 @@ select {
 
 .climate-schedule-row {
   display: grid;
-  grid-template-columns: 88px minmax(150px, 1fr) 108px 96px 116px 90px 128px 96px minmax(160px, auto);
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   align-items: end;
   gap: 8px;
   padding: 10px;
@@ -4942,6 +5762,7 @@ select {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
 }
@@ -5194,7 +6015,8 @@ select {
 }
 
 .decision-grid div,
-.pilot-result {
+.pilot-result,
+.pilot-formula {
   padding: 11px;
   background: var(--soft);
   border: 1px solid var(--line);
@@ -5202,7 +6024,8 @@ select {
 }
 
 .decision-grid span,
-.pilot-result span {
+.pilot-result span,
+.pilot-formula span {
   display: block;
   color: var(--muted);
   font-size: 12px;
@@ -5248,11 +6071,97 @@ select {
   margin-top: 10px;
 }
 
+.pilot-formula {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pilot-formula > strong {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.pilot-formula > em {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.pilot-formula-terms {
+  display: grid;
+  gap: 7px;
+}
+
+.pilot-formula-terms div {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) auto minmax(0, 1.8fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 9px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.pilot-formula-terms strong {
+  font-size: 14px;
+}
+
+.pilot-formula-terms small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 720;
+  overflow-wrap: anywhere;
+}
+
 .scheduler-panel {
   min-width: 0;
 }
 
 .schedule-list {
+  display: grid;
+  gap: 10px;
+}
+
+.schedule-day {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.schedule-day.today {
+  background: color-mix(in srgb, var(--accent-soft) 36%, var(--soft));
+}
+
+.schedule-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.schedule-day-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.schedule-day-head strong {
+  font-size: 14px;
+}
+
+.schedule-day-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.schedule-day-rows {
   display: grid;
   gap: 8px;
 }
@@ -5270,11 +6179,11 @@ select {
 
 .schedule-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1.1fr) minmax(96px, 0.8fr) minmax(96px, 0.8fr) minmax(76px, auto) minmax(130px, auto) auto;
+  grid-template-columns: minmax(120px, 1fr) minmax(96px, 0.7fr) minmax(96px, 0.7fr) minmax(76px, auto) minmax(130px, auto) minmax(210px, auto);
   align-items: end;
   gap: 8px;
   padding: 9px;
-  background: var(--soft);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -5285,7 +6194,7 @@ select {
 }
 
 .schedule-row.today {
-  background: color-mix(in srgb, var(--accent-soft) 44%, var(--soft));
+  background: color-mix(in srgb, var(--accent-soft) 30%, var(--panel));
 }
 
 .schedule-row.due-now {
@@ -5371,6 +6280,241 @@ select {
   border-color: var(--warn);
 }
 
+.schedule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.sql-lab {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.75fr) minmax(0, 1.8fr) minmax(260px, 0.95fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.sql-schema-panel,
+.sql-detail-panel {
+  position: sticky;
+  top: 14px;
+  max-height: calc(100vh - 116px);
+  overflow: auto;
+}
+
+.sql-main {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.sql-search {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sql-search input {
+  border: 0;
+  background: transparent;
+}
+
+.opening-history-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr)) auto;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+@media (max-width: 760px) {
+  .opening-history-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .opening-history-filters button {
+    grid-column: 1 / -1;
+  }
+}
+
+.sql-table-list,
+.sql-column-list,
+.sql-meta-list {
+  display: grid;
+  gap: 7px;
+}
+
+.sql-table-list button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 9px 10px;
+  color: var(--text);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sql-table-list button.active,
+.sql-table-list button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.sql-table-list strong,
+.sql-column-list strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.sql-table-list span,
+.sql-column-list span,
+.sql-meta-list span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.sql-editor-actions {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sql-editor-actions label {
+  min-width: 92px;
+}
+
+.sql-editor {
+  width: 100%;
+  min-height: 230px;
+  resize: vertical;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sql-result-table {
+  max-height: 420px;
+}
+
+.sql-result-table td {
+  max-width: 340px;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.sql-column-list div {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sql-meta-list {
+  margin-top: 10px;
+}
+
+.sql-meta-list span {
+  padding: 7px 9px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sql-ai-box {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.sql-ai-box textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.sql-ai-status {
+  color: var(--muted);
+}
+
+.sql-ai-status.thinking {
+  color: var(--warn);
+}
+
+.sql-ai-status.ready {
+  color: var(--good);
+}
+
+.sql-ai-status.error {
+  color: var(--bad);
+}
+
+.sql-ai-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sql-ai-detected {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 6px 8px;
+  color: var(--good);
+  background: var(--good-soft);
+  border: 1px solid var(--good);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.sql-ai-missing {
+  width: fit-content;
+  padding: 6px 8px;
+  color: var(--muted);
+  background: var(--soft);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.sql-ai-answer {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+}
+
 .config-grid {
   display: grid;
   grid-template-columns: minmax(210px, 0.8fr) minmax(120px, 1fr) auto;
@@ -5382,6 +6526,83 @@ select {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.safety-settings-group {
+  min-width: 0;
+  margin: 2px 0 8px;
+  padding: 16px 14px 14px;
+  border: 1px solid color-mix(in srgb, var(--tone, var(--accent)) 22%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tone, var(--accent)) 3%, transparent);
+}
+
+.safety-settings-group legend {
+  padding: 0 8px;
+  color: color-mix(in srgb, var(--tone, var(--accent)) 58%, var(--text));
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.safety-settings-group .form-grid {
+  margin: 0;
+}
+
+.safety-settings-group .actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.season-policy-table th:not(:first-child),
+.season-policy-table td:not(:first-child) {
+  width: 88px;
+  text-align: center;
+}
+
+.season-policy-table input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: color-mix(in srgb, var(--tone, var(--accent)) 78%, white);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.season-policy-table td:first-child small {
+  display: block;
+  max-width: 520px;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.safety-actions-group {
+  display: grid;
+  gap: 10px;
+}
+
+.safety-brightness-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.safety-color-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.safety-color-field span {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.safety-color-field input[type="color"] {
+  width: 64px;
+  height: 42px;
+  padding: 3px;
+  cursor: pointer;
 }
 
 .form-grid label,
@@ -5462,72 +6683,52 @@ select {
   font-size: 13px;
 }
 
-.ui-v2-panel {
-  --tone: var(--tone-purple);
+.opening-admin-panel {
+  --tone: var(--tone-teal);
 }
 
-.ui-v2-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.ui-v2-grid {
+.opening-room-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 16px;
 }
 
-.ui-v2-row {
+.opening-room-section {
   display: grid;
-  gap: 10px;
-  min-width: 0;
-  padding: 12px;
-  background: color-mix(in srgb, var(--surface) 88%, var(--tone, var(--accent)) 12%);
-  border: 1px solid color-mix(in srgb, var(--tone, var(--accent)) 18%, var(--line));
-  border-radius: 8px;
+  gap: 7px;
 }
 
-.ui-v2-row.active {
-  border-color: color-mix(in srgb, var(--tone, var(--accent)) 52%, var(--line));
-  box-shadow: 0 0 22px color-mix(in srgb, var(--tone, var(--accent)) 12%, transparent);
+.opening-room-section h3 {
+  margin: 0;
+  padding: 0 0 4px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 820;
+  text-transform: none;
 }
 
-.ui-v2-row-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
+.opening-room-table {
+  max-height: none;
 }
 
-.ui-v2-row-title > div {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+.opening-room-table td strong,
+.opening-room-table td small {
+  display: block;
 }
 
-.ui-v2-row-title strong,
-.ui-v2-row-title span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ui-v2-row-title span {
+.opening-room-table td small {
+  margin-top: 2px;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 720;
+  font-weight: 700;
 }
 
-.ui-v2-switch {
-  margin: 0;
-}
-
-.ui-v2-switch button {
-  min-height: 34px;
-  padding: 0 10px;
+.opening-room-table code {
   font-size: 12px;
+}
+
+.opening-edit-button {
+  min-height: 32px;
+  padding-inline: 10px;
 }
 
 .admin-links-panel .table-wrap {
@@ -5541,6 +6742,164 @@ select {
   color: color-mix(in srgb, var(--tone, var(--accent)) 72%, var(--text));
   font-weight: 780;
   text-decoration: none;
+}
+
+.parameters-page {
+  display: grid;
+  gap: 16px;
+}
+
+.parameter-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.parameter-summary-grid .card {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-height: 92px;
+}
+
+.parameter-summary-grid strong {
+  font-size: 18px;
+}
+
+.parameter-summary-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.parameter-catalog-panel {
+  --tone: var(--tone-purple);
+}
+
+.container-restart-panel {
+  --tone: var(--tone-orange);
+}
+
+.container-restart-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.container-restart-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 10px;
+}
+
+.container-restart-button i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.container-restart-button i.online {
+  background: var(--success);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--success) 65%, transparent);
+}
+
+.parameter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(180px, 240px) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.parameter-toolbar > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  text-align: right;
+}
+
+.parameter-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.parameter-search input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  outline: none;
+}
+
+.table-wrap.parameter-table-wrap {
+  height: calc(100vh - 650px);
+  min-height: 300px;
+  max-height: calc(100vh - 650px);
+}
+
+.parameter-table-wrap td:first-child {
+  min-width: 260px;
+}
+
+.parameter-table-wrap td:first-child strong,
+.parameter-table-wrap td:first-child code,
+.parameter-table-wrap td:first-child small {
+  display: block;
+}
+
+.parameter-table-wrap td:first-child code,
+.parameter-table-wrap td:first-child small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.parameter-value {
+  display: block;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.parameter-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.parameter-pagination span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+@media (max-width: 860px) {
+  .table-wrap.parameter-table-wrap {
+    height: calc(100vh - 570px);
+    min-height: 280px;
+    max-height: calc(100vh - 570px);
+  }
+
+  .parameter-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .parameter-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .parameter-toolbar > span {
+    text-align: left;
+  }
 }
 
 .admin-service-link:hover {
@@ -5558,7 +6917,7 @@ select {
 
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 14px;
   align-items: stretch;
   min-height: 0;
@@ -5601,33 +6960,113 @@ select {
 
 .notes-table th:nth-child(1),
 .notes-table td:nth-child(1) {
-  width: 72px;
-  text-align: center;
+  width: 92px;
 }
 
-.notes-table th:nth-child(3),
-.notes-table td:nth-child(3) {
-  width: 38%;
+.notes-table th:nth-child(2),
+.notes-table td:nth-child(2) {
+  width: 156px;
 }
 
 .notes-table th:nth-child(4),
 .notes-table td:nth-child(4) {
+  width: 38%;
+}
+
+.notes-table th:nth-child(5),
+.notes-table td:nth-child(5) {
   width: 116px;
   color: var(--muted);
   white-space: nowrap;
 }
 
-.notes-table th:nth-child(5),
-.notes-table td:nth-child(5) {
+.notes-table th:nth-child(6),
+.notes-table td:nth-child(6) {
   width: 104px;
 }
 
-.notes-table input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  min-height: 18px;
-  margin: 2px auto 0;
-  accent-color: var(--tone, var(--accent));
+.notes-table td:nth-child(2) {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.note-type-pill {
+  width: 100%;
+  justify-content: center;
+}
+
+.note-type-pill.issue {
+  --tone: var(--tone-red);
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 34%, var(--line));
+}
+
+.note-type-pill.request {
+  --tone: var(--tone-purple);
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 34%, var(--line));
+}
+
+.note-status-pill {
+  width: 100%;
+  justify-content: center;
+}
+
+.note-status-pill.open {
+  --tone: var(--muted);
+}
+
+.note-status-pill.ready {
+  --tone: var(--tone-blue);
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 42%, var(--line));
+}
+
+.note-status-pill.testing {
+  --tone: var(--tone-yellow);
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 42%, var(--line));
+}
+
+.note-status-pill.tested {
+  --tone: var(--tone-green);
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 42%, var(--line));
+}
+
+.notes-status-select {
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  border-color: color-mix(in srgb, var(--note-status-tone, var(--tone, var(--accent))) 32%, var(--line));
+  background: color-mix(in srgb, var(--note-status-tone, var(--tone, var(--accent))) 8%, var(--input));
+  font-size: 11px;
+  font-weight: 780;
+}
+
+.notes-status-select.ready {
+  --note-status-tone: var(--tone-blue);
+}
+
+.notes-status-select.testing {
+  --note-status-tone: var(--tone-yellow);
+}
+
+.notes-status-select.tested {
+  --note-status-tone: var(--tone-green);
+}
+
+.notes-table tr.note-status-ready {
+  background: color-mix(in srgb, var(--tone-blue) 5%, transparent);
+}
+
+.notes-table tr.note-status-testing {
+  background: color-mix(in srgb, var(--tone-yellow) 6%, transparent);
+}
+
+.notes-table tr.note-status-tested {
+  background: color-mix(in srgb, var(--tone-green) 6%, transparent);
 }
 
 .notes-row-input {
@@ -5651,6 +7090,10 @@ select {
   background: var(--input);
 }
 
+.notes-table tr.note-status-ready .notes-row-input,
+.notes-table tr.note-status-ready .notes-row-comment,
+.notes-table tr.note-status-testing .notes-row-input,
+.notes-table tr.note-status-testing .notes-row-comment,
 .notes-table tr.done .notes-row-input,
 .notes-table tr.done .notes-row-comment {
   color: var(--muted);
@@ -5675,6 +7118,19 @@ select {
     linear-gradient(180deg, color-mix(in srgb, var(--tone, var(--accent)) 4%, transparent), transparent 42%),
     var(--surface);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tone, var(--accent)) 18%, transparent);
+}
+
+/* Sensor snapshots grow with every configured room instead of keeping the old
+   fixed-height viewport used by general-purpose tables. */
+.table-wrap.sensor-snapshot-table {
+  max-height: none;
+  overflow-y: visible;
+}
+
+.home-thermo-card,
+.home-thermo-card .home-thermo-list {
+  max-height: none;
+  overflow-y: visible;
 }
 
 .table-spacer {
@@ -5758,18 +7214,6 @@ tbody tr:hover td {
 .toast.show {
   opacity: 1;
   transform: translateY(0);
-}
-
-.visual-audit-button {
-  position: fixed;
-  right: 18px;
-  bottom: 72px;
-  z-index: 60;
-  --tone: var(--section-tone, var(--accent));
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 999px;
-  box-shadow: 0 14px 34px var(--shadow), 0 0 24px color-mix(in srgb, var(--tone) 22%, transparent);
 }
 
 .ai-page {
@@ -6224,6 +7668,21 @@ tbody tr:hover td {
   align-items: end;
 }
 
+.ai-attachments {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ai-attachments > label, .ai-attachments > small, .ai-attachments > .ai-error {
+  flex-basis: 100%;
+}
+
+.ai-attachments img {
+  display: block;
+}
+
 .ai-chat-form textarea {
   min-height: 88px;
   resize: vertical;
@@ -6352,10 +7811,6 @@ tbody tr:hover td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .ui-v2-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .tuya-device-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -6389,20 +7844,28 @@ tbody tr:hover td {
   }
 
   .documentation-layout,
+  .debug-log-layout,
   .documentation-grid {
     grid-template-columns: 1fr;
   }
 
-  .documentation-nav {
+  .documentation-nav,
+  .debug-log-list {
     position: static;
   }
 
-  .documentation-module-list {
+  .documentation-module-list,
+  .debug-log-links {
     max-height: 320px;
   }
 
   .documentation-detail {
     height: min(85vh, 850px);
+  }
+
+  .debug-log-output {
+    min-height: 420px;
+    max-height: 65vh;
   }
 
   .about-fact-grid {
@@ -6468,13 +7931,13 @@ tbody tr:hover td {
     opacity: 0;
     pointer-events: none;
     overflow-x: hidden;
-    overflow-y: hidden;
+    overflow-y: auto;
     padding: 0;
     transition: max-height 180ms ease, opacity 160ms ease, padding 160ms ease;
   }
 
   .side-nav.open {
-    max-height: 440px;
+    max-height: min(440px, calc(100vh - 116px));
     opacity: 1;
     pointer-events: auto;
     padding: 12px 0 2px;
@@ -6622,8 +8085,11 @@ tbody tr:hover td {
 
   .inline-form,
   .config-grid,
+  .sql-lab,
   .schedule-row,
   .form-grid,
+  .safety-brightness-grid,
+  .safety-color-grid,
   .climate-form,
   .climate-schedule-row,
   .pilot-form,
@@ -6639,13 +8105,22 @@ tbody tr:hover td {
   .tuya-device-grid,
   .backup-picker,
   .backup-plan-grid,
-  .ui-v2-grid,
   .backup-check-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pilot-formula-terms div {
     grid-template-columns: 1fr;
   }
 
   .power-wall-v2 .power-wall-v2-devices {
     grid-template-columns: 1fr;
+  }
+
+  .sql-schema-panel,
+  .sql-detail-panel {
+    position: static;
+    max-height: none;
   }
 
   .v2-chain summary,
@@ -6667,6 +8142,14 @@ tbody tr:hover td {
   .home-advanced-grid,
   .home-climate-form {
     grid-template-columns: 1fr;
+  }
+
+  .sensor-range-switch {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sensor-range-switch.with-custom {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 58px;
   }
 
   .user-control-panel:first-child,
@@ -7066,6 +8549,11 @@ tbody tr:hover td {
     min-height: 96px;
   }
 
+  .mobile-dashboard .home-solar-card,
+  .mobile-dashboard .home-secu-card {
+    min-height: 0;
+  }
+
   .mobile-dashboard .home-sparkline,
   .mobile-dashboard .home-sparkline-empty {
     height: 32px;
@@ -7121,13 +8609,13 @@ tbody tr:hover td {
   .home-right-panel {
     grid-column: span 2;
     grid-template-columns: 1fr;
-    grid-template-rows: 380px 436px;
-    height: 830px;
+    grid-template-rows: auto auto;
+    height: auto;
     align-content: start;
   }
 
   .home-right-panel .home-side-card {
-    height: 100%;
+    height: auto;
     min-height: 0;
   }
 
@@ -8134,4 +9622,378 @@ tbody tr:hover td {
 [data-skin="jarvis"] .tablet-dashboard .home-irrigation-feedback-card .home-sparkline-empty {
   height: 58px;
   margin: 10px 0 0;
+}
+
+/* Keep the combustion safety tile visually distinct from the default cyan HUD cards. */
+[data-skin="jarvis"] .home-status-card.combustion-status-card.tone-safety,
+[data-skin="jarvis"] .mobile-dashboard .home-secu-card.tone-safety {
+  --tone: #dfff00;
+  background:
+    linear-gradient(135deg, rgba(223, 255, 0, 0.13), transparent 42%),
+    linear-gradient(315deg, rgba(255, 212, 0, 0.055), transparent 46%),
+    rgba(12, 17, 26, 0.94);
+  border-color: rgba(223, 255, 0, 0.7);
+  box-shadow: inset 0 0 30px rgba(223, 255, 0, 0.075), 0 0 28px rgba(223, 255, 0, 0.2);
+}
+
+[data-skin="jarvis"] .home-status-card.combustion-status-card.tone-safety::before,
+[data-skin="jarvis"] .mobile-dashboard .home-secu-card.tone-safety::before {
+  background: linear-gradient(90deg, transparent, #dfff00, transparent);
+  opacity: 1;
+}
+
+/* Notes mobile layout must remain after the desktop table and skin rules. */
+@media (max-width: 860px) {
+  .notes-page,
+  .notes-grid,
+  .notes-panel {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .table-wrap.notes-table-wrap {
+    flex: none;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .notes-table,
+  .notes-table tbody {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .notes-row-comment {
+    min-height: 110px;
+    max-height: 55vh;
+    overflow-y: auto;
+    resize: vertical;
+    field-sizing: content;
+  }
+}
+/* Mower */
+.mower-page { --mower-green: #53d78c; --mower-red: #ef5350; }
+.mower-heading { align-items: flex-end; }
+.mower-heading-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mower-heading-actions .button-link { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); text-decoration: none; font-weight: 700; }
+.mower-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--mower-red) 45%, var(--line)); background: color-mix(in srgb, var(--mower-red) 10%, transparent); color: var(--mower-red); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.mower-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; }
+.mower-pill.ok { color: var(--mower-green); border-color: color-mix(in srgb, var(--mower-green) 42%, var(--line)); background: color-mix(in srgb, var(--mower-green) 9%, transparent); }
+.mower-pill.warn { color: var(--tone-amber); }
+.mower-overview { display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: 12px; overflow-x: auto; }
+.mower-main-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, .8fr); gap: 16px; }
+.mower-detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.mower-control-panel, .mower-compass-panel { min-width: 0; }
+.mower-emergency { display: flex; align-items: center; gap: 16px; margin: 16px 0; padding: 14px; border: 1px solid color-mix(in srgb, var(--mower-red) 38%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--mower-red) 7%, transparent); }
+.mower-emergency > div { display: grid; gap: 3px; }
+.mower-emergency span { color: var(--muted); font-size: 12px; }
+.mower-stop { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-width: 140px; padding: 16px 22px; border: 0; border-radius: 10px; background: linear-gradient(135deg, #fb5b57, #c92e38); color: white; font-weight: 900; letter-spacing: .08em; box-shadow: 0 8px 24px rgba(220, 45, 52, .25); }
+.mower-button-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mower-set-control { display: grid; grid-template-columns: minmax(150px, 1fr) auto auto; align-items: end; gap: 8px; margin-top: 14px; }
+.mower-set-control.compact { grid-template-columns: minmax(120px, 1fr) auto; }
+.mower-set-control label { display: grid; grid-template-columns: 1fr auto; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.mower-set-control label span { opacity: .7; font-weight: 500; }
+.mower-set-control input { grid-column: 1 / -1; }
+.mower-safety-note { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; color: var(--muted); font-size: 12px; }
+.mower-heading-presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin-top: 9px; }
+.mower-heading-presets button { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 9px 7px; background: var(--soft); color: var(--text); border: 1px solid var(--line); }
+.mower-heading-presets button small { color: var(--muted); }
+.mower-safety-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-top: 12px; }
+.mower-safety-grid > div { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft); }
+.mower-safety-grid span { color: var(--muted); font-size: 11px; }
+.mower-safety-grid strong { font-size: 12px; }
+.mower-safety-grid .good strong { color: var(--mower-green); }
+.mower-safety-grid .bad { border-color: color-mix(in srgb, var(--mower-red) 48%, var(--line)); background: color-mix(in srgb, var(--mower-red) 7%, transparent); }
+.mower-safety-grid .bad strong { color: var(--mower-red); }
+.mower-manual-layout { display: grid; grid-template-columns: minmax(320px, 1.25fr) minmax(280px, .75fr); gap: 16px; margin-top: 14px; }
+.mower-cruise { position: relative; display: grid; grid-template-columns: minmax(140px, .55fr) minmax(220px, 1fr); gap: 14px; min-height: 260px; padding: 18px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--mower-green) 10%, transparent), transparent 45%), var(--soft); }
+.mower-cruise-speed { grid-row: 1 / 3; display: grid; place-content: center; place-items: center; align-self: stretch; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.mower-cruise-speed span { color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.mower-cruise-speed strong { color: var(--mower-green); font-size: clamp(34px, 4vw, 54px); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.mower-cruise-speed small { color: var(--muted); }
+.mower-cruise-buttons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.mower-cruise-buttons button { padding: 9px 7px; }
+.mower-cruise-buttons .mower-cruise-stop { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 7px; background: linear-gradient(135deg, #fb5b57, #c92e38); color: white; font-weight: 900; }
+.mower-cruise label { display: grid; grid-template-columns: 1fr auto; gap: 7px; align-content: center; color: var(--muted); font-size: 12px; }
+.mower-cruise label b { color: var(--text); }
+.mower-cruise input[type="range"] { grid-column: 1 / -1; width: 100%; height: 34px; margin: 2px 0; appearance: none; -webkit-appearance: none; background: transparent; accent-color: var(--mower-green); cursor: pointer; touch-action: none; }
+.mower-cruise input[type="range"]::-webkit-slider-runnable-track { height: 12px; border: 1px solid color-mix(in srgb, var(--mower-green) 45%, var(--line)); border-radius: 999px; background: color-mix(in srgb, var(--mower-green) 18%, var(--soft)); }
+.mower-cruise input[type="range"]::-webkit-slider-thumb { width: 30px; height: 30px; margin-top: -10px; -webkit-appearance: none; border: 3px solid var(--panel); border-radius: 50%; background: var(--mower-green); box-shadow: 0 2px 9px rgba(0,0,0,.38); }
+.mower-cruise input[type="range"]::-moz-range-track { height: 12px; border: 1px solid color-mix(in srgb, var(--mower-green) 45%, var(--line)); border-radius: 999px; background: color-mix(in srgb, var(--mower-green) 18%, var(--soft)); }
+.mower-cruise input[type="range"]::-moz-range-progress { height: 12px; border-radius: 999px; background: var(--mower-green); }
+.mower-cruise input[type="range"]::-moz-range-thumb { width: 26px; height: 26px; border: 3px solid var(--panel); border-radius: 50%; background: var(--mower-green); box-shadow: 0 2px 9px rgba(0,0,0,.38); }
+.mower-cruise.locked { border-color: color-mix(in srgb, var(--tone-amber) 38%, var(--line)); }
+.mower-cruise.locked .mower-cruise-speed strong { color: var(--muted); }
+.mower-cruise-lock { position: absolute; z-index: 2; top: 10px; right: 10px; display: flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid color-mix(in srgb, var(--tone-amber) 48%, var(--line)); border-radius: 999px; background: var(--panel); color: var(--tone-amber); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.mower-cruise-lock svg { width: 14px; height: 14px; }
+.mower-cruise-lock strong { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.mower-cruise-lock span { display: none; }
+.mower-joystick { touch-action: none; position: relative; min-height: 300px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: radial-gradient(circle at center, color-mix(in srgb, var(--mower-green) 8%, transparent), transparent 55%), var(--soft); }
+.mower-joystick.locked { filter: saturate(.45); }
+.mower-joystick > i { position: absolute; background: var(--line); pointer-events: none; }
+.mower-joystick > i.x { top: 50%; right: 0; left: 0; height: 1px; }
+.mower-joystick > i.y { top: 0; bottom: 0; left: 50%; width: 1px; }
+.mower-joystick-knob { position: absolute; width: 70px; height: 70px; transform: translate(-50%, -50%); border: 2px solid color-mix(in srgb, var(--mower-green) 75%, white); border-radius: 50%; background: color-mix(in srgb, var(--mower-green) 74%, #173227); box-shadow: 0 0 28px color-mix(in srgb, var(--mower-green) 45%, transparent); transition: left .05s linear, top .05s linear; pointer-events: none; }
+.mower-joystick-lock { position: absolute; inset: 0; display: grid; place-content: center; place-items: center; gap: 5px; background: color-mix(in srgb, var(--panel) 70%, transparent); backdrop-filter: blur(2px); color: var(--muted); }
+.mower-joystick-lock span { font-size: 11px; }
+.mower-manual-side { display: grid; align-content: start; gap: 12px; }
+.mower-manual-values { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mower-manual-values > div { display: grid; gap: 3px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+.mower-manual-values span { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.mower-manual-side p { margin: 0; color: var(--muted); font-size: 13px; }
+.mower-manual-side code { overflow-wrap: anywhere; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); color: var(--mower-green); }
+.mower-manual-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.mower-manual-actions .danger { background: linear-gradient(135deg, #fb5b57, #c92e38); }
+.mower-manual-side > small { display: flex; gap: 6px; color: var(--tone-amber); line-height: 1.45; }
+.mower-route-readiness { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-top: 14px; }
+.mower-route-readiness > div { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+.mower-route-readiness svg { grid-row: 1 / 3; color: var(--muted); }
+.mower-route-readiness span { color: var(--muted); font-size: 11px; }
+.mower-route-readiness strong { font-size: 12px; }
+.mower-route-readiness .ready { border-color: color-mix(in srgb, var(--mower-green) 42%, var(--line)); }
+.mower-route-readiness .ready svg, .mower-route-readiness .ready strong { color: var(--mower-green); }
+.mower-route-readiness .blocked { border-color: color-mix(in srgb, var(--tone-amber) 35%, var(--line)); }
+.mower-route-readiness .blocked svg, .mower-route-readiness .blocked strong { color: var(--tone-amber); }
+.mower-route-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.mower-route-toolbar .danger { background: linear-gradient(135deg, #fb5b57, #c92e38); }
+.mower-route-live { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.mower-route-live > div { display: grid; gap: 3px; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--mower-green) 38%, var(--line)); border-radius: 9px; background: color-mix(in srgb, var(--mower-green) 7%, transparent); }
+.mower-route-live span { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.mower-route-live strong { color: var(--mower-green); }
+.mower-route-table-wrap { margin-top: 12px; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+.mower-route-table { width: 100%; min-width: 660px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.mower-route-table th, .mower-route-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; }
+.mower-route-table th { background: var(--soft); color: var(--muted); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; }
+.mower-route-table tbody tr:last-child td { border-bottom: 0; }
+.mower-route-table tr.active td { background: color-mix(in srgb, var(--mower-green) 9%, transparent); color: var(--mower-green); font-weight: 700; }
+.mower-route-table .empty { padding: 20px; color: var(--muted); text-align: center; }
+.mower-rtk-map-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, .7fr); gap: 16px; margin-top: 14px; }
+.mower-rtk-map-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.mower-rtk-map-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mower-rtk-map-section-head h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; }
+.mower-rtk-map { z-index: 0; width: 100%; min-height: 390px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); }
+.mower-map-rover { display: grid; place-items: center; border: 3px solid #ffb020; border-radius: 50%; background: rgba(18, 26, 35, .88); box-shadow: 0 2px 12px rgba(0,0,0,.45); }
+.mower-map-rover.fixed { border-color: var(--mower-green); }
+.mower-map-rover-arrow { display: block; width: 0; height: 0; border-right: 8px solid transparent; border-bottom: 22px solid #ffb020; border-left: 8px solid transparent; filter: drop-shadow(0 1px 1px rgba(0,0,0,.8)); }
+.mower-map-rover.fixed .mower-map-rover-arrow { border-bottom-color: var(--mower-green); }
+.mower-rtk-map .leaflet-control-layers { border: 1px solid rgba(255,255,255,.5); border-radius: 8px; background: rgba(18,26,35,.9); color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+.mower-rtk-map .leaflet-control-layers-base label { margin: 5px 8px; font-weight: 800; cursor: pointer; }
+.mower-rtk-map .leaflet-control-layers-base input { accent-color: var(--mower-green); }
+.mower-rtk-map-data { display: grid; align-content: start; gap: 0; }
+.mower-rtk-map-data > button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; }
+.mower-firmware-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, .9fr); gap: 22px; align-items: end; margin-top: 14px; }
+.mower-firmware-versions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.mower-firmware-versions > div { display: grid; gap: 5px; min-width: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+.mower-firmware-versions span { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.mower-firmware-versions strong { overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+.mower-firmware-copy { display: grid; gap: 7px; }
+.mower-firmware-copy > span, .mower-firmware-copy small { color: var(--muted); font-size: 12px; }
+.mower-update-progress { height: 8px; overflow: hidden; border-radius: 999px; background: var(--soft); border: 1px solid var(--line); }
+.mower-update-progress i { display: block; height: 100%; min-width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--tone-green), var(--tone-sky)); transition: width .3s ease; }
+.mower-firmware-actions { display: grid; grid-template-columns: minmax(180px, 1fr) auto auto auto; align-items: end; gap: 8px; }
+.mower-file-picker { display: grid; gap: 5px; min-width: 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+.mower-file-picker input { min-width: 0; padding: 8px; }
+.mower-file-picker small { overflow: hidden; color: var(--muted); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.mower-firmware-actions .danger { background: linear-gradient(135deg, #fb5b57, #c92e38); }
+.mower-firmware-warning { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); color: var(--tone-amber); font-size: 12px; }
+.mower-compass { display: grid; place-items: center; padding: 10px 0 18px; }
+.mower-instruments { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+.mower-instrument { display: grid; place-items: center; align-content: start; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--panel) 94%, var(--tone-sky)); }
+.mower-instrument > strong { justify-self: start; color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.mower-compass-ring { position: relative; display: grid; place-items: center; width: 170px; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--mower-green) 8%, transparent), transparent 68%), repeating-conic-gradient(from -1deg, var(--line) 0 2deg, transparent 2deg 30deg); box-shadow: inset 0 0 0 12px var(--panel); }
+.mower-compass-ring span { position: absolute; top: 15px; color: var(--mower-green); font-size: 12px; font-weight: 900; }
+.mower-compass-ring i { position: absolute; width: 4px; height: 112px; transition: transform .35s ease; }
+.mower-compass-ring i::before { content: ""; display: block; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 54px solid var(--mower-green); transform: translate(-6px, 0); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--mower-green) 65%, transparent)); }
+.mower-compass-ring b { z-index: 2; display: grid; place-items: center; width: 62px; height: 62px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); font-size: 17px; }
+.mower-horizon { position: relative; width: 176px; aspect-ratio: 1; margin: 10px 0 18px; overflow: hidden; border: 2px solid #314153; border-radius: 50%; background: #111923; box-shadow: inset 0 0 0 5px #0b1118, 0 5px 18px rgba(0,0,0,.24); }
+.mower-horizon-world { --pitch-offset: 0px; --roll-angle: 0deg; position: absolute; inset: -55%; transform: translateY(var(--pitch-offset)) rotate(var(--roll-angle)); transition: transform .18s linear; }
+.mower-horizon-sky, .mower-horizon-ground { position: absolute; left: 0; width: 100%; height: 50%; }
+.mower-horizon-sky { top: 0; background: linear-gradient(#287bc1, #61b9eb); }
+.mower-horizon-ground { top: 50%; background: linear-gradient(#9b6337, #56321f); }
+.mower-horizon-line { position: absolute; top: calc(50% - 1px); left: 0; width: 100%; height: 2px; background: rgba(255,255,255,.95); box-shadow: 0 0 3px rgba(0,0,0,.8); }
+.mower-pitch-ladder { position: absolute; inset: 0; }
+.mower-pitch-ladder span { position: absolute; top: calc(50% + (var(--mark) * 2.15px)); left: 50%; display: flex; align-items: center; gap: 4px; width: 74px; transform: translate(-50%, -50%); color: white; font-size: 8px; font-weight: 800; text-shadow: 0 1px 2px #000; }
+.mower-pitch-ladder span::after { content: attr(data-mark); }
+.mower-pitch-ladder span i { display: block; width: 52px; height: 1px; background: rgba(255,255,255,.9); }
+.mower-pitch-ladder span.up { flex-direction: row-reverse; }
+.mower-horizon-aircraft { position: absolute; z-index: 4; top: 50%; left: 50%; display: flex; align-items: center; width: 112px; transform: translate(-50%, -50%); }
+.mower-horizon-aircraft i { flex: 1; height: 4px; border: 1px solid #211800; background: #ffd54a; box-shadow: 0 1px 2px rgba(0,0,0,.8); }
+.mower-horizon-aircraft i:first-child { transform: rotate(8deg); transform-origin: right; }
+.mower-horizon-aircraft i:last-child { transform: rotate(-8deg); transform-origin: left; }
+.mower-horizon-aircraft b { width: 9px; height: 9px; border: 2px solid #ffd54a; border-radius: 50%; }
+.mower-horizon-pointer { position: absolute; z-index: 5; top: 9px; left: 50%; width: 0; height: 0; transform: translateX(-50%); border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 11px solid #ffd54a; }
+.mower-horizon-bank-scale { position: absolute; z-index: 3; inset: 7px; border-top: 1px solid rgba(255,255,255,.65); border-radius: 50%; }
+.mower-horizon-readout { position: absolute; z-index: 6; right: 0; bottom: 17px; left: 0; display: flex; justify-content: center; gap: 12px; color: rgba(255,255,255,.8); font-size: 7px; letter-spacing: .05em; text-shadow: 0 1px 2px #000; }
+.mower-horizon-readout b { color: white; font-size: 9px; }
+.mower-horizon.offline { filter: grayscale(.8); opacity: .55; }
+.mower-data-list { display: grid; gap: 0; margin-top: 8px; }
+.mower-data-row { display: grid; grid-template-columns: minmax(90px, .7fr) minmax(0, 1.3fr); align-items: center; gap: 6px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mower-data-row:last-child { border-bottom: 0; }
+.mower-data-row > span, .mower-data-row small { color: var(--muted); font-size: 12px; }
+.mower-data-row strong { overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.mower-data-row small { grid-column: 2; text-align: right; }
+.mower-diagnostics-toggle { margin-top: 10px; }
+.mower-diagnostics-toggle > button { grid-column: 1 / -1; }
+.mower-diagnostics-off { margin: 10px 0; padding: 12px; border: 1px dashed var(--line); border-radius: 9px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.mower-motors { display: grid; gap: 9px; margin-top: 10px; }
+.mower-motor { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 4px 9px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--panel) 88%, var(--mower-green)); }
+.mower-motor > span { grid-row: 1 / 3; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--mower-green) 14%, transparent); color: var(--mower-green); font-weight: 900; }
+.mower-motor b { text-align: right; }
+.mower-motor small { grid-column: 2 / 4; color: var(--muted); }
+.mower-page .notes-page-embedded { margin-top: 0; }
+.mower-mobile-stop { display: none; }
+
+/* RTK Editor */
+.rtk-editor-page { display: grid; gap: 16px; }
+.rtk-editor-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rtk-editor-toolbar button.active { background: var(--tone-green); color: #071018; }
+.rtk-editor-file { position: relative; display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft); font-weight: 700; cursor: pointer; }
+.rtk-editor-file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.rtk-editor-open-file { display: flex; align-items: center; gap: 7px; min-width: 0; max-width: 360px; min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--soft) 88%, var(--tone-cyan)); font-size: 12px; }
+.rtk-editor-open-file span { color: var(--muted); }
+.rtk-editor-open-file strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rtk-editor-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, .55fr); gap: 16px; }
+.rtk-editor-map-panel { padding: 0; overflow: hidden; align-self: stretch; }
+.rtk-editor-map { z-index: 0; width: 100%; min-height: 1080px; background-color: var(--soft); background-image: linear-gradient(rgba(64,217,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(64,217,255,.07) 1px, transparent 1px); background-size: 32px 32px; }
+.rtk-editor-map.adding { cursor: crosshair; }
+.rtk-editor-map .leaflet-control-layers { background: rgba(18,26,35,.92); color: white; }
+.rtk-editor-guide { display: grid; gap: 14px; padding: 20px 22px 23px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 92%, var(--tone-cyan)); }
+.rtk-editor-guide h2 { margin: 3px 0 0; font-size: 18px; }
+.rtk-editor-guide ol { display: grid; gap: 8px; margin: 0; padding-left: 22px; color: var(--muted); line-height: 1.45; }
+.rtk-editor-guide li::marker { color: var(--tone-cyan); font-weight: 900; }
+.rtk-editor-guide strong { color: var(--text); }
+.rtk-editor-guide-notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.rtk-editor-guide-notes p { margin: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft); color: var(--muted); font-size: 12px; line-height: 1.45; }
+.rtk-editor-point { display: grid; place-items: center; border: 3px solid var(--mower-green); border-radius: 50%; background: #101820; color: white; box-shadow: 0 2px 8px rgba(0,0,0,.55); cursor: grab; }
+.rtk-editor-point:active { cursor: grabbing; }
+.rtk-editor-point.selected { border-color: #ffb020; background: #392b10; box-shadow: 0 0 0 4px rgba(255,176,32,.2), 0 2px 10px rgba(0,0,0,.55); }
+.rtk-editor-point.range-selected { border-color: #ff4d5a; background: #4a151c; box-shadow: 0 0 0 4px rgba(255,77,90,.24), 0 2px 10px rgba(0,0,0,.55); }
+.rtk-editor-point span { font-size: 10px; font-weight: 900; line-height: 1; }
+.rtk-exclusion-point { display: grid; place-items: center; border: 3px solid #ff4d5a; border-radius: 50%; background: #361218; color: white; box-shadow: 0 2px 8px rgba(0,0,0,.55); cursor: grab; }
+.rtk-exclusion-point.selected { box-shadow: 0 0 0 4px rgba(255,77,90,.24), 0 2px 8px rgba(0,0,0,.55); }
+.rtk-exclusion-point span { font-size: 8px; font-weight: 900; }
+.rtk-editor-side { align-self: start; }
+.rtk-editor-side > label { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: 15px 0; color: var(--muted); font-size: 12px; font-weight: 800; }
+.rtk-editor-side > label input { grid-column: 1 / -1; }
+.rtk-offset-pad { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 46px); justify-content: center; gap: 5px; }
+.rtk-offset-pad button { display: grid; place-items: center; padding: 0; }
+.rtk-offset-pad button:nth-child(1) { grid-column: 2; }.rtk-offset-pad button:nth-child(2) { grid-column: 1; grid-row: 2; }.rtk-offset-pad button:nth-child(3) { grid-column: 2; grid-row: 2; font-size: 11px; }.rtk-offset-pad button:nth-child(4) { grid-column: 3; grid-row: 2; }.rtk-offset-pad button:nth-child(5) { grid-column: 2; grid-row: 3; }
+.rtk-editor-sim { margin-top: 16px; }.rtk-editor-sim button { width: 100%; justify-content: center; }
+.rtk-editor-selection-help { display: block; margin-top: 10px; color: var(--muted); line-height: 1.4; }
+.rtk-goto-point { display: grid; gap: 7px; margin-top: 12px; }
+.rtk-goto-point > button { width: 100%; justify-content: center; }
+.rtk-goto-point small { color: var(--muted); font-size: 10px; line-height: 1.4; }
+.rtk-coverage-config { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.rtk-coverage-config h3 { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; margin: 0 0 3px; font-size: 14px; }
+.rtk-coverage-config label { display: grid; grid-template-columns: 1fr auto; gap: 4px; color: var(--muted); font-size: 10px; font-weight: 800; }
+.rtk-coverage-config label input { grid-column: 1 / -1; min-width: 0; }
+.rtk-coverage-config .rtk-auto-heading { grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: center; }
+.rtk-coverage-config .rtk-auto-heading button { min-height: 34px; padding: 0 12px; }
+.rtk-coverage-config .rtk-auto-heading button.active { border-color: color-mix(in srgb, var(--tone-cyan) 65%, var(--line)); background: color-mix(in srgb, var(--tone-cyan) 18%, var(--soft)); color: var(--text); }
+.rtk-drive-type { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); color: var(--muted); font-size: 11px; }
+.rtk-drive-type strong { color: var(--text); text-align: right; }
+.rtk-coverage-config > button { grid-column: 1 / -1; justify-content: center; }
+.rtk-coverage-results { margin-top: 12px; padding: 8px 10px; border: 1px solid color-mix(in srgb, #b7ff4a 35%, var(--line)); border-radius: 9px; background: color-mix(in srgb, #b7ff4a 6%, transparent); }
+.rtk-coverage-results.ready .mower-data-row:first-child strong { color: var(--mower-green); }
+.rtk-coverage-results.warning { border-color: color-mix(in srgb, var(--mower-red) 55%, var(--line)); background: color-mix(in srgb, var(--mower-red) 7%, transparent); }
+.rtk-coverage-results.warning .mower-data-row:first-child strong, .rtk-coverage-results.warning .mower-data-row:last-child strong { color: var(--mower-red); }
+.rtk-unsafe-connectors { display: grid; gap: 7px; margin-top: 10px; padding: 12px; border: 1px solid color-mix(in srgb, var(--mower-red) 55%, var(--line)); border-radius: 9px; background: color-mix(in srgb, var(--mower-red) 7%, transparent); }
+.rtk-unsafe-connectors h3 { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--mower-red); font-size: 13px; }
+.rtk-unsafe-connectors p { margin: 0 0 3px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.rtk-unsafe-connectors button { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border-color: color-mix(in srgb, var(--mower-red) 35%, var(--line)); text-align: left; }
+.rtk-unsafe-connectors button.active { border-color: var(--mower-red); background: color-mix(in srgb, var(--mower-red) 18%, var(--soft)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mower-red) 18%, transparent); }
+.rtk-mission-panel { display: grid; gap: 10px; margin-top: 14px; padding: 13px; border: 1px solid color-mix(in srgb, var(--tone-cyan) 45%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--tone-cyan) 6%, transparent); }
+.rtk-mission-panel.disabled { border-style: dashed; }
+.rtk-mission-panel h3 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 14px; }
+.rtk-mission-state { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; padding: 9px 10px; border-radius: 8px; background: var(--soft); font-size: 11px; }
+.rtk-mission-state span { color: var(--muted); }.rtk-mission-state strong { text-align: right; }
+.rtk-mission-panel.supported .rtk-mission-state strong:first-of-type { color: var(--mower-green); }
+.rtk-mission-geometry { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rtk-mission-geometry label { display: grid; grid-template-columns: 1fr auto; gap: 4px; color: var(--muted); font-size: 10px; font-weight: 800; }
+.rtk-mission-geometry input { grid-column: 1 / -1; min-width: 0; }
+.rtk-mission-file { display: grid; gap: 7px; }
+.rtk-mission-file > button { width: 100%; justify-content: center; }
+.rtk-mission-file > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+.rtk-mission-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 800; }
+.rtk-mission-file small { grid-column: 1; color: var(--muted); font-size: 9px; }
+.rtk-mission-file div button { grid-column: 2; grid-row: 1 / span 2; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: transparent; cursor: pointer; }
+.rtk-mission-actions { display: grid; gap: 7px; }
+.rtk-mission-actions > button { width: 100%; justify-content: center; }
+.rtk-mission-panel > small { color: var(--muted); font-size: 10px; line-height: 1.45; }
+@media (max-width: 900px) { .rtk-editor-layout { grid-template-columns: 1fr; }.rtk-editor-map { min-height: 760px; }.rtk-editor-guide-notes { grid-template-columns: 1fr; } }
+
+@media (max-width: 1250px) {
+  .mower-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mower-firmware-layout { grid-template-columns: 1fr; }
+  .mower-route-live { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  .mower-page { min-width: 0; padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+  .mower-page > *, .mower-page .panel { min-width: 0; }
+  .mower-heading { align-items: flex-start; }
+  .mower-heading-actions { width: 100%; }
+  .mower-heading-actions > button, .mower-heading-actions > a { flex: 1 1 auto; justify-content: center; min-height: 44px; }
+  .mower-overview { width: 100%; grid-template-columns: 1fr; gap: 10px; overflow-x: visible; padding: 0; }
+  .mower-overview > .card { width: 100%; min-width: 0; }
+  .mower-main-grid, .mower-detail-grid { grid-template-columns: 1fr; }
+  .mower-rtk-map-layout { grid-template-columns: 1fr; }
+  .mower-rtk-map { min-height: 300px; }
+  .mower-button-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mower-button-grid button, .mower-heading-presets button, .mower-route-toolbar button, .mower-firmware-actions button, .mower-manual-actions button { min-height: 46px; }
+  .mower-firmware-actions { grid-template-columns: 1fr 1fr; }
+  .mower-file-picker { grid-column: 1 / -1; }
+  .mower-route-readiness { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mower-manual-layout { grid-template-columns: 1fr; }
+  .mower-safety-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mower-route-toolbar { display: grid; grid-template-columns: 1fr 1fr; }
+  .mower-mobile-stop { position: fixed; z-index: 45; right: 14px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: 14px; display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 52px; border: 1px solid rgba(255,255,255,.28); border-radius: 13px; background: linear-gradient(135deg, #f2504c, #b91828); color: white; font-weight: 900; letter-spacing: .06em; box-shadow: 0 10px 30px rgba(122,12,23,.48); }
+}
+@media (max-width: 560px) {
+  .mower-page { gap: 12px; }
+  .mower-page .panel { padding: 13px; border-radius: 12px; }
+  .mower-page .panel-head { align-items: flex-start; gap: 7px; }
+  .mower-page .panel-head h2 { font-size: 15px; }
+  .mower-heading h1 { font-size: 23px; }
+  .mower-heading p { font-size: 12px; }
+  .mower-heading-actions .mower-pill { width: 100%; justify-content: center; min-height: 36px; }
+  .mower-firmware-versions { grid-template-columns: 1fr; }
+  .mower-instruments { grid-template-columns: 1fr; }
+  .mower-route-readiness, .mower-route-live { grid-template-columns: 1fr; }
+  .mower-cruise { grid-template-columns: 1fr; }
+  .mower-cruise-speed { grid-row: auto; min-height: 130px; }
+  .mower-cruise-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mower-heading-presets, .mower-safety-grid { grid-template-columns: 1fr 1fr; }
+  .mower-emergency { align-items: stretch; flex-direction: column; }
+  .mower-stop { width: 100%; min-height: 58px; }
+  .mower-set-control { grid-template-columns: 1fr 1fr; }
+  .mower-set-control label { grid-column: 1 / -1; }
+  .mower-set-control button { min-height: 46px; }
+  .mower-manual-side code { font-size: 11px; }
+  .mower-manual-actions { display: grid; grid-template-columns: 1fr; }
+  .mower-route-toolbar { grid-template-columns: 1fr; }
+  .mower-route-table { display: block; min-width: 0; }
+  .mower-route-table thead { display: none; }
+  .mower-route-table tbody { display: grid; gap: 8px; padding: 8px; }
+  .mower-route-table tr { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
+  .mower-route-table th, .mower-route-table td { display: grid; gap: 2px; padding: 8px 10px; border: 0; text-align: left; overflow-wrap: anywhere; }
+  .mower-route-table td::before { color: var(--muted); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+  .mower-route-table td:nth-child(1)::before { content: "Point"; }
+  .mower-route-table td:nth-child(2)::before { content: "Latitude"; }
+  .mower-route-table td:nth-child(3)::before { content: "Longitude"; }
+  .mower-route-table td:nth-child(4)::before { content: "Fix"; }
+  .mower-route-table td:nth-child(5)::before { content: "HDOP"; }
+  .mower-route-table td:nth-child(6)::before { content: "Status"; }
+  .mower-route-table td.empty { display: block; grid-column: 1 / -1; }
+  .mower-route-table td.empty::before { content: none; }
+  .mower-firmware-actions { grid-template-columns: 1fr; }
+  .mower-file-picker { grid-column: auto; }
+  .mower-file-picker input { width: 100%; }
+  .mower-page .notes-entry-form { grid-template-columns: 1fr; }
+  .mower-page .notes-entry-form button { min-height: 46px; }
 }

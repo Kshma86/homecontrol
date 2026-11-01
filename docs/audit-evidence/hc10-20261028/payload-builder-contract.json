@@ -1,0 +1,8 @@
+{
+  "admin_service.py:homecontrol_statistics_payload": true,
+  "energy_device_service.py:tuya_state_payload": true,
+  "power_wall_service.py:state_payload": true,
+  "power_wall_service.py:marten_motion_payload": true,
+  "power_wall_service.py:history_payload": true,
+  "irrigation_service.py:statistics_payload": true
+}

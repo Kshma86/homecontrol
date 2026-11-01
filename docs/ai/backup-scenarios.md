@@ -1,5 +1,26 @@
 # Backup Scenarios And Eval Cases
 
+## F6 local implementation scenarios (not deployed)
+
+- Web create/full/Git commit returns 202 with a queued run ID. No backend Docker
+  dump or tar is executed. Only the matching completed job reports success.
+- Settings/lock/request/checksum, `.partial`, and a new final archive without a
+  matching commit receipt never qualify as latest verified backup.
+- A remote target failure preserves the last good local archive and that
+  target's previous success timestamp, while the job reports failure.
+- Origin push failure still attempts offsite, local archive and required restic;
+  offsite or Gitea dump failures still allow the mandatory backup attempt.
+- Dump/tar kill, disk-full and permission errors never publish a completed
+  archive or trigger retention before a verified replacement exists.
+- Parent kill leaves the inherited lock held until the worker also exits.
+- Large/single-line/rotated logs use bounded tail reads. Missing lock probes
+  create no file; read permission failure is unknown, not confirmed unlocked.
+- System-scope install disables the exact two duplicate user timers and preserves
+  operator schedules; failed installation restores the saved unit state.
+
+Evidence and deployment limits: [HC F6 backups](../hc-f6-backups.md).
+The remaining legacy scenarios below still describe deployed r2 where applicable.
+
 ## Missing Backup Directory
 
 Given:

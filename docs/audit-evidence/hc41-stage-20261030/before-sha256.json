@@ -1,0 +1,10 @@
+{
+  "infra/backend/mqtt_monitor_service.py": "299f38bc37f21cd8a7b4fc0bbc6a4d56055ba9d1097e316a25e33a31fc823872",
+  "apps/hc_ingest/mqtt_ingest_multi.py": "55f51322c6d5eb3adf69c5524b7e43660de578e366ebe76ecbf4da44aa4f4c99",
+  "apps/hc_ingest/Dockerfile": "c0e664009ecb94b76f4d4614832431037548d5072c7390a8e6e4b4fa60a6a8ac",
+  "apps/tuya-poller/tuya_poller.py": "4ac7c4d73f4e43c3dec53c9379457f8d75f421cc86c33030c33aaddf5d7beb11",
+  "apps/xiaomi-x10/xiaomi_x10_bridge.py": "9cdd8bc63311a1a4d60fe3ab1d658d3c9695be21cf51e56f66266ba186e18022",
+  "apps/xiaomi-x10/xiaomi_x10_api.py": "cdad97bfb9f921380b32e4d6f4292c60f331291ada4e3d4c4c67a63df31b68d7",
+  "apps/gree-climate/gree_climate_bridge.py": "4620cd48dd6a1496cbf4a918ffc12776f1068a1880ffd172068241187d18a7e6",
+  "apps/ha-growatt-poller/ha_growatt_poller.py": "56cbab04ac42ecd38047ff1789a67522d66c9a3ae592e8ea9c2e7f9c6c76a297"
+}

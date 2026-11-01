@@ -220,7 +220,7 @@ class SchedulerServiceTest(unittest.TestCase):
         self.assertEqual(execution["command_topic"], "x10/command/schedule_clean")
         self.assertTrue(execution["command_payload"]["shadow_only"])
 
-    def test_x10_scheduler_tick_publishes_weekly_schedule(self):
+    def test_x10_transport_publish_does_not_confirm_execution(self):
         published = []
         execution_updates = []
 
@@ -258,12 +258,12 @@ class SchedulerServiceTest(unittest.TestCase):
             publish_mqtt=lambda topic, payload: published.append((topic, payload)) or (True, "published"),
         )
 
-        result = service.x10_scheduler_tick()
+        ok, message, result = service.publish_x10_weekly_schedule(service.x10_desired_weekly_schedules())
 
-        self.assertEqual(result["status"], "confirmed")
+        self.assertTrue(ok)
         self.assertEqual(published[0][0], "x10/command/schedule_clean_week")
         self.assertEqual(published[0][1]["schedules"][0]["start_time"], "09:00")
-        self.assertEqual(execution_updates[0][0], "confirmed")
+        self.assertEqual(execution_updates, [])
 
     def test_x10_scheduler_tick_blocks_invalid_weekly_schedule_payload(self):
         published = []
@@ -309,7 +309,7 @@ class SchedulerServiceTest(unittest.TestCase):
         self.assertEqual(published, [])
         self.assertEqual(execution_updates[0][0], "blocked")
 
-    def test_insert_climate_execution_publishes_when_domain_enabled(self):
+    def test_insert_climate_execution_prepares_intent_without_publishing(self):
         published = []
 
         def fetch_one(query, params=None):
@@ -343,11 +343,12 @@ class SchedulerServiceTest(unittest.TestCase):
         )
         execution = service.insert_v2_climate_execution_once(plan, {"scheduler_run_id": 2})
 
-        self.assertEqual(published[0][0], "climate/command")
-        self.assertEqual(execution["status"], "confirmed")
-        self.assertTrue(execution["result"]["published"])
+        self.assertEqual(published, [])
+        self.assertEqual(execution["status"], "pending")
+        self.assertFalse(execution["result"]["published"])
+        self.assertFalse(execution["result"]["publish_attempted"])
 
-    def test_x10_legacy_comparison_reports_strict_match(self):
+    def test_x10_legacy_comparison_rejects_unstamped_cached_match(self):
         service = self.service(
             x10_scheduler_entries=lambda: [
                 {
@@ -379,9 +380,9 @@ class SchedulerServiceTest(unittest.TestCase):
 
         comparison = service.legacy_comparison(chain)
 
-        self.assertEqual(comparison["status"], "match")
+        self.assertEqual(comparison["status"], "no_legacy_evidence")
 
-    def test_climate_confirmation_compares_cached_state(self):
+    def test_climate_confirmation_rejects_unstamped_cached_state(self):
         service = self.service(
             climate_state_payload=lambda: {
                 "ok": True,
@@ -398,7 +399,7 @@ class SchedulerServiceTest(unittest.TestCase):
             {"power": "on", "mode": "heat", "target_temperature": "23", "fan_speed": "auto", "light": "off"}
         )
 
-        self.assertEqual(confirmation["status"], "matching_climate_state_seen")
+        self.assertFalse(confirmation["confirmed"])
 
     def test_irrigation_legacy_comparison_reports_stop_drift_warning(self):
         requested = datetime(2026, 7, 24, 8, 0, tzinfo=timezone.utc)
@@ -542,14 +543,24 @@ class SchedulerServiceTest(unittest.TestCase):
 
     def test_ensure_scheduler_schema_runs_once(self):
         calls = []
-        service = self.service(execute_sql=lambda sql: calls.append(sql))
+        from startup_schema_manifest import MIGRATIONS
+        def fetch(query, params=()):
+            calls.append(query)
+            if "to_regclass('hc.startup_schema_migration')" in query: return {'present': True}
+            if 'where not(version' in query: return None
+            if 'select checksum' in query: return {'checksum': next(m[2] for m in MIGRATIONS if m[0]==params[0])}
+            if 'with expected' in query: return {'missing': []}
+            if 'pg_index' in query: return {'valid': True}
+            return {'mode': 'v2_execute_all'}
+        service = self.service(fetch_one=fetch, execute_sql=lambda sql: self.fail('No startup DDL/DML'))
 
         service.ensure_scheduler_schema()
         service.ensure_scheduler_schema()
 
-        self.assertEqual(len(calls), 1)
-        self.assertIn("create table if not exists hc.scheduler_config", calls[0])
-        self.assertIn("create table if not exists hc.climate_schedule_rule", calls[0])
+        count=len(calls)
+        service.ensure_scheduler_schema()
+        self.assertEqual(len(calls), count)
+        self.assertTrue(all(query.lstrip().lower().startswith(('select','with')) for query in calls))
 
     def test_simulation_payload_validates_domain_action(self):
         service = self.service()

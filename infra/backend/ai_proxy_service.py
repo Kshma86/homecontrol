@@ -1,3 +1,10 @@
+import ai_domain_replies as hc_replies
+import inspect
+from ai_context_plan import context_sections
+from worker_runtime import BoundedJobs, Busy
+from concurrent.futures import TimeoutError as JobTimeout
+import copy
+from ai_images import validate_images
 import json
 import os
 import re
@@ -219,7 +226,7 @@ class AiKnowledgeLoader:
 
 
 class AiProxyService:
-    HISTORY_CONTEXT_WINDOW = 10
+    HISTORY_CONTEXT_WINDOW = 20
 
     def __init__(
         self,
@@ -241,13 +248,70 @@ class AiProxyService:
         self.knowledge_loader = knowledge_loader or AiKnowledgeLoader()
         self.audit_logger = audit_logger
         self.db_query_count = db_query_count or (lambda: None)
+        self._chat_jobs = BoundedJobs("ai-chat", 1)
+        self._transport_jobs = BoundedJobs("ai-transport", 1)
+        self._request_deadline = threading.local()
+        self._status_cache = None
+        self._status_cache_at = 0.0
+        self._status_cache_lock = threading.Lock()
+        self._status_cache_ttl = max(5.0, float(os.getenv("AI_STATUS_CACHE_TTL", "30")))
 
-    def status(self) -> Tuple[Dict[str, Any], int]:
-        return self._proxy("/health", success_status=200)
+    def status(self, force: bool = False) -> Tuple[Dict[str, Any], int]:
+        from deployment_policy import ai_disabled, unavailable
+        if ai_disabled():
+            return unavailable(), 503
+        current = time.monotonic()
+        with self._status_cache_lock:
+            if not force and self._status_cache is not None and current - self._status_cache_at < self._status_cache_ttl:
+                payload, status = self._status_cache
+                return copy.deepcopy(payload), status
+            payload, status = self._proxy("/health", success_status=200)
+            self._status_cache = (copy.deepcopy(payload), status)
+            self._status_cache_at = current
+            return payload, status
+
+    def clear_status_cache(self) -> None:
+        with self._status_cache_lock:
+            self._status_cache = None
+            self._status_cache_at = 0.0
 
     def chat(self, body: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
+        deadline = time.monotonic() + self.timeout
+        try:
+            from flask import has_request_context, copy_current_request_context
+            callback = lambda: self._chat_with_deadline(body, deadline)
+            if has_request_context():
+                callback = copy_current_request_context(callback)
+            future = self._chat_jobs.submit(callback)
+            return future.result(timeout=max(.001, deadline-time.monotonic()))
+        except Busy:
+            return {"ok": False, "code": "capacity_exhausted", "error": "AI request already running"}, 503
+        except JobTimeout:
+            return {"ok": False, "code": "deadline_exceeded", "error": "AI total request deadline exceeded"}, 504
+
+    def _chat_with_deadline(self, body, deadline):
+        self._request_deadline.value = deadline
+        try:
+            return self._chat(body)
+        finally:
+            self._request_deadline.value = None
+
+    def worker_status(self):
+        return {**self._chat_jobs.status(), 'transport': self._transport_jobs.status()}
+
+    def stop_worker(self, timeout=0):
+        deadline = time.monotonic() + max(0, timeout)
+        chat_stopped = self._chat_jobs.stop(timeout)
+        transport_stopped = self._transport_jobs.stop(max(0, deadline-time.monotonic()))
+        return chat_stopped and transport_stopped
+
+    def _chat(self, body: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
         message = str(body.get("message") or "").strip()
-        if not message:
+        try:
+            images = validate_images(body.get("images"))
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}, 400
+        if not message and not images:
             return {"ok": False, "error": "message is required"}, 400
         started_at = _utc_now()
         started = time.perf_counter()
@@ -260,16 +324,18 @@ class AiProxyService:
         response_payload: Dict[str, Any] = {}
         response_status = 500
         source = "unknown"
+        sections = []
         history = body.get("history") if isinstance(body.get("history"), list) else []
         try:
             context_started = time.perf_counter()
-            context = self.json_ready(self._context_summary_with_trace(context_trace))
+            sections = context_sections(message, history, images=bool(images))
+            context = self.json_ready(self._context_summary_with_trace(context_trace, sections))
             context_ms = round((time.perf_counter() - context_started) * 1000, 1)
             knowledge_started = time.perf_counter()
             knowledge_docs = self.knowledge_loader.build(message, history, trace=skill_trace)
             knowledge_ms = round((time.perf_counter() - knowledge_started) * 1000, 1)
             context["knowledge_docs"] = knowledge_docs
-            direct_reply = self.direct_context_reply(message, context, history)
+            direct_reply = None if images else self.direct_context_reply(message, context, history)
             if direct_reply:
                 source = "direct_context_reply"
                 response_payload = {
@@ -286,6 +352,8 @@ class AiProxyService:
                 response_status = 200
                 return response_payload, response_status
             payload = {"message": message, "history": history[-self.HISTORY_CONTEXT_WINDOW:], "context": context}
+            if images:
+                payload["images"] = images
             model_started = time.perf_counter()
             data, status = self._proxy("/chat", payload, method="POST", success_status=200, failure_status=502)
             model_ms = round((time.perf_counter() - model_started) * 1000, 1)
@@ -308,6 +376,13 @@ class AiProxyService:
             response_status = status
             return response_payload, response_status
         finally:
+            deadline = getattr(self._request_deadline, 'value', None)
+            if deadline is not None and time.monotonic() >= deadline:
+                # A late job must not audit a successful response after its
+                # HTTP caller already received the total-deadline failure.
+                response_status = 504
+                response_payload = {"ok": False, "error": "AI total request deadline exceeded"}
+                source = "deadline_exceeded"
             self._log_chat_audit(
                 {
                     "started_at": started_at,
@@ -335,17 +410,22 @@ class AiProxyService:
                         "knowledge_truncated": knowledge_docs.get("truncated"),
                     },
                     "request_meta": {
+                        "context_sections": sections,
                         "knowledge_version": knowledge_docs.get("version"),
                         "knowledge_max_chars": knowledge_docs.get("max_chars"),
                     },
                 }
             )
 
-    def _context_summary_with_trace(self, trace: List[Dict[str, Any]]) -> Dict[str, Any]:
-        try:
-            return self.context_summary(trace=trace)
-        except TypeError:
-            return self.context_summary()
+    def _context_summary_with_trace(self, trace, sections):
+        parameters = inspect.signature(self.context_summary).parameters
+        any_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters.values())
+        kwargs = {}
+        if 'trace' in parameters or any_kwargs:
+            kwargs['trace'] = trace
+        if 'sections' in parameters or any_kwargs:
+            kwargs['sections'] = sections
+        return self.context_summary(**kwargs)
 
     @staticmethod
     def _audit_data_sources(context_trace: List[Dict[str, Any]], knowledge_docs: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -426,136 +506,16 @@ class AiProxyService:
 
     @staticmethod
     def direct_context_reply(message: str, context: Dict[str, Any], history: Iterable[Any] = ()) -> str:
-        text = str(message or "").strip().lower()
-        combined = AiKnowledgeLoader._routing_text(message, history).lower()
-        asks_ai_audit = any(word in combined for word in ["ai kérés", "ai keres", "ai kérések", "ai keresek", "chat audit", "ai audit"]) and any(
-            word in combined for word in ["elemez", "analiz", "trend", "context layer", "context-layer", "fejleszt"]
-        )
-        if asks_ai_audit:
-            return AiProxyService.ai_audit_analysis_reply(context)
-        asks_climate_power = any(word in text for word in ["klím", "klima", "gree", "climate"]) and any(
-            word in text for word in ["fogyaszt", "teljesítmény", "teljesitmeny", "watt", "kwh", "energia", "áram", "aram"]
-        )
-        if asks_climate_power:
-            climate_power = context.get("climate_power") if isinstance(context.get("climate_power"), dict) else {}
-            if not climate_power or climate_power.get("ok") is False:
-                return f"A klíma fogyasztásmérő adata nem elérhető az AI contextben: {climate_power.get('error') or 'nincs climate_power adat'}."
-            meter = climate_power.get("meter") if isinstance(climate_power.get("meter"), dict) else {}
-            name = meter.get("entity_name") or meter.get("device_name") or "Gree klíma"
-            if any(word in text for word in ["hónap", "honap"]):
-                energy = climate_power.get("month_energy_kwh")
-                days = climate_power.get("month_days")
-                avg_daily = round(float(energy) / float(days), 3) if energy is not None and days else None
-                return (
-                    "A klíma havi fogyasztását a climate_power blokk alapján számolom, nem a HC szerver fogyasztásmérőjéből. "
-                    f"Az aktuális hónap eddigi mért fogyasztása {energy if energy is not None else '-'} kWh "
-                    f"({days if days is not None else 0} napi sor alapján). "
-                    f"Ez napi átlagban {avg_daily if avg_daily is not None else '-'} kWh/nap. "
-                    f"Mai eddigi fogyasztás: {climate_power.get('today_energy_kwh', '-')} kWh, "
-                    f"aktuális teljesítmény: {climate_power.get('current_power_w', '-')} W, mérő: {name}."
-                )
-            return (
-                f"A klíma fogyasztásmérője: {name}. "
-                f"Mai eddigi fogyasztás {climate_power.get('today_energy_kwh', '-')} kWh, "
-                f"aktuális teljesítmény {climate_power.get('current_power_w', '-')} W, "
-                f"utolsó 30 nap {climate_power.get('energy_kwh_30d', '-')} kWh. "
-                "Ez climate_power adat, nem HC szerver/server_power adat."
-            )
-        asks_settings = any(word in text for word in ["beállítás", "beallitas", "paraméter", "parameter", "mód", "mod", "target", "célhő", "celho", "venti", "fan", "általában", "altalaban", "használva", "hasznalva"])
-        climate_context = any(word in combined for word in ["klím", "klima", "gree", "climate", "climate_power"])
-        if asks_settings and climate_context:
-            climate = context.get("climate") if isinstance(context.get("climate"), dict) else {}
-            climate_history = context.get("climate_history") if isinstance(context.get("climate_history"), dict) else {}
-            schedules = context.get("climate_schedules") if isinstance(context.get("climate_schedules"), dict) else {}
-            enabled = schedules.get("enabled_schedules") if isinstance(schedules.get("enabled_schedules"), list) else []
-            lines = [
-                (
-                    f"Aktuális állapot: power={climate.get('power') or '-'}, mód={climate.get('mode') or '-'}, "
-                    f"célhő={climate.get('target_temperature') if climate.get('target_temperature') is not None else '-'} °C, "
-                    f"fan={climate.get('fan_speed') or '-'}, "
-                    f"aktuális hőmérséklet={climate.get('current_temperature') if climate.get('current_temperature') is not None else '-'} °C."
-                ),
-            ]
-            if climate_history and climate_history.get("ok"):
-                distributions = climate_history.get("distributions_7d") if isinstance(climate_history.get("distributions_7d"), dict) else {}
-                numeric = climate_history.get("numeric_7d") if isinstance(climate_history.get("numeric_7d"), dict) else {}
-                recent_changes = climate_history.get("recent_setting_changes_7d") if isinstance(climate_history.get("recent_setting_changes_7d"), list) else []
-                lines.append("Historikus klíma paraméterek a climate_history blokkból:")
-                for key, label in [
-                    ("climate_power", "power"),
-                    ("climate_mode", "mód"),
-                    ("climate_fan_speed", "fan"),
-                ]:
-                    values = distributions.get(key) if isinstance(distributions.get(key), list) else []
-                    if values:
-                        lines.append(f"- {label} 7 napos minták: " + ", ".join(f"{item.get('value')} ({item.get('sample_count')})" for item in values[:4]))
-                for key, label in [
-                    ("climate_target_temperature", "célhő"),
-                    ("climate_current_temperature", "mért hő"),
-                ]:
-                    item = numeric.get(key) if isinstance(numeric.get(key), dict) else {}
-                    if item:
-                        lines.append(f"- {label} 7 nap: átlag {item.get('avg')}, min {item.get('min')}, max {item.get('max')}, minták {item.get('sample_count')}")
-                if recent_changes:
-                    lines.append("Friss beállítás-változások: " + "; ".join(f"{item.get('key')}={item.get('value')}" for item in recent_changes[:6]))
-            else:
-                lines.append(f"Historikus klíma paraméter idősor még nem elérhető: {climate_history.get('error') or 'nincs climate_history adat'}.")
-            if enabled:
-                lines.append(f"Engedélyezett klíma schedule szabályok ({len(enabled)} db):")
-                for row in enabled[:7]:
-                    lines.append(
-                        f"- {row.get('label') or row.get('id')}: nap={row.get('day_of_week')}, idő={row.get('start_time')}, "
-                        f"power={row.get('power')}, mód={row.get('mode')}, célhő={row.get('target_temperature')} °C, "
-                        f"fan={row.get('fan_speed')}, státusz={row.get('schedule_status') or '-'}"
-                    )
-            else:
-                lines.append("Nem látok engedélyezett klíma schedule szabályt az AI contextben.")
-            lines.append("Szobahőmérő adatból nem következtetek klíma beállításokra, mert az nem ugyanaz az adatforrás.")
-            return "\n".join(lines)
-        if asks_settings and not climate_context:
-            return "Pontosan melyik modul beállításaira gondolsz? Például klíma, öntözés, X10 robot, solar vagy power wall. Modulnév nélkül nem következtetek, mert könnyen rossz adatforrásból válaszolnék."
-        return ""
+        return hc_replies.direct_context_reply(message, context, history)
 
     @staticmethod
     def ai_audit_analysis_reply(context: Dict[str, Any]) -> str:
-        audit = context.get("ai_chat_audit") if isinstance(context.get("ai_chat_audit"), dict) else {}
-        if not audit or audit.get("ok") is False:
-            return f"Az AI kérés audit adat nem elérhető az AI contextben: {audit.get('error') or 'nincs ai_chat_audit adat'}."
-        sample_size = audit.get("sample_size") or 0
-        success = audit.get("success") if isinstance(audit.get("success"), dict) else {}
-        latency = audit.get("latency") if isinstance(audit.get("latency"), dict) else {}
-        top_skills = audit.get("top_skills") if isinstance(audit.get("top_skills"), list) else []
-        top_sources = audit.get("top_data_sources") if isinstance(audit.get("top_data_sources"), list) else []
-        slow_context = audit.get("slow_context_sections") if isinstance(audit.get("slow_context_sections"), list) else []
-        slow_skills = audit.get("slow_skills") if isinstance(audit.get("slow_skills"), list) else []
-        recent_questions = audit.get("recent_questions") if isinstance(audit.get("recent_questions"), list) else []
-
-        lines = [
-            f"Az AI kérés audit alapján elemzek, nem emlékezetből. Minta: {sample_size} legutóbbi kérés.",
-            (
-                f"Sikeresség: {success.get('ok_rate_percent', '-')}% ok, "
-                f"hibák: {success.get('error_count', '-')}. Átlag válaszidő: {latency.get('avg_total_ms', '-')} ms, "
-                f"max: {latency.get('max_total_ms', '-')} ms, átlag DB lekérdezés: {latency.get('avg_db_query_count', '-')}."
-            ),
-        ]
-        if top_skills:
-            lines.append("Leggyakoribb skill útvonalak: " + ", ".join(f"{item.get('name')} ({item.get('count')})" for item in top_skills[:5]))
-        if top_sources:
-            lines.append("Leggyakrabban használt adatforrások: " + ", ".join(f"{item.get('name')} ({item.get('count')})" for item in top_sources[:5]))
-        if slow_context:
-            lines.append("Context-layer teljesítmény fókusz: " + ", ".join(f"{item.get('name')} avg {item.get('avg_ms')} ms" for item in slow_context[:5]))
-        if slow_skills:
-            lines.append("Knowledge/skill betöltési fókusz: " + ", ".join(f"{item.get('name')} avg {item.get('avg_ms')} ms" for item in slow_skills[:5]))
-        if recent_questions:
-            question_text = "; ".join(str(item.get("question") or "")[:80] for item in recent_questions[:5] if item.get("question"))
-            if question_text:
-                lines.append(f"Friss kérdésminták: {question_text}")
-        lines.append(
-            "Context-layer fejlesztési irány: a gyakori kérdésmintákhoz legyen explicit, kompakt context mező; a lassú szekciókat cache/SQL oldalról kell nézni; ahol sok a DB lekérdezés, ott érdemes aggregált read modelt adni az AI contextnek."
-        )
-        return "\n".join(lines)
+        return hc_replies.ai_audit_analysis_reply(context)
 
     def request(self, path: str, payload: Optional[Dict[str, Any]] = None, method: str = "GET") -> Dict[str, Any]:
+        from deployment_policy import ai_disabled, MESSAGE
+        if ai_disabled():
+            raise OSError(MESSAGE)
         url = f"{self.server_url}{path}"
         data = None
         headers = {"Accept": "application/json"}
@@ -563,7 +523,11 @@ class AiProxyService:
             data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             headers["Content-Type"] = "application/json"
         req = Request(url, data=data, headers=headers, method=method)
-        with self.urlopen(req, timeout=self.timeout) as response:
+        deadline = getattr(self._request_deadline, 'value', None)
+        remaining = self.timeout if deadline is None else deadline-time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('AI total request deadline exceeded')
+        with self.urlopen(req, timeout=remaining) as response:
             raw = response.read().decode("utf-8")
             return json.loads(raw or "{}")
 
@@ -577,8 +541,24 @@ class AiProxyService:
         failure_status: int = 502,
     ) -> Tuple[Dict[str, Any], int]:
         try:
-            data = self.request(path, payload, method=method)
+            deadline = getattr(self._request_deadline, 'value', None)
+            if deadline is None:
+                deadline = time.monotonic() + self.timeout
+            remaining = deadline-time.monotonic()
+            if remaining <= 0:
+                raise JobTimeout()
+            def transport():
+                self._request_deadline.value = deadline
+                try:
+                    return self.request(path, payload, method=method)
+                finally:
+                    self._request_deadline.value = None
+            data = self._transport_jobs.submit(transport).result(timeout=remaining)
             return data, success_status
+        except Busy:
+            return {"ok": False, "code": "capacity_exhausted", "error": "AI transport already running"}, 503
+        except JobTimeout:
+            return {"ok": False, "code": "deadline_exceeded", "error": "AI total request deadline exceeded"}, 504
         except HTTPError as exc:
             return self.http_error_payload(exc), exc.code
         except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:

@@ -1,0 +1,122 @@
+{
+  "checked_at": "2026-10-31T19:08:40.971210+00:00",
+  "production_containers_unchanged": 16,
+  "r10_runtime_sources_unchanged": 646,
+  "audit_unchanged": true,
+  "active_compose_unchanged": true,
+  "lab_containers_and_networks_removed": true,
+  "containers": {
+    "homecontrol-proxy": {
+      "id": "67fdae53b7478d7a565a478d367b45dd0a7288e9b9a50f431b568be817ed0ffb",
+      "image": "sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10",
+      "started_at": "2026-10-31T14:13:05.487230419Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-frontend": {
+      "id": "9ab02fba29dba24b78117a3325d9321ccf173adc69045a98f3113a2672df1cec",
+      "image": "sha256:f14bec627e84a9be0bbec6067f00fcbfcd59f138ecad3a13aa7e18320a7b6037",
+      "started_at": "2026-10-31T14:13:05.311457029Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-backend": {
+      "id": "2fc0dc364a77773f37cafaee67f4b4e033ff7b92c5c66b7fa7f708374883de11",
+      "image": "sha256:92aacd1580f5e41f48dd6937163515da29f3974a8689bf8d37b6f9223b4c76ce",
+      "started_at": "2026-10-31T14:13:05.114158638Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-ingest": {
+      "id": "341b77adbdac10c53c51f70c42f395fe7c873fe1ff310deda00fc4b682a17688",
+      "image": "sha256:2fdd3b31dd18f486395a6b8d10b49b9839b30888f09ca7ad11c4d28109633ab0",
+      "started_at": "2026-10-31T14:13:05.112983968Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-pgbouncer": {
+      "id": "686f7033cdb46abac5422abd70e5e8f15d50521cb8e6b5522e123677137c2a80",
+      "image": "sha256:7f39cf2f872c8d9a0bb0e6a5440c3bf5814036eccf284102870ab08e2603a2c7",
+      "started_at": "2026-10-31T14:12:54.072832787Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-tuya-poller": {
+      "id": "a82bda619b3819d119730019a0a7f12eced70f7f0648842519f22bee989ae2e3",
+      "image": "sha256:c2009f6fcca5de52f1aa6dfde2bc19ed550fcd24370cb2003953b985f1c7286e",
+      "started_at": "2026-10-31T14:12:43.386227466Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-gree-climate": {
+      "id": "d4d4e2ee005a699363fa92e52ba009332029b5c68a95bfc61656774bf857c9ca",
+      "image": "sha256:6d244313019ad261b4853481cbfdd4abd1e143aaa496c23529158e71962ee5f8",
+      "started_at": "2026-10-31T14:12:43.366595703Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-xiaomi-x10": {
+      "id": "27b7f3d21ba6b08b7a12b0b3990555f7a0892504baf69432d05a1ada97283fa4",
+      "image": "sha256:860dd475f5e8607381c17c8f043ec874523180fff48a3b4ec12475245ddb517d",
+      "started_at": "2026-10-31T14:12:43.357421244Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-ha-growatt-poller": {
+      "id": "39a5e58f34e100f24c820c31946da0b8578dcae15f5387ce224b7b431fc501e5",
+      "image": "sha256:9c9f89f9d84d3d41bc9178faeccd3fcdc322025da02a00f8a6b032abc1dafe12",
+      "started_at": "2026-10-31T14:12:43.38415552Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-mqtt": {
+      "id": "4bcea8871470564e80cb60443190239b7ca012de00321f75a6cb654b396ceed9",
+      "image": "sha256:077fe4ff4c49df1e860c98335c77dda08360629e0e2a718147027e4db3eace9d",
+      "started_at": "2026-10-31T14:12:43.046294215Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-postgres": {
+      "id": "a00ddc6bbdc1005b84378af1b6c3d1eca0b620120fcfc740256e0aecd6d60cce",
+      "image": "sha256:f992505e18f114c1e5102ac4dcf00f791b44462f6a423d899320f0bbf80e386f",
+      "started_at": "2026-10-31T14:12:43.045273394Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "zigbee2mqtt": {
+      "id": "5e5aa6a73660bc99b655cd8b83235d3c4b1bd935a44d8fbc452f9cf9b52b901b",
+      "image": "sha256:89cf02f379aa743a68494388e3a26fba7b8c9101f8b452038cc07aeff3fc983c",
+      "started_at": "2026-10-31T14:12:43.062982042Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-ai-server": {
+      "id": "d641c04fb68fb727003492826f62d57c8d433a425e4271a6c6bdabee6679e8cf",
+      "image": "sha256:3ec17f374edaaee9a5fe02c53a5b0636a02578ec337acac2203faff689ea01a0",
+      "started_at": "2026-10-31T14:12:43.046311806Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-mdns": {
+      "id": "3887fdf21c4c7ebdebdd499692899b9c0838bc3113d783c2bab77ead8f6445d9",
+      "image": "sha256:7411c2ca4fffa60cd350e0fe7a94e365166ce2cef697136722535cfe6ecc4569",
+      "started_at": "2026-08-18T15:40:08.262386477Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homeassistant": {
+      "id": "369bc91e17f9374a02dc24288f09e2202fd27ad0328c3fec558c491157684c95",
+      "image": "sha256:1476924357b46e80735c13e94232ba5c853cac052e9df4bb28d50fa56348097b",
+      "started_at": "2026-08-19T19:04:45.434987156Z",
+      "restart_count": 0,
+      "status": "running"
+    },
+    "homecontrol-adminer": {
+      "id": "0ad15d9c2e815cc351746cdb9586cd90c75de018c563d1e6f52d5585e4b0b506",
+      "image": "sha256:19f38bc71f743beb2ad28bf31dfeb352deb19eb167692d250a66cda40b25de93",
+      "started_at": "2026-08-18T15:40:08.286113964Z",
+      "restart_count": 0,
+      "status": "exited"
+    }
+  }
+}

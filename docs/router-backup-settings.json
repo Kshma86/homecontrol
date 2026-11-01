@@ -1,0 +1,12 @@
+{
+  "router_ftp_host": "192.168.1.1",
+  "router_ftp_user": "kshma",
+  "router_ftp_port": 21,
+  "router_ftp_tls": false,
+  "router_mount": "/G",
+  "router_repository_path": "/G/hc-backup/restic/homecontrol",
+  "router_rclone_remote": "routerbackup",
+  "router_rclone_config": "/etc/homecontrol/router-rclone.conf",
+  "backup_target": "router_ftp",
+  "restic_password_file": "/etc/homecontrol/router-restic-password"
+}

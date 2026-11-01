@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "real_postgresql": true,
+  "transaction_pooler_tests": 19,
+  "handover_scenarios": 5,
+  "running_backend_refused": true,
+  "deploy_old_on_cancelled": true,
+  "rollback_new_on_cancelled_no_replay": true,
+  "binding_policy_flags_and_other_jobs_unchanged": true,
+  "failed_transaction_rolled_back_no_success_receipt": true,
+  "production_used": false,
+  "published_ports": false,
+  "application_dump_restore": true
+}

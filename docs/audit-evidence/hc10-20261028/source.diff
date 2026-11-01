@@ -1,0 +1,1262 @@
+--- before/infra/backend/admin_service.py
++++ after/infra/backend/admin_service.py
+@@ -73,6 +73,7 @@
+         absolute_humidity_g_m3: Callable[[Any, Any], Any],
+         irrigation_context: Callable[[], Any],
+         scheduler_state: Callable[[], Any],
++        cached_api_payload: Callable[..., Any] = None,
+     ):
+         self.db_conn = db_conn
+         self.dict_row = dict_row
+@@ -82,6 +83,7 @@
+         self.execute_sql = execute_sql
+         self.normalize_text = normalize_text
+         self.json_ready = json_ready
++        self.cached_api_payload = cached_api_payload or (lambda key, ttl, builder: builder())
+         self.api_cache_get = api_cache_get
+         self.api_cache_set = api_cache_set
+         self.api_cache_delete_prefix = api_cache_delete_prefix
+@@ -695,9 +697,9 @@
+             }.get(str(range_key or "24h").strip().lower(), ("24 hours", "minute"))
+             range_label = "7d" if range_config[0] == "7 days" else "1h" if range_config[0] == "1 hour" else "24h"
+         cache_key = f"homecontrol_statistics:{range_label}"
+-        cached = self.api_cache_get(cache_key)
+-        if cached is not None:
+-            return cached
++        return self.cached_api_payload(cache_key, 5, lambda: self._build_homecontrol_statistics_payload(range_label, range_config))
++
++    def _build_homecontrol_statistics_payload(self, range_label, range_config):
+         interval_text, bucket = range_config
+         rows = self.fetch_all(
+             f"""
+@@ -909,9 +911,7 @@
+             limit 200
+             """
+         )
+-        return self.api_cache_set(
+-            cache_key,
+-            {
++        return {
+                 "temp_humidity_sensors": sensors,
+                 "opening_sensors": opening_rows,
+                 "opening_events": opening_events,
+@@ -919,6 +919,5 @@
+                 "co_sensor": co_sensor,
+                 "range": range_label,
+                 "bucket": bucket,
+-            },
+-            5,
+-        )
++            }
++
+--- before/infra/backend/app.py
++++ after/infra/backend/app.py
+@@ -330,7 +330,29 @@
+ 
+ 
+ def api_cache_delete_prefix(prefix: str):
++    context = globals().get("_context_service")
++    sections = api_cache_context_sections(prefix)
++    if context is not None and sections:
++        for section in sections:
++            context.invalidate(section)
+     return API_CACHE.delete_prefix(prefix)
++
++
++def api_cache_context_sections(prefix: str):
++    owners = {
++        "irrigation_statistics": ("irrigation_statistics",),
++        "homecontrol_statistics": ("home_statistics",),
++        "power_wall_": ("power_wall",),
++        "marten_motion": ("power_wall",),
++        "tuya_state": ("tuya",),
++        "solar_state": ("solar",),
++        "climate_power_history": ("climate_power_history",),
++        "climate_history": ("climate_history",),
++        "performance_server_power": ("server_power", "performance"),
++    }
++    return list(dict.fromkeys(section for owner, sections in owners.items()
++                             if owner.startswith(prefix) or prefix.startswith(owner)
++                             for section in sections))
+ 
+ 
+ def get_command_service():
+@@ -380,27 +402,30 @@
+ 
+ 
+ def invalidate_irrigation_snapshot_cache():
++    context = globals().get("_context_service")
++    if context is not None:
++        return context.invalidate("irrigation")
+     service = globals().get("_irrigation_service")
+     if service is not None:
+         service.invalidate_snapshot_cache()
+-    service = globals().get("_context_service")
+-    if service is not None:
+-        service.invalidate("irrigation")
+ 
+ 
+ def invalidate_irrigation_pilot_cache():
++    context = globals().get("_context_service")
++    if context is not None:
++        return context.invalidate("irrigation_pilot")
+     service = globals().get("_irrigation_service")
+     if service is not None:
+         service.invalidate_pilot_cache()
+ 
+ 
+ def invalidate_irrigation_weather_summary_cache():
++    context = globals().get("_context_service")
++    if context is not None:
++        return context.invalidate("weather")
+     service = globals().get("_irrigation_service")
+     if service is not None:
+         service.invalidate_weather_summary_cache()
+-    service = globals().get("_context_service")
+-    if service is not None:
+-        service.invalidate("weather")
+ 
+ 
+ def cached_irrigation_weather_summary(force: bool = False):
+@@ -624,6 +649,7 @@
+                     to_float=to_float,
+                     to_int=to_int,
+                     manual_max_minutes=MANUAL_MAX_MINUTES,
++                    cached_api_payload=cached_api_payload,
+                     api_cache_get=api_cache_get,
+                     api_cache_set=api_cache_set,
+                     api_cache_delete_prefix=api_cache_delete_prefix,
+@@ -801,6 +827,7 @@
+                 _energy_device_service = EnergyDeviceService(
+                     fetch_all=fetch_all,
+                     fetch_one=fetch_one,
++                    cached_api_payload=cached_api_payload,
+                     api_cache_get=api_cache_get,
+                     api_cache_set=api_cache_set,
+                     json_ready=json_ready,
+@@ -824,6 +851,7 @@
+                     execute_sql=execute_sql,
+                     normalize_text=normalize_text,
+                     json_ready=json_ready,
++                    cached_api_payload=cached_api_payload,
+                     api_cache_get=api_cache_get,
+                     api_cache_set=api_cache_set,
+                     api_cache_delete_prefix=api_cache_delete_prefix,
+@@ -871,6 +899,7 @@
+                     execute_one=execute_one,
+                     publish_mqtt=publish_mqtt,
+                     ensure_schema=ensure_power_wall_schema,
++                    cached_api_payload=cached_api_payload,
+                     api_cache_get=api_cache_get,
+                     api_cache_set=api_cache_set,
+                     api_cache_delete_prefix=api_cache_delete_prefix,
+@@ -904,27 +933,59 @@
+                 get_process_binding_service().selected_topic_base("irrigation_soil_moisture")
+             ),
+         },
+-        "irrigation": lambda: get_irrigation_service().snapshot(),
++        "irrigation": lambda: get_irrigation_service().build_snapshot(),
+         "irrigation_pilot": lambda: get_irrigation_service().pilot_payload(),
+         "irrigation_statistics": lambda: get_irrigation_service().statistics_payload(),
+         "climate": lambda: get_climate_service().state_payload(),
+         "mower": lambda: get_mower_service().state_payload(),
+         "combustion_safety": lambda: get_combustion_safety_service().state_payload(),
+-        "climate_power_history": lambda: cached_api_payload("climate_power_history", 60, get_climate_service().power_history_payload),
+-        "climate_history": lambda: cached_api_payload("climate_history", 60, get_climate_service().parameter_history_payload),
++        "climate_power_history": lambda: get_climate_service().power_history_payload(),
++        "climate_history": lambda: get_climate_service().parameter_history_payload(),
+         "climate_schedules": lambda: {"ok": True, "schedules": fetch_climate_schedule_rules()},
+         "robot": lambda: get_robot_service().state_payload(),
+         "power_wall": lambda: get_power_wall_service().state_payload(),
+-        "solar": lambda: cached_api_payload("solar_state", 8, solar_state_payload),
++        "solar": solar_state_payload,
+         "tuya": tuya_state_payload,
+         "scheduler": lambda: get_scheduler_service().state_payload(),
+         "scheduler_ai": lambda: get_scheduler_service().ai_summary_payload(),
+         "notes": lambda: {"ok": True, **get_admin_service().fetch_notes()},
+         "performance": lambda: get_system_status_service().performance_snapshot(),
+-        "server_power": lambda: cached_api_payload("performance_server_power", 60, get_energy_device_service().server_power_history_payload),
++        "server_power": lambda: get_energy_device_service().server_power_history_payload(),
+         "home_statistics": lambda: get_admin_service().homecontrol_statistics_payload(),
+         "ai_chat_audit": lambda: ai_chat_audit_summary_payload(),
+         "backup": lambda: get_backup_service().payload(),
++    }
++
++
++def context_invalidators():
++    # Call only already-instantiated services; no DB, publish or construction
++    # under the context cache lock. These callbacks only invalidate memory.
++    def domain(method):
++        def invalidate():
++            service = globals().get("_irrigation_service")
++            if service is not None:
++                getattr(service, method)()
++        return invalidate
++
++    def prefixes(*names):
++        def invalidate():
++            for name in names:
++                API_CACHE.delete_prefix(name)
++        return invalidate
++
++    return {
++        "irrigation": domain("invalidate_snapshot_cache"),
++        "irrigation_pilot": domain("invalidate_pilot_inputs"),
++        "weather": domain("invalidate_weather_summary_cache"),
++        "irrigation_statistics": prefixes("irrigation_statistics"),
++        "home_statistics": prefixes("homecontrol_statistics"),
++        "power_wall": prefixes("power_wall_", "marten_motion"),
++        "tuya": prefixes("tuya_state"),
++        "solar": prefixes("solar_state"),
++        "climate_power_history": prefixes("climate_power_history"),
++        "climate_history": prefixes("climate_history"),
++        "server_power": prefixes("performance_server_power"),
++        "performance": prefixes("performance_server_power"),
+     }
+ 
+ 
+@@ -936,6 +997,8 @@
+                 context_builders(),
+                 realtime_ttl=HC_CONTEXT_REALTIME_TTL,
+                 statistics_ttl=HC_CONTEXT_STATISTICS_TTL,
++                invalidators=context_invalidators(),
++                section_ttls={"irrigation": IRRIGATION_SNAPSHOT_CACHE_TTL},
+             )
+         return _context_service
+ 
+--- before/infra/backend/command_service.py
++++ after/infra/backend/command_service.py
+@@ -49,7 +49,7 @@
+         sections = []
+         if "/irrigation/" in text or text.startswith("homecontrol/tele/irrigation/") or text.startswith("homecontrol/stat/irrigation/"):
+             sections.extend(["irrigation", "irrigation_pilot"])
+-        if text.startswith("zigbee/0xa4c13844a0908898") or text.startswith("zigbee/0xa4c1387594b09c83"):
++        if text.startswith(("zigbee/0xa4c13844a0908898", "zigbee/0xa4c1387594b09c83", "zigbee/0xa4c13880b130079c")):
+             sections.extend(["irrigation", "irrigation_pilot", "irrigation_statistics"])
+         if "xiaomi_x10" in text:
+             sections.append("robot")
+--- before/infra/backend/context_service.py
++++ after/infra/backend/context_service.py
+@@ -1,7 +1,6 @@
+-import copy
+-import threading
+ import time
+ from datetime import date, datetime, timedelta, timezone
++from read_model_cache import ReadModelCache, ReadModelChanged
+ from typing import Any, Callable, Dict, Iterable, Optional
+ 
+ 
+@@ -39,12 +38,15 @@
+         *,
+         realtime_ttl: float = 5.0,
+         statistics_ttl: float = 60.0,
++        invalidators: Optional[Dict[str, Callable[[], Any]]] = None,
++        section_ttls: Optional[Dict[str, float]] = None,
+     ):
+         self.builders = builders
+         self.realtime_ttl = max(1.0, float(realtime_ttl))
+         self.statistics_ttl = max(5.0, float(statistics_ttl))
+-        self._cache: Dict[str, Dict[str, Any]] = {}
+-        self._lock = threading.RLock()
++        self._cache = ReadModelCache()
++        self._invalidators = invalidators or {}
++        self._section_ttls = section_ttls or {}
+ 
+     def snapshot(self, sections: Optional[Iterable[str]] = None, force: bool = False, trace: Optional[list] = None) -> Dict[str, Any]:
+         requested = list(sections or self.builders.keys())
+@@ -109,75 +111,70 @@
+             )
+             return {"ok": False, "error": "unknown_context_section", "section": name}
+ 
+-        now = time.monotonic()
+         ttl = self.ttl_for_section(name)
+-        with self._lock:
+-            cached = self._cache.get(name)
+-            if not force and cached and cached["expires_at"] > now:
+-                data = copy.deepcopy(cached["data"])
+-                meta = data.get("_context") if isinstance(data.get("_context"), dict) else {}
+-                _append_trace(
+-                    trace,
+-                    {
+-                        "section": name,
+-                        "started_at": _utc_now(),
+-                        "duration_ms": 0,
+-                        "build_ms": meta.get("build_ms"),
+-                        "built_at": meta.get("built_at"),
+-                        "ttl_sec": ttl,
+-                        "cache_hit": True,
+-                        "ok": data.get("ok", True),
+-                        "error": data.get("error"),
+-                    },
+-                )
+-                return data
+-
+         started_at = _utc_now()
+         started = time.perf_counter()
++
++        def build():
++            build_started = time.perf_counter()
++            try:
++                data = self.builders[name]()
++                if not isinstance(data, dict):
++                    data = {"value": data}
++                data = dict(data)
++                data.setdefault("ok", True)
++            except Exception as exc:
++                data = {"ok": False, "error": str(exc), "section": name}
++            data["_context"] = {
++                "section": name,
++                "built_at": _utc_now(),
++                "build_ms": round((time.perf_counter() - build_started) * 1000, 1),
++                "ttl_sec": ttl,
++            }
++            return data
++
+         try:
+-            data = self.builders[name]()
+-            if not isinstance(data, dict):
+-                data = {"value": data}
+-            data = dict(data)
+-            data.setdefault("ok", True)
+-        except Exception as exc:
+-            data = {"ok": False, "error": str(exc), "section": name}
+-
+-        data["_context"] = {
++            data, hit = self._cache.get_or_build(
++                name, ttl, build, force=force,
++                cache_if=lambda payload: payload.get("ok") is not False,
++            )
++        except ReadModelChanged as exc:
++            data = {"ok": False, "error": str(exc), "section": name,
++                    "_context": {"section": name, "built_at": _utc_now(),
++                                 "build_ms": round((time.perf_counter() - started) * 1000, 1),
++                                 "ttl_sec": ttl}}
++            hit = False
++        meta = data["_context"]
++        _append_trace(trace, {
+             "section": name,
+-            "built_at": _utc_now(),
+-            "build_ms": round((time.perf_counter() - started) * 1000, 1),
++            "started_at": started_at,
++            "duration_ms": round((time.perf_counter() - started) * 1000, 1),
++            "build_ms": meta["build_ms"],
++            "built_at": meta["built_at"],
+             "ttl_sec": ttl,
+-        }
+-        _append_trace(
+-            trace,
+-            {
+-                "section": name,
+-                "started_at": started_at,
+-                "duration_ms": data["_context"]["build_ms"],
+-                "build_ms": data["_context"]["build_ms"],
+-                "built_at": data["_context"]["built_at"],
+-                "ttl_sec": ttl,
+-                "cache_hit": False,
+-                "ok": data.get("ok", True),
+-                "error": data.get("error"),
+-            },
+-        )
+-        with self._lock:
+-            self._cache[name] = {"expires_at": now + ttl, "data": copy.deepcopy(data)}
++            "cache_hit": hit,
++            "ok": data.get("ok", True),
++            "error": data.get("error"),
++        })
+         return data
+ 
+     def invalidate(self, section: Optional[str] = None) -> Dict[str, Any]:
+-        with self._lock:
+-            if section:
+-                existed = section in self._cache
+-                self._cache.pop(section, None)
+-                return {"ok": True, "section": section, "invalidated": existed}
+-            count = len(self._cache)
+-            self._cache.clear()
++        # Dependencies only invalidate memory. Keep both layers atomic to new
++        # section readers; never acquire this lock while running a builder.
++        with self._cache.condition:
++            count = self._cache.invalidate(section)
++            names = [section] if section else list(self._invalidators)
++            for name in names:
++                callback = self._invalidators.get(name)
++                if callback:
++                    callback()
++        if section:
++            return {"ok": True, "section": section, "invalidated": bool(count)}
+         return {"ok": True, "invalidated": count}
+ 
+     def ttl_for_section(self, name: str) -> float:
++        if name in self._section_ttls:
++            return max(1.0, float(self._section_ttls[name]))
+         if name == "performance":
+             return max(self.statistics_ttl, 300.0)
+         if name in STATISTICS_SECTIONS or name in EXPENSIVE_REALTIME_SECTIONS:
+--- before/infra/backend/energy_device_service.py
++++ after/infra/backend/energy_device_service.py
+@@ -12,9 +12,11 @@
+         solar_topic_base: str = "homecontrol/tele/growatt/cloud",
+         process_binding_payload: Callable[[str], Any] = None,
+         process_binding_entity_id: Callable[[str], Any] = None,
++        cached_api_payload: Callable[..., Any] = None,
+     ):
+         self.fetch_all = fetch_all
+         self.fetch_one = fetch_one
++        self.cached_api_payload = cached_api_payload or (lambda key, ttl, builder: builder())
+         self.api_cache_get = api_cache_get
+         self.api_cache_set = api_cache_set
+         self.json_ready = json_ready
+@@ -34,9 +36,9 @@
+         return value
+ 
+     def tuya_state_payload(self):
+-        cached = self.api_cache_get("tuya_state")
+-        if cached is not None:
+-            return cached
++        return self.cached_api_payload("tuya_state", 8, self._build_tuya_state_payload)
++
++    def _build_tuya_state_payload(self):
+         devices = self.fetch_all(
+             """
+             select
+@@ -63,11 +65,7 @@
+         )
+         entity_ids = [row["entity_id"] for row in devices]
+         if not entity_ids:
+-            return self.api_cache_set(
+-                "tuya_state",
+-                {"devices": [], "state_rows": [], "recent_measurements": [], "summary": {"total": 0, "online": 0, "degraded": 0, "offline": 0}},
+-                8,
+-            )
++            return {"devices": [], "state_rows": [], "recent_measurements": [], "summary": {"total": 0, "online": 0, "degraded": 0, "offline": 0}}
+ 
+         state_rows = self.fetch_all(
+             """
+@@ -127,7 +125,8 @@
+             "offline": sum(1 for status in statuses if status == "offline"),
+             "unknown": sum(1 for status in statuses if status not in {"online", "degraded", "offline"}),
+         }
+-        return self.api_cache_set("tuya_state", {"devices": devices, "state_rows": state_rows, "recent_measurements": recent_measurements, "summary": summary}, 8)
++        return {"devices": devices, "state_rows": state_rows, "recent_measurements": recent_measurements, "summary": summary}
++
+ 
+     def solar_state_payload(self):
+         entity = self.fetch_one(
+--- before/infra/backend/irrigation_service.py
++++ after/infra/backend/irrigation_service.py
+@@ -1,3 +1,4 @@
++from read_model_cache import ReadModelCache
+ from runtime_schema_contract import check_runtime_schema
+ import json
+ import math
+@@ -83,6 +84,7 @@
+         recovery_retry_seconds: float = 60.0,
+         recovery_max_attempts: int = 3,
+         reserve_session: Optional[Callable[..., Any]] = None,
++        cached_api_payload: Callable[..., Any] = None,
+     ):
+         self.fetch_all = fetch_all
+         self.fetch_one = fetch_one
+@@ -101,6 +103,7 @@
+         self.to_float = to_float
+         self.to_int = to_int
+         self.manual_max_minutes = manual_max_minutes
++        self.cached_api_payload = cached_api_payload or (lambda key, ttl, builder: builder())
+         self.api_cache_get = api_cache_get
+         self.api_cache_set = api_cache_set
+         self.api_cache_delete_prefix = api_cache_delete_prefix
+@@ -138,12 +141,7 @@
+             self.valve_tele_max_age_seconds, self.valve_status_max_age_seconds, self.nano_online_max_age_seconds,
+         )):
+             raise ValueError("valve telemetry max ages must be finite and positive")
+-        self._snapshot_cache = {"expires_at": 0.0, "data": None}
+-        self._snapshot_lock = threading.Lock()
+-        self._pilot_cache = {"expires_at": 0.0, "recommendation": None}
+-        self._pilot_lock = threading.Lock()
+-        self._weather_summary_cache = {"expires_at": 0.0, "data": None}
+-        self._weather_summary_lock = threading.Lock()
++        self._read_cache = ReadModelCache()
+         self._summary_schema_ready = False
+ 
+         self._summary_schema_lock = threading.Lock()
+@@ -217,19 +215,18 @@
+         return cleaned, filtered
+ 
+     def invalidate_snapshot_cache(self):
+-        with self._snapshot_lock:
+-            self._snapshot_cache["expires_at"] = 0.0
+-            self._snapshot_cache["data"] = None
++        self._read_cache.invalidate("snapshot")
+ 
+     def invalidate_pilot_cache(self):
+-        with self._pilot_lock:
+-            self._pilot_cache["expires_at"] = 0.0
+-            self._pilot_cache["recommendation"] = None
++        self._read_cache.invalidate("pilot")
+ 
+     def invalidate_weather_summary_cache(self):
+-        with self._weather_summary_lock:
+-            self._weather_summary_cache["expires_at"] = 0.0
+-            self._weather_summary_cache["data"] = None
++        self._read_cache.invalidate("weather")
++
++    def invalidate_pilot_inputs(self):
++        with self._read_cache.condition:
++            self.invalidate_pilot_cache()
++            self.invalidate_weather_summary_cache()
+ 
+     def ensure_summary_schema(self):
+         if self._summary_schema_ready:
+@@ -2332,34 +2329,12 @@
+         )
+ 
+     def cached_weather_summary(self, force: bool = False):
+-        now = time.monotonic()
+-        with self._weather_summary_lock:
+-            if (
+-                not force
+-                and self._weather_summary_cache["data"] is not None
+-                and self._weather_summary_cache["expires_at"] > now
+-            ):
+-                return self._weather_summary_cache["data"]
+-        data = self.weather_summary()
+-        with self._weather_summary_lock:
+-            self._weather_summary_cache["data"] = data
+-            self._weather_summary_cache["expires_at"] = time.monotonic() + self.weather_summary_cache_ttl
+-        return data
++        return self._read_cache.cached_payload(
++            "weather", self.weather_summary_cache_ttl, self.weather_summary, force=force)
+ 
+     def cached_pilot_recommendation(self, force: bool = False):
+-        now = time.monotonic()
+-        with self._pilot_lock:
+-            if (
+-                not force
+-                and self._pilot_cache["recommendation"] is not None
+-                and self._pilot_cache["expires_at"] > now
+-            ):
+-                return self._pilot_cache["recommendation"]
+-        recommendation = self.evaluate_pilot()
+-        with self._pilot_lock:
+-            self._pilot_cache["recommendation"] = recommendation
+-            self._pilot_cache["expires_at"] = time.monotonic() + self.pilot_cache_ttl
+-        return recommendation
++        return self._read_cache.cached_payload(
++            "pilot", self.pilot_cache_ttl, self.evaluate_pilot, force=force)
+ 
+     def pilot_payload(self):
+         self.ensure_pilot_schema()
+@@ -2479,15 +2454,8 @@
+         return {"ok": True, "weather": row, "context": self.context_meta("irrigation_pilot", "weather")}, 200
+ 
+     def snapshot(self, force: bool = False):
+-        now = time.monotonic()
+-        with self._snapshot_lock:
+-            if not force and self._snapshot_cache["data"] is not None and self._snapshot_cache["expires_at"] > now:
+-                return self._snapshot_cache["data"]
+-        data = self.build_snapshot()
+-        with self._snapshot_lock:
+-            self._snapshot_cache["data"] = data
+-            self._snapshot_cache["expires_at"] = time.monotonic() + self.snapshot_ttl
+-        return data
++        return self._read_cache.cached_payload(
++            "snapshot", self.snapshot_ttl, self.build_snapshot, force=force)
+ 
+     def build_snapshot(self):
+         self.refresh_daily_summaries()
+@@ -2620,9 +2588,9 @@
+             else:
+                 range_label, interval_text, bucket_expr, weather_bucket_expr = "24h", "24 hours", "date_trunc('minute', m.ts)", "date_trunc('minute', ts)"
+         cache_key = f"irrigation_statistics:{range_label}"
+-        cached = self.api_cache_get(cache_key)
+-        if cached is not None:
+-            return cached
++        return self.cached_api_payload(cache_key, 60, lambda: self._build_statistics_payload(range_label, interval_text, bucket_expr, weather_bucket_expr))
++
++    def _build_statistics_payload(self, range_label, interval_text, bucket_expr, weather_bucket_expr):
+         self.refresh_daily_summaries()
+         moisture_topic_list = ", ".join(f"'{topic}'" for topic in IRRIGATION_MOISTURE_TOPICS)
+         tank_24h = self.fetch_all(
+@@ -2901,9 +2869,7 @@
+             limit {history_limit}
+             """
+         )
+-        return self.api_cache_set(
+-            cache_key,
+-            {
++        return {
+                 "range": range_label,
+                 "bucket": "minute" if "minute" in bucket_expr else "hour",
+                 "tank_24h": tank_24h,
+@@ -2951,9 +2917,8 @@
+                     limit 300
+                     """
+                 ),
+-            },
+-            60,
+-        )
++            }
++
+ 
+     def start_scheduled_session(self, schedule_id: int):
+         stop_generation = self._open_request_generation()
+--- before/infra/backend/power_wall_service.py
++++ after/infra/backend/power_wall_service.py
+@@ -31,6 +31,7 @@
+         guard_repeat_seconds: int,
+         process_binding_payload: Callable[[str], Any] = None,
+         process_binding_entity_id: Callable[[str], Any] = None,
++        cached_api_payload: Callable[..., Any] = None,
+     ):
+         self._climate_switch_lock = threading.RLock()
+         self.fetch_all = fetch_all
+@@ -38,6 +39,7 @@
+         self.execute_one = execute_one
+         self.publish_mqtt = publish_mqtt
+         self.ensure_schema = ensure_schema
++        self.cached_api_payload = cached_api_payload or (lambda key, ttl, builder: builder())
+         self.api_cache_get = api_cache_get
+         self.api_cache_set = api_cache_set
+         self.api_cache_delete_prefix = api_cache_delete_prefix
+@@ -49,10 +51,9 @@
+     def marten_motion_payload(self):
+         self.ensure_schema()
+         cache_key = "marten_motion"
+-        cached = self.api_cache_get(cache_key)
+-        if cached is not None:
+-            return cached
+-
++        return self.cached_api_payload(cache_key, 8, self._build_marten_motion_payload)
++
++    def _build_marten_motion_payload(self):
+         entity_id = None
+         binding = None
+         if self.process_binding_entity_id:
+@@ -71,7 +72,7 @@
+                 "events": [],
+                 "summary": {"motion_24h": 0, "last_motion_at": None},
+             }
+-            return self.api_cache_set(cache_key, payload, 8)
++            return payload
+ 
+         sensor = self.fetch_one(
+             """
+@@ -106,7 +107,7 @@
+                 "events": [],
+                 "summary": {"motion_24h": 0, "last_motion_at": None},
+             }
+-            return self.api_cache_set(cache_key, payload, 8)
++            return payload
+ 
+         state_rows = self.fetch_all(
+             """
+@@ -161,7 +162,7 @@
+             (entity_id,),
+         ) or {}
+ 
+-        return self.api_cache_set(cache_key, {
++        return {
+             "ok": True,
+             "binding": binding,
+             "sensor": sensor,
+@@ -171,7 +172,8 @@
+                 "motion_24h": summary.get("motion_24h") or 0,
+                 "last_motion_at": summary.get("last_motion_at"),
+             },
+-        }, 8)
++        }
++
+ 
+     def bool_from_request_value(self, value: Any) -> Optional[bool]:
+         if isinstance(value, bool):
+@@ -613,9 +615,9 @@
+ 
+     def state_payload(self):
+         self.ensure_schema()
+-        cached = self.api_cache_get("power_wall_state")
+-        if cached is not None:
+-            return cached
++        return self.cached_api_payload("power_wall_state", 8, self._build_state_payload)
++
++    def _build_state_payload(self):
+         battery_devices = self.fetch_all(
+             """
+             select
+@@ -768,7 +770,7 @@
+                 bindings["marten_power_socket"] = self.process_binding_payload("marten_power_socket")
+                 bindings["marten_motion_sensor"] = self.process_binding_payload("marten_motion_sensor")
+                 bindings["climate_extra_fan_socket"] = self.process_binding_payload("climate_extra_fan_socket")
+-            return self.api_cache_set("power_wall_state", {
++            return {
+                 "devices": [],
+                 "battery_devices": battery_devices,
+                 "state_rows": [],
+@@ -782,7 +784,7 @@
+                     "battery_total": len(battery_devices),
+                     "battery_low": battery_low_count,
+                 },
+-            }, 8)
++            }
+ 
+         state_rows = self.fetch_all(
+             """
+@@ -877,7 +879,7 @@
+             bindings["marten_power_socket"] = self.process_binding_payload("marten_power_socket")
+             bindings["marten_motion_sensor"] = self.process_binding_payload("marten_motion_sensor")
+             bindings["climate_extra_fan_socket"] = self.process_binding_payload("climate_extra_fan_socket")
+-        return self.api_cache_set("power_wall_state", {
++        return {
+             "devices": devices,
+             "battery_devices": battery_devices,
+             "state_rows": state_rows,
+@@ -885,15 +887,14 @@
+             "marten_motion": self.marten_motion_payload(),
+             "process_bindings": bindings,
+             "summary": summary,
+-        }, 8)
++        }
+ 
+     def history_payload(self, entity_id: int):
+         self.ensure_schema()
+         cache_key = f"power_wall_history:{entity_id}"
+-        cached = self.api_cache_get(cache_key)
+-        if cached is not None:
+-            return cached
+-
++        return self.cached_api_payload(cache_key, 30, lambda: self._build_history_payload(entity_id))
++
++    def _build_history_payload(self, entity_id):
+         entity = self.fetch_one(
+             """
+             select
+@@ -935,7 +936,7 @@
+             """,
+             (entity_id,),
+         )
+-        return self.api_cache_set(cache_key, {
++        return {
+             "ok": True,
+             "entity": entity,
+             "power_24h": rows,
+@@ -944,7 +945,8 @@
+                 "max_power_w": max((row.get("power_w") or 0 for row in rows), default=0),
+                 "latest_power_w": rows[-1].get("power_w") if rows else None,
+             },
+-        }, 30)
++        }
++
+ 
+     @serialize_climate_switch
+     def set_policy(self, entity_id: Any, *, always_on_marker: Any = None, auto_climate_marker: Any = None, delay_minutes: Any = None):
+--- before/infra/backend/read_model_cache.py
++++ after/infra/backend/read_model_cache.py
+@@ -0,0 +1,98 @@
++"""Process-local read-model cache; builders never run under the cache lock."""
++import copy
++import threading
++import time
++
++
++class ReadModelChanged(RuntimeError):
++    def __init__(self):
++        super().__init__('read_model_changed_during_build')
++
++
++class ReadModelCache:
++    def __init__(self, *, clock=time.monotonic):
++        self.clock = clock
++        self.condition = threading.Condition(threading.RLock())
++        self._entries = {}
++        self._building = {}
++        self._generation = 0
++
++    def get(self, key):
++        with self.condition:
++            item = self._entries.get(key)
++            if item and item['expires_at'] > self.clock():
++                value = item['data']
++            else:
++                self._entries.pop(key, None)
++                return None
++        return copy.deepcopy(value)
++
++    def invalidate(self, key=None, *, prefix=None):
++        def matches(name):
++            return name == key if key is not None else prefix is None or name.startswith(prefix)
++        with self.condition:
++            self._generation += 1
++            removed = [name for name in self._entries if matches(name)]
++            for name in removed:
++                del self._entries[name]
++            for name, flight in self._building.items():
++                if matches(name):
++                    flight['generation'] = self._generation
++            return len(removed)
++
++    def set(self, key, value, ttl):
++        stored = copy.deepcopy(value)
++        with self.condition:
++            self.invalidate(key)
++            self._entries[key] = {'data': stored, 'expires_at': self.clock() + ttl}
++        return copy.deepcopy(stored)
++
++    def get_or_build(self, key, ttl, builder, *, force=False, cache_if=None):
++        invalidated_builds = 0
++        while True:
++            with self.condition:
++                item = self._entries.get(key)
++                if not force and item and item['expires_at'] > self.clock():
++                    value = item['data']
++                    hit = True
++                else:
++                    flight = self._building.get(key)
++                    if flight is not None:
++                        if flight['owner'] == threading.get_ident():
++                            raise RuntimeError('recursive read-model build: ' + str(key))
++                        self.condition.wait_for(lambda: self._building.get(key) is not flight)
++                        force = False  # Join the refresh already in progress.
++                        continue
++                    flight = {'generation': self._generation,
++                              'owner': threading.get_ident()}
++                    build_generation = flight['generation']
++                    self._building[key] = flight
++                    hit = False
++            if hit:
++                return copy.deepcopy(value), True
++            try:
++                value = builder()
++                stored = copy.deepcopy(value)
++                result = copy.deepcopy(stored)
++                cacheable = cache_if is None or cache_if(value)
++            except BaseException:
++                with self.condition:
++                    self._building.pop(key, None)
++                    self.condition.notify_all()
++                raise
++            with self.condition:
++                del self._building[key]
++                self.condition.notify_all()
++                if flight['generation'] != build_generation:
++                    invalidated_builds += 1
++                    if invalidated_builds >= 3:
++                        raise ReadModelChanged()
++                    force = False
++                    continue  # Never return or reinsert a superseded build.
++                if cacheable:
++                    self._entries[key] = {'data': stored, 'expires_at': self.clock() + ttl}
++                return result, False
++
++    def cached_payload(self, key, ttl, builder, *, force=False):
++        return self.get_or_build(key, ttl, builder, force=force,
++                                 cache_if=lambda value: value is not None)[0]
+--- before/infra/backend/runtime_utils.py
++++ after/infra/backend/runtime_utils.py
+@@ -7,6 +7,7 @@
+ from typing import Any, Dict, Iterable, Optional
+ 
+ from flask import g, request
++from read_model_cache import ReadModelCache
+ 
+ 
+ def json_default(value: Any):
+@@ -91,37 +92,15 @@
+         return None
+ 
+ 
+-class ApiCache:
+-    def __init__(self):
+-        self._cache: Dict[str, Dict[str, Any]] = {}
+-        self._lock = threading.Lock()
+-
+-    def get(self, key: str):
+-        now = time.monotonic()
+-        with self._lock:
+-            item = self._cache.get(key)
+-            if item and item["expires_at"] > now:
+-                return item["data"]
+-            if item:
+-                self._cache.pop(key, None)
+-        return None
+-
++class ApiCache(ReadModelCache):
+     def set(self, key: str, data: Any, ttl_seconds: float):
+-        with self._lock:
+-            self._cache[key] = {"expires_at": time.monotonic() + ttl_seconds, "data": data}
+-        return data
++        return super().set(key, data, ttl_seconds)
+ 
+     def delete_prefix(self, prefix: str):
+-        with self._lock:
+-            for key in list(self._cache):
+-                if key.startswith(prefix):
+-                    self._cache.pop(key, None)
++        return self.invalidate(prefix=prefix)
+ 
+     def cached_payload(self, key: str, ttl_seconds: float, builder):
+-        cached = self.get(key)
+-        if cached is not None:
+-            return cached
+-        return self.set(key, builder(), ttl_seconds)
++        return super().cached_payload(key, ttl_seconds, builder)
+ 
+ 
+ class ApiPerformanceLog:
+--- before/infra/backend/tests/test_read_model_cache.py
++++ after/infra/backend/tests/test_read_model_cache.py
+@@ -0,0 +1,356 @@
++import ast
++from concurrent.futures import ThreadPoolExecutor
++from pathlib import Path
++import threading
++import unittest
++from unittest.mock import Mock, patch
++
++from command_service import CommandService
++from context_service import ContextService
++from read_model_cache import ReadModelCache, ReadModelChanged
++from runtime_utils import ApiCache
++from tests import test_irrigation_service as irrigation_fixture
++
++
++def production_function(name, namespace):
++    tree = ast.parse((Path(__file__).parents[1] / 'app.py').read_text())
++    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
++    exec(compile(ast.Module(body=[node], type_ignores=[]), 'app.py', 'exec'), namespace)
++    return namespace[name]
++
++
++class ReadModelCacheTest(unittest.TestCase):
++    def race(self, read, invalidate, expected_calls=None):
++        started, release = threading.Event(), threading.Event()
++        version = [0]
++        calls = []
++
++        def build():
++            captured = version[0]
++            calls.append(captured)
++            if len(calls) == 1:
++                started.set()
++                if not release.wait(3):
++                    raise AssertionError('test builder not released')
++            return {'value': captured, 'nested': []}
++
++        with ThreadPoolExecutor(max_workers=2) as pool:
++            result = pool.submit(read, build)
++            try:
++                self.assertTrue(started.wait(3))
++                version[0] = 1
++                # Invalidating must complete without waiting for the slow builder.
++                pool.submit(invalidate).result(2)
++            finally:
++                release.set()
++            self.assertEqual(result.result(3)['value'], 1)
++        self.assertEqual(read(build)['value'], 1)
++        self.assertEqual(calls, [0, 1] if expected_calls is None else expected_calls)
++
++    def test_context_invalidation_during_build_never_returns_old_result(self):
++        builder = [None]
++        context = ContextService({'irrigation': lambda: builder[0]()})
++        def read(build):
++            builder[0] = build
++            return context.section('irrigation')
++        self.race(read, lambda: context.invalidate('irrigation'))
++
++    def test_api_prefix_invalidation_includes_first_inflight_miss(self):
++        cache = ApiCache()
++        self.race(lambda build: cache.cached_payload('statistics:24h', 60, build),
++                  lambda: cache.delete_prefix('statistics:'))
++
++    def test_invalidate_all_includes_inflight_build(self):
++        cache = ReadModelCache()
++        self.race(lambda build: cache.cached_payload('key', 60, build), cache.invalidate)
++
++    def test_parallel_misses_use_one_builder(self):
++        cache = ApiCache()
++        gate = threading.Barrier(13)
++        started, release, all_waiting = threading.Event(), threading.Event(), threading.Event()
++        waiters = []
++        original_wait = cache.condition.wait
++        def wait(*args, **kwargs):
++            waiters.append(threading.get_ident())
++            if len(set(waiters)) == 11:
++                all_waiting.set()
++            return original_wait(*args, **kwargs)
++        build = Mock(side_effect=lambda: (started.set(), release.wait(3), {'items': []})[-1])
++        def read():
++            gate.wait(3)
++            return cache.cached_payload('one', 60, build)
++        with patch.object(cache.condition, 'wait', side_effect=wait), ThreadPoolExecutor(max_workers=12) as pool:
++            futures = [pool.submit(read) for _ in range(12)]
++            gate.wait(3)
++            try:
++                self.assertTrue(started.wait(3))
++                self.assertTrue(all_waiting.wait(3))
++            finally:
++                release.set()
++            values = [f.result(3) for f in futures]
++        self.assertEqual(build.call_count, 1)
++        values[0]['items'].append('mutation')
++        self.assertEqual(values[1], {'items': []})
++        self.assertEqual(cache.get('one'), {'items': []})
++
++    def test_force_refresh_joins_an_existing_refresh(self):
++        cache = ReadModelCache()
++        cache.cached_payload('key', 60, lambda: 0)
++        started, release, waiting = threading.Event(), threading.Event(), threading.Event()
++        def build():
++            started.set()
++            self.assertTrue(release.wait(3))
++            return 1
++        build = Mock(side_effect=build)
++        original_wait = cache.condition.wait
++        def wait(*args, **kwargs):
++            waiting.set()
++            return original_wait(*args, **kwargs)
++        with patch.object(cache.condition, 'wait', side_effect=wait), ThreadPoolExecutor(max_workers=2) as pool:
++            first = pool.submit(cache.cached_payload, 'key', 60, build, force=True)
++            try:
++                self.assertTrue(started.wait(3))
++                second = pool.submit(cache.cached_payload, 'key', 60, build, force=True)
++                self.assertTrue(waiting.wait(3))
++            finally:
++                release.set()
++            self.assertEqual([first.result(3), second.result(3)], [1, 1])
++        self.assertEqual(build.call_count, 1)
++
++    def test_slow_key_does_not_block_unrelated_keys(self):
++        cache = ReadModelCache()
++        started, release = threading.Event(), threading.Event()
++        with ThreadPoolExecutor(max_workers=2) as pool:
++            slow = pool.submit(cache.cached_payload, 'slow', 60,
++                               lambda: (started.set(), release.wait(3), 'slow')[-1])
++            try:
++                self.assertTrue(started.wait(3))
++                self.assertEqual(pool.submit(cache.cached_payload, 'fast', 60, lambda: 'fast').result(1), 'fast')
++            finally:
++                release.set()
++            slow.result(3)
++
++    def test_builder_exception_releases_owner_and_waiter_recovers(self):
++        cache = ReadModelCache()
++        started, release, waiting = threading.Event(), threading.Event(), threading.Event()
++        def fail():
++            started.set()
++            self.assertTrue(release.wait(3))
++            raise ValueError('DB unavailable')
++        original_wait = cache.condition.wait
++        def wait(*args, **kwargs):
++            waiting.set()
++            return original_wait(*args, **kwargs)
++        with patch.object(cache.condition, 'wait', side_effect=wait), ThreadPoolExecutor(max_workers=2) as pool:
++            first = pool.submit(cache.cached_payload, 'key', 60, fail)
++            try:
++                self.assertTrue(started.wait(3))
++                second = pool.submit(cache.cached_payload, 'key', 60, lambda: 'recovered')
++                self.assertTrue(waiting.wait(3))
++            finally:
++                release.set()
++            with self.assertRaisesRegex(ValueError, 'DB unavailable'):
++                first.result(3)
++            self.assertEqual(second.result(3), 'recovered')
++
++    def test_context_error_is_not_cached_and_trace_contract_is_preserved(self):
++        build = Mock(side_effect=[ValueError('offline'), {'value': 1}])
++        service = ContextService({'weather': build})
++        self.assertFalse(service.section('weather')['ok'])
++        trace = []
++        value = service.section('weather', trace=trace)
++        self.assertTrue(value['ok'])
++        service.section('weather', trace=trace)
++        self.assertEqual([r['cache_hit'] for r in trace], [False, True])
++        self.assertEqual(build.call_count, 2)
++        self.assertIn('built_at', value['_context'])
++
++    def test_ttl_starts_when_slow_build_finishes(self):
++        clock = [0]
++        cache = ReadModelCache(clock=lambda: clock[0])
++        def build():
++            clock[0] = 100
++            return 'ready'
++        cache.cached_payload('key', 5, build)
++        clock[0] = 104
++        self.assertEqual(cache.get('key'), 'ready')
++        clock[0] = 105
++        self.assertIsNone(cache.get('key'))
++
++    def test_prefix_invalidation_preserves_other_statistics(self):
++        cache = ApiCache()
++        cache.set('irrigation:24h', [1], 60)
++        cache.set('home:24h', [2], 60)
++        cache.delete_prefix('irrigation:')
++        self.assertIsNone(cache.get('irrigation:24h'))
++        self.assertEqual(cache.get('home:24h'), [2])
++
++    def test_explicit_set_wins_over_old_inflight_builder(self):
++        cache = ReadModelCache()
++        self.race(lambda build: cache.cached_payload('key', 60, build),
++                  lambda: cache.set('key', {'value': 1, 'nested': []}, 60), expected_calls=[0])
++
++    def test_recursive_same_key_fails_instead_of_deadlocking(self):
++        cache = ReadModelCache()
++        with self.assertRaisesRegex(RuntimeError, 'recursive'):
++            cache.cached_payload('key', 60, lambda: cache.cached_payload('key', 60, lambda: 1))
++        self.assertEqual(cache.cached_payload('key', 60, lambda: 2), 2)
++
++    def test_continuous_invalidation_is_bounded_and_recovers(self):
++        cache = ReadModelCache()
++        def build():
++            cache.invalidate('key')
++            return 'superseded'
++        builder = Mock(side_effect=build)
++        with self.assertRaises(ReadModelChanged):
++            cache.cached_payload('key', 60, builder)
++        self.assertEqual(builder.call_count, 3)
++        self.assertEqual(cache.cached_payload('key', 60, lambda: 'recovered'), 'recovered')
++
++    def test_context_reports_invalidation_storm_without_stale_success(self):
++        context = ContextService({})
++        context.builders['key'] = lambda: (context.invalidate('key'), {'value': 'stale'})[-1]
++        value = context.section('key')
++        self.assertFalse(value['ok'])
++        self.assertEqual(value['error'], 'read_model_changed_during_build')
++        context.builders['key'] = lambda: {'value': 'fresh'}
++        self.assertEqual(context.section('key')['value'], 'fresh')
++
++    def test_irrigation_owner_preserves_configured_domain_ttl(self):
++        context = ContextService({'irrigation': lambda: {}}, realtime_ttl=5,
++                                 section_ttls={'irrigation': 10})
++        self.assertEqual(context.section('irrigation')['_context']['ttl_sec'], 10)
++
++    def test_all_irrigation_read_caches_respect_inflight_invalidation(self):
++        for read_method, build_method, invalidator in (
++            ('snapshot', 'build_snapshot', 'invalidate_snapshot_cache'),
++            ('cached_pilot_recommendation', 'evaluate_pilot', 'invalidate_pilot_cache'),
++            ('cached_weather_summary', 'weather_summary', 'invalidate_weather_summary_cache'),
++        ):
++            with self.subTest(read=read_method):
++                service = irrigation_fixture.IrrigationServiceTest().service()
++                def read(build):
++                    setattr(service, build_method, build)
++                    return getattr(service, read_method)()
++                self.race(read, getattr(service, invalidator))
++
++    def test_mqtt_invalidation_clears_context_and_api_caches(self):
++        api = ApiCache()
++        domain = irrigation_fixture.IrrigationServiceTest().service()
++        version = [0]
++        build = Mock(side_effect=lambda: {'value': version[0]})
++        invalidators = production_function('context_invalidators', {'API_CACHE': api, '_irrigation_service': domain})()
++        for section, key, topic in (
++            ('tuya', 'tuya_state', 'homecontrol/tele/tuya/device'),
++            ('power_wall', 'power_wall_state', 'homecontrol/tele/tuya/device'),
++            ('irrigation_statistics', 'irrigation_statistics:24h', 'zigbee/0xa4c13880b130079c'),
++        ):
++            with self.subTest(section=section):
++                context = ContextService({section: lambda: api.cached_payload(key, 60, build)}, invalidators=invalidators)
++                command = CommandService(lambda: context)
++                version[0] += 1
++                old = context.section(section)['value']
++                version[0] += 1
++                command.observe_mqtt_topic(topic)
++                self.assertNotEqual(context.section(section)['value'], old)
++                api.invalidate()
++
++    def test_mqtt_invalidation_rebuilds_pilot_and_weather_dependencies(self):
++        api = ApiCache()
++        domain = irrigation_fixture.IrrigationServiceTest().service()
++        version = [0]
++        domain.weather_summary = lambda: {'value': version[0]}
++        domain.evaluate_pilot = lambda: domain.cached_weather_summary()
++        invalidators = production_function('context_invalidators', {'API_CACHE': api, '_irrigation_service': domain})()
++        context = ContextService({'irrigation_pilot': domain.cached_pilot_recommendation}, invalidators=invalidators)
++        self.assertEqual(context.section('irrigation_pilot')['value'], 0)
++        version[0] = 1
++        CommandService(lambda: context).observe_mqtt_topic('homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics')
++        self.assertEqual(context.section('irrigation_pilot')['value'], 1)
++
++    def test_context_irrigation_uses_one_owner_instead_of_inner_ttl(self):
++        domain = Mock()
++        domain.build_snapshot.return_value = {'value': 1}
++        builders = production_function('context_builders', {'get_irrigation_service': lambda: domain,
++                                       'tuya_state_payload': lambda: {}, 'solar_state_payload': lambda: {}})()
++        context = ContextService({'irrigation': builders['irrigation']}, realtime_ttl=5)
++        context.section('irrigation')
++        context.section('irrigation')
++        domain.build_snapshot.assert_called_once()
++        domain.snapshot.assert_not_called()
++
++    def test_statistical_ttl_stays_longer_than_realtime(self):
++        context = ContextService({'irrigation': lambda: {}, 'irrigation_statistics': lambda: {}},
++                                 realtime_ttl=5, statistics_ttl=60)
++        self.assertEqual(context.section('irrigation')['_context']['ttl_sec'], 5)
++        self.assertEqual(context.section('irrigation_statistics')['_context']['ttl_sec'], 60)
++
++    def test_command_pilot_invalidation_also_clears_context(self):
++        domain = irrigation_fixture.IrrigationServiceTest().service()
++        version = [0]
++        domain.evaluate_pilot = lambda: {'value': version[0]}
++        namespace = {'API_CACHE': ApiCache(), '_irrigation_service': domain}
++        invalidators = production_function('context_invalidators', namespace)()
++        context = ContextService({'irrigation_pilot': domain.cached_pilot_recommendation}, invalidators=invalidators)
++        namespace['_context_service'] = context
++        invalidate = production_function('invalidate_irrigation_pilot_cache', namespace)
++        self.assertEqual(context.section('irrigation_pilot')['value'], 0)
++        version[0] = 1
++        invalidate()
++        self.assertEqual(context.section('irrigation_pilot')['value'], 1)
++
++    def test_api_prefix_command_invalidation_also_clears_outer_context(self):
++        api = ApiCache()
++        version = [0]
++        namespace = {'API_CACHE': api}
++        namespace['api_cache_context_sections'] = production_function('api_cache_context_sections', namespace)
++        invalidators = production_function('context_invalidators', namespace)()
++        context = ContextService({'irrigation_statistics': lambda: api.cached_payload(
++            'irrigation_statistics:24h', 60, lambda: {'value': version[0]})}, invalidators=invalidators)
++        namespace['_context_service'] = context
++        invalidate = production_function('api_cache_delete_prefix', namespace)
++        self.assertEqual(context.section('irrigation_statistics')['value'], 0)
++        version[0] = 1
++        invalidate('irrigation_statistics')
++        self.assertEqual(context.section('irrigation_statistics')['value'], 1)
++
++    def test_empty_api_prefix_also_clears_keys_without_context_owner(self):
++        api = ApiCache()
++        namespace = {'API_CACHE': api}
++        namespace['api_cache_context_sections'] = production_function('api_cache_context_sections', namespace)
++        context = ContextService({'tuya': lambda: {}})
++        namespace['_context_service'] = context
++        invalidate = production_function('api_cache_delete_prefix', namespace)
++        api.set('custom_without_context', 1, 60)
++        invalidate('')
++        self.assertIsNone(api.get('custom_without_context'))
++
++    def test_pilot_and_weather_dependency_invalidation_is_atomic(self):
++        domain = irrigation_fixture.IrrigationServiceTest().service()
++        version = [0]
++        domain.weather_summary = lambda: {'value': version[0]}
++        domain.evaluate_pilot = domain.cached_weather_summary
++        self.assertEqual(domain.cached_pilot_recommendation()['value'], 0)
++        halfway, release = threading.Event(), threading.Event()
++        original = domain.invalidate_pilot_cache
++        def invalidate_pilot():
++            original()
++            halfway.set()
++            self.assertTrue(release.wait(3))
++        invalidators = production_function('context_invalidators', {'API_CACHE': ApiCache(), '_irrigation_service': domain})()
++        with patch.object(domain, 'invalidate_pilot_cache', side_effect=invalidate_pilot), ThreadPoolExecutor(max_workers=2) as pool:
++            invalidation = pool.submit(invalidators['irrigation_pilot'])
++            try:
++                self.assertTrue(halfway.wait(3))
++                version[0] = 1
++                read = pool.submit(domain.cached_pilot_recommendation)
++                with self.assertRaises(TimeoutError):
++                    read.result(.1)
++            finally:
++                release.set()
++            invalidation.result(3)
++            self.assertEqual(read.result(3)['value'], 1)
++
++
++if __name__ == '__main__':
++    unittest.main()

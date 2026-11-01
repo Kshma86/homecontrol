@@ -1,0 +1,65 @@
+[
+  {
+    "Id": "be0188b66befd330634b70f3bbe301949c327b0ff8b14f7feb5eb65996e97fe9",
+    "Name": "/homecontrol-backend",
+    "Image": "sha256:0158d9678ed97ac63fd0b14278fe77e2bed2fdfee838e2f308bdc0a27c7863e3",
+    "RestartCount": 0,
+    "StartedAt": "2026-10-28T14:40:40.89252151Z"
+  },
+  {
+    "Id": "aaa198344f5d63e3fcd898507de2e8ee84ab9fe397f88b35dda729d7700a76b1",
+    "Name": "/homecontrol-frontend",
+    "Image": "sha256:1ca7bbfb01a58a7fd2211458674ef03e32b507879207e0a4d20c3c7e1a3b3ee3",
+    "RestartCount": 0,
+    "StartedAt": "2026-10-27T17:47:36.1030575Z"
+  },
+  {
+    "Id": "d755563421681b1143817c977a17c6cb4d49b033105856996eff4abdf2fbe670",
+    "Name": "/homecontrol-gree-climate",
+    "Image": "sha256:4757ae75a8a562ddbae56202c6479d8745886b02a9dce79b3a9f4b4f6b2892b0",
+    "RestartCount": 0,
+    "StartedAt": "2026-10-28T14:40:40.90392829Z"
+  },
+  {
+    "Id": "07f3ee1efeae52ddfe10b9fe7d8a2cc0ee147cd3f445f024931b3df73cf30975",
+    "Name": "/homecontrol-xiaomi-x10",
+    "Image": "sha256:60d86722bd277ceb9591092e06777c441148f6475769a599d275cde076206a26",
+    "RestartCount": 0,
+    "StartedAt": "2026-10-28T14:40:40.891632045Z"
+  },
+  {
+    "Id": "afce3027d8c063f9ddb13235c2587eae0fc3deb98b5740a39eade26fa26b4351",
+    "Name": "/homecontrol-postgres",
+    "Image": "sha256:f992505e18f114c1e5102ac4dcf00f791b44462f6a423d899320f0bbf80e386f",
+    "RestartCount": 0,
+    "StartedAt": "2026-08-19T20:04:21.3981081Z"
+  },
+  {
+    "Id": "f097832db7821eadd9818011e99ab1045f89c762f94a33817427486a11c1bc54",
+    "Name": "/homecontrol-mqtt",
+    "Image": "sha256:077fe4ff4c49df1e860c98335c77dda08360629e0e2a718147027e4db3eace9d",
+    "RestartCount": 0,
+    "StartedAt": "2026-08-18T15:40:08.308138Z"
+  },
+  {
+    "Id": "a462c110b861cdfb56eeb61ac53f42ddec611c594868880528624024ad718f49",
+    "Name": "/homecontrol-pgbouncer",
+    "Image": "sha256:7f39cf2f872c8d9a0bb0e6a5440c3bf5814036eccf284102870ab08e2603a2c7",
+    "RestartCount": 0,
+    "StartedAt": "2026-10-27T17:47:25.249304382Z"
+  },
+  {
+    "Id": "cef0e30e95782eb792121b5437bd076bb5b6b751657b3e4177f3774cd3c038ec",
+    "Name": "/homecontrol-ingest",
+    "Image": "sha256:06038dad570de6e23ef64848627d071866982cbe0a7b23a4777359d22229a2f2",
+    "RestartCount": 0,
+    "StartedAt": "2026-10-27T17:47:35.923798792Z"
+  },
+  {
+    "Id": "69c9ea4b3091911c7b0e5d1d1b4b6088ad7c7eddb0661c280dfd4001ce2f5040",
+    "Name": "/homecontrol-tuya-poller",
+    "Image": "sha256:a47703ab3b76cfdfc56e817fb2e86d23b955617c1034799bde56d4926ac4b918",
+    "RestartCount": 0,
+    "StartedAt": "2026-10-27T17:47:25.249718824Z"
+  }
+]

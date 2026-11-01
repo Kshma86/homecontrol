@@ -1,0 +1,11 @@
+{
+  "websocket_clients": 2,
+  "slow_ai_backup_diagnostic": 3,
+  "control_requests": 64,
+  "control_all_200": true,
+  "control_p95_ms": 7.72,
+  "control_batch_sec": 0.045,
+  "extra_websocket_503": true,
+  "extra_ai_503": true,
+  "silent_pump_disconnect_frees_capacity": true
+}

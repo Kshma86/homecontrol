@@ -1,7 +1,6 @@
-import copy
-import threading
 import time
 from datetime import date, datetime, timedelta, timezone
+from read_model_cache import ReadModelCache, ReadModelChanged
 from typing import Any, Callable, Dict, Iterable, Optional
 
 
@@ -39,15 +38,18 @@ class ContextService:
         *,
         realtime_ttl: float = 5.0,
         statistics_ttl: float = 60.0,
+        invalidators: Optional[Dict[str, Callable[[], Any]]] = None,
+        section_ttls: Optional[Dict[str, float]] = None,
     ):
         self.builders = builders
         self.realtime_ttl = max(1.0, float(realtime_ttl))
         self.statistics_ttl = max(5.0, float(statistics_ttl))
-        self._cache: Dict[str, Dict[str, Any]] = {}
-        self._lock = threading.RLock()
+        self._cache = ReadModelCache()
+        self._invalidators = invalidators or {}
+        self._section_ttls = section_ttls or {}
 
     def snapshot(self, sections: Optional[Iterable[str]] = None, force: bool = False, trace: Optional[list] = None) -> Dict[str, Any]:
-        requested = list(sections or self.builders.keys())
+        requested = list(self.builders.keys() if sections is None else sections)
         realtime: Dict[str, Any] = {}
         statistics: Dict[str, Any] = {}
         errors: Dict[str, str] = {}
@@ -109,75 +111,72 @@ class ContextService:
             )
             return {"ok": False, "error": "unknown_context_section", "section": name}
 
-        now = time.monotonic()
         ttl = self.ttl_for_section(name)
-        with self._lock:
-            cached = self._cache.get(name)
-            if not force and cached and cached["expires_at"] > now:
-                data = copy.deepcopy(cached["data"])
-                meta = data.get("_context") if isinstance(data.get("_context"), dict) else {}
-                _append_trace(
-                    trace,
-                    {
-                        "section": name,
-                        "started_at": _utc_now(),
-                        "duration_ms": 0,
-                        "build_ms": meta.get("build_ms"),
-                        "built_at": meta.get("built_at"),
-                        "ttl_sec": ttl,
-                        "cache_hit": True,
-                        "ok": data.get("ok", True),
-                        "error": data.get("error"),
-                    },
-                )
-                return data
-
         started_at = _utc_now()
         started = time.perf_counter()
-        try:
-            data = self.builders[name]()
-            if not isinstance(data, dict):
-                data = {"value": data}
-            data = dict(data)
-            data.setdefault("ok", True)
-        except Exception as exc:
-            data = {"ok": False, "error": str(exc), "section": name}
 
-        data["_context"] = {
-            "section": name,
-            "built_at": _utc_now(),
-            "build_ms": round((time.perf_counter() - started) * 1000, 1),
-            "ttl_sec": ttl,
-        }
-        _append_trace(
-            trace,
-            {
+        def build():
+            build_started = time.perf_counter()
+            try:
+                data = self.builders[name]()
+                if not isinstance(data, dict):
+                    data = {"value": data}
+                data = dict(data)
+                data.setdefault("ok", True)
+            except Exception as exc:
+                data = {"ok": False, "error": str(exc), "section": name}
+            data["_context"] = {
                 "section": name,
-                "started_at": started_at,
-                "duration_ms": data["_context"]["build_ms"],
-                "build_ms": data["_context"]["build_ms"],
-                "built_at": data["_context"]["built_at"],
+                "built_at": _utc_now(),
+                "build_ms": round((time.perf_counter() - build_started) * 1000, 1),
                 "ttl_sec": ttl,
-                "cache_hit": False,
-                "ok": data.get("ok", True),
-                "error": data.get("error"),
-            },
-        )
-        with self._lock:
-            self._cache[name] = {"expires_at": now + ttl, "data": copy.deepcopy(data)}
+            }
+            return data
+
+        try:
+            data, hit = self._cache.get_or_build(
+                name, ttl, build, force=force,
+                cache_if=lambda payload: payload.get("ok") is not False,
+            )
+        except ReadModelChanged as exc:
+            data = {"ok": False, "error": str(exc), "section": name,
+                    "_context": {"section": name, "built_at": _utc_now(),
+                                 "build_ms": round((time.perf_counter() - started) * 1000, 1),
+                                 "ttl_sec": ttl}}
+            hit = False
+        meta = data["_context"]
+        _append_trace(trace, {
+            "section": name,
+            "started_at": started_at,
+            "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+            "build_ms": meta["build_ms"],
+            "built_at": meta["built_at"],
+            "ttl_sec": ttl,
+            "cache_hit": hit,
+            "ok": data.get("ok", True),
+            "error": data.get("error"),
+        })
         return data
 
     def invalidate(self, section: Optional[str] = None) -> Dict[str, Any]:
-        with self._lock:
-            if section:
-                existed = section in self._cache
-                self._cache.pop(section, None)
-                return {"ok": True, "section": section, "invalidated": existed}
-            count = len(self._cache)
-            self._cache.clear()
+        # Dependencies only invalidate memory. Keep both layers atomic to new
+        # section readers; never acquire this lock while running a builder.
+        with self._cache.condition:
+            count = self._cache.invalidate(section)
+            names = [section] if section else list(self._invalidators)
+            for name in names:
+                callback = self._invalidators.get(name)
+                if callback:
+                    callback()
+        if section:
+            return {"ok": True, "section": section, "invalidated": bool(count)}
         return {"ok": True, "invalidated": count}
 
     def ttl_for_section(self, name: str) -> float:
+        if name in self._section_ttls:
+            return max(1.0, float(self._section_ttls[name]))
+        if name == "performance":
+            return max(self.statistics_ttl, 300.0)
         if name in STATISTICS_SECTIONS or name in EXPENSIVE_REALTIME_SECTIONS:
             return self.statistics_ttl
         return self.realtime_ttl
@@ -207,26 +206,29 @@ class ContextService:
             "expensive_realtime_sections": sorted(EXPENSIVE_REALTIME_SECTIONS),
         }
 
-    def ai_summary(self, force: bool = False, trace: Optional[list] = None) -> Dict[str, Any]:
-        sections = ["weather", "irrigation", "climate", "robot", "power_wall", "solar", "tuya", "scheduler_ai", "backup", "notes"]
-        if "irrigation_pilot" in self.builders:
-            sections.append("irrigation_pilot")
-        if "irrigation_statistics" in self.builders:
-            sections.append("irrigation_statistics")
-        if "home_statistics" in self.builders:
-            sections.append("home_statistics")
-        if "climate_power_history" in self.builders:
-            sections.append("climate_power_history")
-        if "climate_history" in self.builders:
-            sections.append("climate_history")
-        if "climate_schedules" in self.builders:
-            sections.append("climate_schedules")
-        if "server_power" in self.builders:
-            sections.append("server_power")
-        if "ai_chat_audit" in self.builders:
-            sections.append("ai_chat_audit")
+    def ai_summary(self, force: bool = False, trace: Optional[list] = None, sections: Optional[Iterable[str]] = None) -> Dict[str, Any]:
+        if sections is None:
+            selected = ["weather", "irrigation", "climate", "robot", "power_wall", "solar", "tuya", "scheduler_ai", "backup", "notes"]
+            if "irrigation_pilot" in self.builders:
+                selected.append("irrigation_pilot")
+            if "irrigation_statistics" in self.builders:
+                selected.append("irrigation_statistics")
+            if "home_statistics" in self.builders:
+                selected.append("home_statistics")
+            if "climate_power_history" in self.builders:
+                selected.append("climate_power_history")
+            if "climate_history" in self.builders:
+                selected.append("climate_history")
+            if "climate_schedules" in self.builders:
+                selected.append("climate_schedules")
+            if "server_power" in self.builders:
+                selected.append("server_power")
+            if "ai_chat_audit" in self.builders:
+                selected.append("ai_chat_audit")
+        else:
+            selected = list(dict.fromkeys(name for name in sections if name in self.builders))
         ctx = self.snapshot(
-            sections=sections,
+            sections=selected,
             force=force,
             trace=trace,
         )
@@ -290,7 +292,7 @@ class ContextService:
         power_summary = power_wall.get("summary") or {}
         solar_summary = solar.get("summary") or {}
 
-        return {
+        result = {
             "ok": ctx.get("ok", False),
             "schema_version": AI_CONTEXT_SCHEMA_VERSION,
             "generated_at": ctx.get("generated_at"),
@@ -342,6 +344,17 @@ class ContextService:
             },
             "errors": ctx.get("errors", {}),
         }
+
+        if sections is not None:
+            # Keep the legacy full summary for explicit callers, while chat
+            # receives only loaded domains and an explicit provenance list.
+            keys = {"irrigation_statistics": "irrigation", "climate_power_history": "climate_power",
+                    "scheduler_ai": "scheduler", "notes": "open_notes"}
+            allowed = {keys.get(name, name) for name in selected}
+            allowed.update(("ok", "schema_version", "generated_at", "contract", "house", "errors"))
+            result = {key: value for key, value in result.items() if key in allowed}
+            result["context_sections"] = selected
+        return result
 
     def _house_state(self, realtime: Dict[str, Any], statistics: Dict[str, Any], errors: Dict[str, str], generated_at: str):
         power_summary = (realtime.get("power_wall") or {}).get("summary") or {}
@@ -424,14 +437,23 @@ def _summarize_irrigation_pilot(payload: Dict[str, Any]):
             "pop_threshold_percent",
             "heat_threshold_c",
             "heat_correction_percent",
+            "heat_step_c",
+            "heat_multiplier_step",
             "cold_threshold_c",
             "cold_correction_percent",
+            "cold_step_c",
+            "cold_multiplier_step",
             "soil_moisture_enabled",
             "soil_sensor_topic_base",
             "soil_wet_skip_threshold_percent",
+            "soil_wet_adjust_threshold_percent",
+            "soil_wet_multiplier_delta",
             "soil_dry_threshold_percent",
             "soil_dry_correction_percent",
+            "soil_dry_multiplier_delta",
             "soil_sample_max_age_hours",
+            "min_duration_multiplier",
+            "max_duration_multiplier",
             "updated_at",
         ]),
         "recommendation": _pick(recommendation, [
@@ -625,6 +647,7 @@ def _summarize_climate_schedules(payload: Dict[str, Any]):
             "target_temperature",
             "fan_speed",
             "light",
+            "extra_fan",
             "rule_engine",
             "updated_at",
         ]))
@@ -1062,7 +1085,7 @@ def _summarize_home_statistics(stats: Dict[str, Any]):
         humidity_values = [sample.get("humidity") for sample in clean_samples if sample.get("humidity") is not None]
         abs_humidity_values = [sample.get("absolute_humidity_g_m3") for sample in clean_samples if sample.get("absolute_humidity_g_m3") is not None]
         name = sensor.get("entity_name") or sensor.get("device_name")
-        is_outdoor = str(name or "").strip().lower() in {"udvar", "yard", "outside", "outdoor"}
+        is_outdoor = bool(sensor.get("is_outdoor"))
         latest_temperature = sensor.get("latest_temperature")
         latest_humidity = sensor.get("latest_humidity")
         if not is_outdoor:
@@ -1076,6 +1099,7 @@ def _summarize_home_statistics(stats: Dict[str, Any]):
                 "aliases": _name_aliases(name),
                 "latest_temperature_c": _round(latest_temperature, 1),
                 "latest_humidity_percent": _round(latest_humidity, 1),
+                "latest_pressure_hpa": _round(sensor.get("latest_pressure_hpa"), 1),
                 "latest_absolute_humidity_g_m3": _round(sensor.get("latest_absolute_humidity_g_m3"), 2),
                 "temperature": {
                     "min_24h_c": _round(min([_number(value) for value in temp_values if _number(value) is not None], default=None), 1),

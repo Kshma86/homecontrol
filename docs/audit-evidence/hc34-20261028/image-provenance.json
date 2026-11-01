@@ -1,0 +1,16 @@
+{
+  "release_image_id": "sha256:47b7aad02fe45cc5fd40a0f3a34b90b8bc7883ddb0ef5f8052d281b0cb5d8503",
+  "base_image_id": "sha256:06038dad570de6e23ef64848627d071866982cbe0a7b23a4777359d22229a2f2",
+  "python": "3.11.16",
+  "packages": {
+    "wheel": "0.46.3",
+    "setuptools": "79.0.1",
+    "packaging": "26.3",
+    "pip": "24.0",
+    "psycopg2-binary": "2.9.13",
+    "paho-mqtt": "2.1.0"
+  },
+  "image_sources_match_frozen_source": true,
+  "dependency_versions_unchanged": true,
+  "network_during_build": "none"
+}

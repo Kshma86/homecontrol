@@ -1,3 +1,5 @@
+from host_operations_client import HostOperationsClient, docker_capability_request
+from worker_runtime import BoundedJobs, Busy
 import concurrent.futures
 import json
 import os
@@ -9,11 +11,18 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple
+from urllib.parse import quote
 
+
+DOCKER_REQUEST_JOBS = BoundedJobs("docker-status-request", 1)
+DOCKER_STATS_JOBS = BoundedJobs("docker-stats", 8)
 
 DOCKER_STATUS_CACHE_TTL = float(os.environ.get("DOCKER_STATUS_CACHE_TTL", "30"))
 DOCKER_STATUS_CACHE = {"expires_at": 0.0, "data": None}
 DOCKER_STATUS_CACHE_LOCK = threading.Lock()
+HARDWARE_TEMPERATURE_HISTORY = []
+HARDWARE_TEMPERATURE_HISTORY_LOCK = threading.Lock()
+HARDWARE_TEMPERATURE_HISTORY_WINDOW_SEC = 24 * 3600
 ABOUT_SOURCE_EXTENSIONS = {
     ".css",
     ".html",
@@ -537,7 +546,6 @@ DOCUMENTATION_BUTTONS = {
         {"name": "Menu", "does": "Kis kepernyon kinyitja vagy becsukja az oldalso navigacios listat.", "guard": "Csak navigacios UI allapotot valt."},
         {"name": "Mobile/tablet status cards", "does": "Mobil/tablet dashboardon egy status kartya reszleteit nyitja ki vagy zarja be.", "guard": "Csak megjelenitest valt, parancsot nem kuld."},
         {"name": "Refresh buttons", "does": "Az adott tab friss API payloadjat keri le, es ujrarajzolja a nezetet.", "guard": "Nem indit folyamatot; csak adatot olvas."},
-        {"name": "Screenshot", "does": "V2 preview modban vizualis audit screenshotot ker a capture service-tol.", "guard": "Csak akkor hasznalhato, ha a capture endpoint elerheto."},
     ],
     "irrigation": [
         {"name": "Refresh", "does": "Ujratolti az ontozesi allapotot, szenzorokat, pilot eredmenyt es kapcsolodo bindingot.", "guard": "Csak olvasas."},
@@ -637,8 +645,6 @@ DOCUMENTATION_BUTTONS = {
         {"name": "Register Device / Update Device", "does": "Uj eszkozt regisztral vagy meglvo eszkozt frissit entityvel egyutt.", "guard": "Device id, nev, platform es entity adatok validalva vannak."},
         {"name": "Save Metric", "does": "Entity metric mappingot hoz letre vagy frissit.", "guard": "Entity es metric key kell."},
         {"name": "Function Bindings select/save", "does": "Egy folyamatot egy konkret entityhez rendel, peldaul soil moisture vagy AI power plug.", "guard": "Csak az adott funkciohoz elfogadhato metric candidate valaszthato."},
-        {"name": "Stable / V2 Preview", "does": "Egy adott tabnal a stabil vagy V2 preview UI-t valasztja.", "guard": "Frontend localStorage beallitas, eszkozre nem hat."},
-        {"name": "Enable all / UI V2 toggles", "does": "Tabonkent kapcsolja az uj V2 auto layoutot.", "guard": "Csak frontend beallitas, nem hat eszkozre."},
     ],
     "about_docs": [
         {"name": "Refresh About", "does": "Ujraszamolja a forraskod, kontener, szerver es adatbazis statisztikakat.", "guard": "Csak olvasas, de Docker/DB metadata kellhet."},
@@ -698,37 +704,150 @@ def system_memory():
         return {"ok": False, "total_bytes": None, "available_bytes": None, "used_bytes": None, "percent": None, "error": str(exc)}
 
 
-def docker_socket_containers():
-    socket_path = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
-    if not Path(socket_path).exists():
-        return None
-    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+def read_sysfs_text(path: Path) -> str:
     try:
-        client.settimeout(4)
-        client.connect(socket_path)
-        request_bytes = (
-            "GET /containers/json?all=1 HTTP/1.1\r\n"
-            "Host: docker\r\n"
-            "Connection: close\r\n"
-            "\r\n"
-        ).encode("utf-8")
-        client.sendall(request_bytes)
-        chunks = []
-        while True:
-            chunk = client.recv(65536)
-            if not chunk:
-                break
-            chunks.append(chunk)
-    finally:
-        client.close()
-    raw = b"".join(chunks)
-    header, _, body = raw.partition(b"\r\n\r\n")
-    header_text = header.decode("utf-8", errors="replace")
-    status_line = header_text.splitlines()[0] if header_text else ""
-    if " 200 " not in status_line:
-        raise RuntimeError(status_line or "docker socket returned no response")
-    if "transfer-encoding: chunked" in header_text.lower():
-        body = decode_chunked_body(body)
+        return path.read_text(encoding="utf-8").strip()
+    except Exception:
+        return ""
+
+
+def sysfs_temperature_c(raw: str) -> Optional[float]:
+    try:
+        value = float(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+    if not (-100000 <= value <= 200000):
+        return None
+    if abs(value) > 250:
+        value = value / 1000.0
+    return round(value, 1)
+
+
+def hardware_sensor_text(sensor: Dict[str, Any]) -> str:
+    return " ".join([sensor.get("chip") or "", sensor.get("label") or "", sensor.get("display_name") or ""]).lower()
+
+
+def append_hardware_temperature_history(ts: str, cpu_temperature_c: Optional[float], chipset_temperature_c: Optional[float]):
+    timestamp = datetime.fromisoformat(ts).timestamp()
+    cutoff = timestamp - HARDWARE_TEMPERATURE_HISTORY_WINDOW_SEC
+    with HARDWARE_TEMPERATURE_HISTORY_LOCK:
+        HARDWARE_TEMPERATURE_HISTORY.append({
+            "ts": ts,
+            "cpu_temperature_c": cpu_temperature_c,
+            "chipset_temperature_c": chipset_temperature_c,
+        })
+        fresh = [
+            row for row in HARDWARE_TEMPERATURE_HISTORY
+            if datetime.fromisoformat(row["ts"]).timestamp() >= cutoff
+        ]
+        HARDWARE_TEMPERATURE_HISTORY[:] = fresh[-2880:]
+        return list(HARDWARE_TEMPERATURE_HISTORY)
+
+
+def system_temperature_sensors():
+    sensors = []
+    seen = set()
+
+    for hwmon in sorted(Path("/sys/class/hwmon").glob("hwmon*")):
+        chip = read_sysfs_text(hwmon / "name") or hwmon.name
+        for temp_input in sorted(hwmon.glob("temp*_input")):
+            value = sysfs_temperature_c(read_sysfs_text(temp_input))
+            if value is None:
+                continue
+            suffix = temp_input.name.removeprefix("temp").removesuffix("_input")
+            label = read_sysfs_text(hwmon / f"temp{suffix}_label")
+            display_name = f"{chip} {label}".strip() if label else chip
+            sensor_id = f"hwmon:{chip}:{suffix}"
+            seen.add(sensor_id)
+            sensors.append({
+                "id": sensor_id,
+                "source": "hwmon",
+                "chip": chip,
+                "label": label or f"temp{suffix}",
+                "display_name": display_name,
+                "temperature_c": value,
+                "path": str(temp_input),
+            })
+
+    for zone in sorted(Path("/sys/class/thermal").glob("thermal_zone*")):
+        label = read_sysfs_text(zone / "type") or zone.name
+        value = sysfs_temperature_c(read_sysfs_text(zone / "temp"))
+        if value is None:
+            continue
+        sensor_id = f"thermal:{label}"
+        label_lower = label.lower()
+        already_hwmon_cpu = any("coretemp" in str(item.get("chip") or "").lower() for item in sensors)
+        duplicate_chip = any(label_lower in {str(item.get("chip") or "").lower(), str(item.get("display_name") or "").lower()} for item in sensors)
+        duplicate_cpu_zone = already_hwmon_cpu and any(part in label_lower for part in ["x86_pkg", "cpu", "pkg"])
+        if sensor_id in seen or duplicate_chip or duplicate_cpu_zone:
+            continue
+        sensors.append({
+            "id": sensor_id,
+            "source": "thermal",
+            "chip": label,
+            "label": label,
+            "display_name": label,
+            "temperature_c": value,
+            "path": str(zone / "temp"),
+        })
+
+    cpu_package_candidates = [
+        item for item in sensors
+        if any(
+            part in hardware_sensor_text(item)
+            for part in ["pkg", "package", "x86_pkg", "tctl", "tdie"]
+        )
+    ]
+    cpu_candidates = [
+        item for item in sensors
+        if any(
+            part in hardware_sensor_text(item)
+            for part in ["coretemp", "k10temp", "cpu", "tctl", "tdie"]
+        )
+    ]
+    chipset_candidates = [
+        item for item in sensors
+        if any(
+            part in hardware_sensor_text(item)
+            for part in ["pch", "chipset", "cannonlake", "soc"]
+        )
+    ]
+    primary_cpu = max(cpu_package_candidates or cpu_candidates, key=lambda item: item.get("temperature_c") or -999) if (cpu_package_candidates or cpu_candidates) else None
+    primary_chipset = max(chipset_candidates, key=lambda item: item.get("temperature_c") or -999) if chipset_candidates else None
+    display_sensors = []
+    if primary_cpu:
+        display_sensors.append({**primary_cpu, "id": "cpu", "display_name": "CPU"})
+    if primary_chipset:
+        display_sensors.append({**primary_chipset, "id": "chipset", "display_name": "Chipset"})
+    generated_at = datetime.now().isoformat()
+    history = append_hardware_temperature_history(
+        generated_at,
+        primary_cpu.get("temperature_c") if primary_cpu else None,
+        primary_chipset.get("temperature_c") if primary_chipset else None,
+    )
+
+    return {
+        "ok": bool(display_sensors),
+        "generated_at": generated_at,
+        "cpu_temperature_c": primary_cpu.get("temperature_c") if primary_cpu else None,
+        "cpu_sensor_id": primary_cpu.get("id") if primary_cpu else "",
+        "cpu_sensor_name": primary_cpu.get("display_name") if primary_cpu else "",
+        "chipset_temperature_c": primary_chipset.get("temperature_c") if primary_chipset else None,
+        "chipset_sensor_id": primary_chipset.get("id") if primary_chipset else "",
+        "chipset_sensor_name": primary_chipset.get("display_name") if primary_chipset else "",
+        "sensors": display_sensors,
+        "history_24h": history,
+        "summary": {
+            "sensor_count": len(display_sensors),
+            "raw_sensor_count": len(sensors),
+            "history_samples": len(history),
+            "max_temperature_c": max((item["temperature_c"] for item in display_sensors), default=None),
+        },
+    }
+
+
+def docker_socket_containers(timeout=4):
+    body, _ = docker_socket_request('GET', '/containers/json?all=1', timeout=timeout)
     containers = []
     for item in json.loads(body.decode("utf-8")):
         names = item.get("Names") or []
@@ -738,6 +857,7 @@ def docker_socket_containers():
                 "full_id": item.get("Id") or "",
                 "name": names[0].lstrip("/") if names else "-",
                 "image": item.get("Image"),
+                "service": (item.get("Labels") or {}).get("com.docker.compose.service") or "",
                 "state": item.get("State"),
                 "status": item.get("Status"),
             }
@@ -777,27 +897,83 @@ def docker_block_bytes(stats: Dict[str, Any]) -> Tuple[Optional[int], Optional[i
     return read, write
 
 
-def docker_container_live_stats(container_id: str) -> Dict[str, Any]:
-    response, _ = docker_socket_request("GET", f"/containers/{container_id}/stats?stream=false", timeout=2.5)
-    stats = json.loads(response.decode("utf-8"))
-    memory_stats = stats.get("memory_stats") or {}
-    memory_usage = memory_stats.get("usage")
-    memory_limit = memory_stats.get("limit")
-    memory_percent = None
-    if isinstance(memory_usage, (int, float)) and isinstance(memory_limit, (int, float)) and memory_limit > 0:
-        memory_percent = round((memory_usage / memory_limit) * 100, 2)
-    net_rx, net_tx = docker_network_bytes(stats)
-    block_read, block_write = docker_block_bytes(stats)
+def docker_container_live_stats(container_id: str, timeout=2.5) -> Dict[str, Any]:
+    return HostOperationsClient().call('stats',container=container_id,timeout=timeout)
+
+
+def docker_log_stream_text(raw: bytes) -> str:
+    if not raw:
+        return ""
+    chunks = []
+    index = 0
+    framed = False
+    while index + 8 <= len(raw):
+        stream_type = raw[index]
+        size = int.from_bytes(raw[index + 4 : index + 8], "big")
+        if stream_type not in (1, 2) or size < 0 or index + 8 + size > len(raw):
+            break
+        framed = True
+        index += 8
+        chunks.append(raw[index : index + size])
+        index += size
+    if framed:
+        return b"".join(chunks).decode("utf-8", errors="replace")
+    return raw.decode("utf-8", errors="replace")
+
+
+def docker_debug_log_sources():
+    containers = docker_socket_containers()
+    if containers is None:
+        return {"ok": False, "logs": [], "error": "docker socket is not available"}
+    rows = []
+    for container in sorted(containers, key=lambda item: str(item.get("name") or "")):
+        rows.append(
+            {
+                "id": container.get("id") or "",
+                "name": container.get("name") or "-",
+                "service": container.get("service") or "",
+                "image": container.get("image") or "",
+                "state": container.get("state") or "",
+                "status": container.get("status") or "",
+            }
+        )
+    return {"ok": True, "logs": rows, "error": ""}
+
+
+def docker_debug_container_log(container_ref: str, tail: int = 300):
+    containers = docker_socket_containers()
+    if containers is None:
+        return {"ok": False, "error": "docker socket is not available", "lines": [], "text": ""}
+    container_ref = str(container_ref or "").strip()
+    selected = next(
+        (
+            item
+            for item in containers
+            if container_ref in {item.get("id"), item.get("full_id"), item.get("name"), item.get("service")}
+        ),
+        None,
+    )
+    if not selected:
+        return {"ok": False, "error": "unknown log source", "lines": [], "text": ""}
+    tail = max(20, min(3000, int(tail or 300)))
+    encoded_id = quote(selected.get("full_id") or selected.get("id") or selected.get("name"), safe="")
+    response, _ = docker_socket_request("GET", f"/containers/{encoded_id}/logs?stdout=1&stderr=1&timestamps=1&tail={tail}", timeout=6)
+    text = docker_log_stream_text(response).replace("\r\n", "\n")
+    lines = text.splitlines()
     return {
-        "cpu_percent": docker_cpu_percent(stats),
-        "memory_usage_bytes": memory_usage,
-        "memory_limit_bytes": memory_limit,
-        "memory_percent": memory_percent,
-        "network_rx_bytes": net_rx,
-        "network_tx_bytes": net_tx,
-        "block_read_bytes": block_read,
-        "block_write_bytes": block_write,
-        "pids": (stats.get("pids_stats") or {}).get("current"),
+        "ok": True,
+        "source": {
+            "id": selected.get("id") or "",
+            "name": selected.get("name") or "-",
+            "service": selected.get("service") or "",
+            "image": selected.get("image") or "",
+            "state": selected.get("state") or "",
+            "status": selected.get("status") or "",
+        },
+        "tail": tail,
+        "line_count": len(lines),
+        "lines": lines,
+        "text": text,
     }
 
 
@@ -817,74 +993,26 @@ def decode_chunked_body(body: bytes) -> bytes:
 
 
 def docker_socket_request(method: str, path: str, body: Optional[bytes] = None, content_type: str = "application/json", timeout: float = 30):
-    socket_path = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
-    if not Path(socket_path).exists():
-        raise RuntimeError("docker socket is not available")
-    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-        client.settimeout(timeout)
-        client.connect(socket_path)
-        headers = [
-            f"{method} {path} HTTP/1.1",
-            "Host: docker",
-            "Connection: close",
-        ]
-        if body is not None:
-            headers.extend([f"Content-Type: {content_type}", f"Content-Length: {len(body)}"])
-        request_bytes = ("\r\n".join(headers) + "\r\n\r\n").encode("utf-8") + (body or b"")
-        client.sendall(request_bytes)
-        chunks = []
-        while True:
-            chunk = client.recv(65536)
-            if not chunk:
-                break
-            chunks.append(chunk)
-    finally:
-        client.close()
-    raw = b"".join(chunks)
-    header, _, response_body = raw.partition(b"\r\n\r\n")
-    header_text = header.decode("utf-8", errors="replace")
-    status_line = header_text.splitlines()[0] if header_text else ""
-    if "transfer-encoding: chunked" in header_text.lower():
-        response_body = decode_chunked_body(response_body)
-    if not (" 200 " in status_line or " 201 " in status_line or " 204 " in status_line):
-        raise RuntimeError(f"{status_line}: {response_body[:300].decode('utf-8', errors='replace')}")
-    return response_body, header_text
+    return docker_capability_request(method,path,body,content_type,timeout)
 
 
 def docker_exec_capture(container: str, command: Iterable[str]) -> bytes:
-    payload = json.dumps(
-        {
-            "AttachStdout": True,
-            "AttachStderr": True,
-            "Tty": False,
-            "Cmd": list(command),
-        }
-    ).encode("utf-8")
-    response, _ = docker_socket_request("POST", f"/containers/{container}/exec", payload)
-    exec_id = json.loads(response.decode("utf-8"))["Id"]
-    stream, _ = docker_socket_request("POST", f"/exec/{exec_id}/start", b'{"Detach":false,"Tty":false}')
-    stdout = bytearray()
-    stderr = bytearray()
-    index = 0
-    while index + 8 <= len(stream):
-        stream_type = stream[index]
-        size = int.from_bytes(stream[index + 4 : index + 8], "big")
-        index += 8
-        payload = stream[index : index + size]
-        index += size
-        if stream_type == 1:
-            stdout.extend(payload)
-        elif stream_type == 2:
-            stderr.extend(payload)
-    inspect_body, _ = docker_socket_request("GET", f"/exec/{exec_id}/json")
-    inspect = json.loads(inspect_body.decode("utf-8"))
-    if inspect.get("ExitCode") not in (0, None):
-        raise RuntimeError(stderr.decode("utf-8", errors="replace") or f"docker exec failed: {inspect.get('ExitCode')}")
-    return bytes(stdout)
+    raise RuntimeError('General Docker exec is not available to the API')
 
 
 def docker_container_status():
+    with DOCKER_STATUS_CACHE_LOCK:
+        if DOCKER_STATUS_CACHE['data'] is not None and DOCKER_STATUS_CACHE['expires_at'] > time.monotonic():
+            return DOCKER_STATUS_CACHE['data']
+    deadline = time.monotonic() + 4
+    try:
+        future = DOCKER_REQUEST_JOBS.submit(_build_docker_container_status, deadline)
+        return future.result(timeout=max(.001, deadline-time.monotonic()))
+    except (Busy, concurrent.futures.TimeoutError):
+        return {'ok': False, 'containers': [], 'error': 'docker status deadline or capacity exhausted'}
+
+
+def _build_docker_container_status(deadline):
     now = time.monotonic()
     with DOCKER_STATUS_CACHE_LOCK:
         if DOCKER_STATUS_CACHE["data"] is not None and DOCKER_STATUS_CACHE["expires_at"] > now:
@@ -892,26 +1020,42 @@ def docker_container_status():
 
     result = None
     try:
-        socket_containers = docker_socket_containers()
+        socket_containers = docker_socket_containers(timeout=max(.001, deadline-time.monotonic()))
         if socket_containers is not None:
-            futures = {}
-            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-                for container in socket_containers:
-                    if container.get("state") != "running":
+            pending = {}
+            todo = iter(c for c in socket_containers if c.get('state') == 'running')
+            exhausted = False
+            while time.monotonic() < deadline:
+                while len(pending) < 8 and not exhausted:
+                    container = next(todo, None)
+                    if container is None:
+                        exhausted = True
+                        break
+                    container_id = container.get('full_id') or container.get('id') or container.get('name')
+                    try:
+                        future = DOCKER_STATS_JOBS.submit(
+                            lambda cid=container_id: docker_container_live_stats(cid, timeout=max(.001, min(2.5, deadline-time.monotonic()))))
+                    except Busy:
+                        container['stats_error'] = 'docker stats capacity exhausted'
                         continue
-                    container_id = container.get("full_id") or container.get("id") or container.get("name")
-                    futures[executor.submit(docker_container_live_stats, container_id)] = container
-                try:
-                    for future in concurrent.futures.as_completed(futures, timeout=4):
-                        container = futures[future]
-                        try:
-                            container.update(future.result())
-                        except Exception as exc:
-                            container["stats_error"] = str(exc)
-                except concurrent.futures.TimeoutError:
-                    for future, container in futures.items():
-                        if not future.done():
-                            container["stats_error"] = "docker stats timeout"
+                    pending[future] = container
+                if not pending:
+                    break
+                done, _ = concurrent.futures.wait(pending, timeout=max(0, deadline-time.monotonic()),
+                                                  return_when=concurrent.futures.FIRST_COMPLETED)
+                if not done:
+                    break
+                for future in done:
+                    container = pending.pop(future)
+                    try:
+                        container.update(future.result())
+                    except Exception as exc:
+                        container['stats_error'] = str(exc)
+            for future, container in pending.items():
+                container['stats_error'] = 'docker stats timeout'
+                future.cancel()
+            for container in todo:
+                container['stats_error'] = 'docker stats deadline exceeded before dispatch'
             for container in socket_containers:
                 container.pop("full_id", None)
             result = {"ok": True, "containers": socket_containers, "error": ""}
@@ -926,76 +1070,7 @@ def docker_container_status():
             DOCKER_STATUS_CACHE["expires_at"] = time.monotonic() + DOCKER_STATUS_CACHE_TTL
         return result
 
-    docker_bin = shutil.which("docker")
-    if not docker_bin:
-        return {"ok": False, "containers": [], "error": socket_error or "docker command is not available"}
-    try:
-        result = subprocess.run(
-            [
-                docker_bin,
-                "ps",
-                "-a",
-                "--format",
-                "{{json .}}",
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=4,
-        )
-        containers = []
-        for line in result.stdout.splitlines():
-            if not line.strip():
-                continue
-            item = json.loads(line)
-            containers.append(
-                {
-                    "id": item.get("ID"),
-                    "name": item.get("Names"),
-                    "image": item.get("Image"),
-                    "state": item.get("State"),
-                    "status": item.get("Status"),
-                }
-            )
-        stats_result = subprocess.run(
-            [
-                docker_bin,
-                "stats",
-                "--no-stream",
-                "--format",
-                "{{json .}}",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=6,
-        )
-        stats_by_name = {}
-        if stats_result.returncode == 0:
-            for line in stats_result.stdout.splitlines():
-                if not line.strip():
-                    continue
-                item = json.loads(line)
-                name = item.get("Name")
-                cpu_raw = str(item.get("CPUPerc") or "").rstrip("%")
-                mem_raw = str(item.get("MemPerc") or "").rstrip("%")
-                stats_by_name[name] = {
-                    "cpu_percent": float(cpu_raw) if cpu_raw else None,
-                    "memory_percent": float(mem_raw) if mem_raw else None,
-                    "memory_usage": item.get("MemUsage"),
-                    "network_io": item.get("NetIO"),
-                    "block_io": item.get("BlockIO"),
-                    "pids": item.get("PIDs"),
-                }
-        for container in containers:
-            container.update(stats_by_name.get(container.get("name"), {}))
-        result = {"ok": True, "containers": containers, "error": ""}
-        with DOCKER_STATUS_CACHE_LOCK:
-            DOCKER_STATUS_CACHE["data"] = result
-            DOCKER_STATUS_CACHE["expires_at"] = time.monotonic() + DOCKER_STATUS_CACHE_TTL
-        return result
-    except Exception as exc:
-        return {"ok": False, "containers": [], "error": socket_error or str(exc)}
+    return {"ok": False, "containers": [], "error": socket_error or "Host executor is unavailable"}
 
 
 class SystemStatusService:
@@ -1009,6 +1084,7 @@ class SystemStatusService:
         server_power_history_payload: Callable[[], Dict[str, Any]],
         latest_backup_info: Callable[[], Dict[str, Any]],
         safety_worker_enabled: bool,
+        worker_status: Callable[[], Dict[str, Any]] = None,
     ):
         self.fetch_all = fetch_all
         self.fetch_one = fetch_one
@@ -1018,6 +1094,13 @@ class SystemStatusService:
         self.server_power_history_payload = server_power_history_payload
         self.latest_backup_info = latest_backup_info
         self.safety_worker_enabled = safety_worker_enabled
+        self.worker_status = worker_status
+
+    def debug_log_sources(self):
+        return docker_debug_log_sources()
+
+    def debug_container_log(self, container_ref: str, tail: int = 300):
+        return docker_debug_container_log(container_ref, tail=tail)
 
     def about_source_stats(self):
         root = Path(os.environ.get("HC_REPO_ROOT", "/srv/docker/homecontrol"))
@@ -1080,8 +1163,8 @@ class SystemStatusService:
             select
               d.platform,
               coalesce(nullif(d.model, ''), nullif(d.manufacturer, ''), d.platform::text, 'unknown') as type,
-              count(*)::int as device_count,
-              count(e.id)::int as entity_count,
+              count(distinct d.id)::int as device_count,
+              count(distinct e.id)::int as entity_count,
               string_agg(distinct d.name, ', ' order by d.name) as examples,
               string_agg(distinct d.location, ', ' order by d.location) filter (where nullif(d.location, '') is not null) as locations,
               array_agg(distinct em.metric_key order by em.metric_key) filter (where em.metric_key is not null) as metrics
@@ -1536,28 +1619,12 @@ class SystemStatusService:
             return []
 
     def background_worker_status(self):
-        threads = {thread.name: thread.is_alive() for thread in threading.enumerate()}
-        workers = [
-            {
-                "name": "Irrigation safety",
-                "key": "irrigation-safety",
-                "enabled": self.safety_worker_enabled,
-                "running": bool(threads.get("irrigation-safety")),
-            },
-            {
-                "name": "OpenWeather poll",
-                "key": "openweather-poll",
-                "enabled": True,
-                "running": bool(threads.get("openweather-poll")),
-            },
-            {
-                "name": "MQTT monitor",
-                "key": "irrigation-mqtt-monitor",
-                "enabled": True,
-                "running": bool(threads.get("irrigation-mqtt-monitor")),
-            },
-        ]
-        return {"workers": workers, "thread_count": len(threads)}
+        if self.worker_status is not None:
+            status = self.worker_status()
+        else:
+            status = {'workers': []}
+        return {**status, 'thread_count': len(threading.enumerate()),
+                'jobs': list(status.get('jobs', [])) + [DOCKER_REQUEST_JOBS.status(), DOCKER_STATS_JOBS.status()]}
 
     def performance_snapshot(self):
         started = time.perf_counter()
@@ -1569,6 +1636,7 @@ class SystemStatusService:
             "ok": True,
             "generated_at": datetime.now().isoformat(),
             "cpu": system_cpu_percent(),
+            "hardware_sensors": system_temperature_sensors(),
             "memory": system_memory(),
             "postgres": postgres,
             "mqtt": {

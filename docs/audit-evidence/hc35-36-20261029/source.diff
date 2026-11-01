@@ -1,0 +1,992 @@
+--- before/infra/backend/process_binding_service.py
++++ infra/backend/process_binding_service.py
+@@ -141,6 +141,7 @@
+         invalidate_weather_summary: Callable[[], Any] = None,
+         legacy_fallbacks: Dict[str, Any] = None,
+         ai_power_coordinator=None,
++        climate_fan_coordinator=None,
+     ):
+         self.fetch_all = fetch_all
+         self.fetch_one = fetch_one
+@@ -153,6 +154,7 @@
+         self.invalidate_weather_summary = invalidate_weather_summary
+         self.legacy_fallbacks = legacy_fallbacks or {}
+         self.ai_power_coordinator = ai_power_coordinator
++        self.climate_fan_coordinator = climate_fan_coordinator
+         self._schema_ready = False
+         self._schema_lock = threading.Lock()
+ 
+@@ -171,11 +173,11 @@
+             raise ValueError("unknown process binding")
+         return PROCESS_BINDING_DEFINITIONS[key]
+ 
+-    def candidate_entities(self, process_key: str):
++    def candidate_entities(self, process_key: str, *, fetch_all=None):
+         definition = self.definition(process_key)
+         metrics = list(definition["candidate_metric_keys"])
+         excluded_metrics = list(definition.get("exclude_metric_keys") or ())
+-        return self.fetch_all(
++        rows = (fetch_all or self.fetch_all)(
+             """
+             select
+               e.id as entity_id,
+@@ -213,10 +215,12 @@
+             (metrics, excluded_metrics, excluded_metrics),
+         )
+ 
+-    def fallback_entity(self, process_key: str):
++        return [row for row in rows if self.invalid_reason(process_key, row) is None]
++
++    def fallback_entity(self, process_key: str, *, fetch_one=None):
+         definition = self.definition(process_key)
+         if definition.get("fallback_topic_base"):
+-            return self.fetch_one(
++            return (fetch_one or self.fetch_one)(
+                 """
+                 select
+                   e.id as entity_id,
+@@ -244,7 +248,7 @@
+             )
+         fallback_entity_id = self.legacy_fallbacks.get(definition.get("fallback_entity_id_key"))
+         if fallback_entity_id:
+-            return self.fetch_one(
++            return (fetch_one or self.fetch_one)(
+                 """
+                 select
+                   e.id as entity_id,
+@@ -272,7 +276,7 @@
+             )
+         fallback_ext_id = definition.get("fallback_ext_id") or self.legacy_fallbacks.get(definition.get("fallback_ext_id_key"))
+         if fallback_ext_id:
+-            return self.fetch_one(
++            return (fetch_one or self.fetch_one)(
+                 """
+                 select
+                   e.id as entity_id,
+@@ -300,7 +304,7 @@
+                 (fallback_ext_id,),
+             )
+         if definition.get("fallback_auto_climate"):
+-            return self.fetch_one(
++            return (fetch_one or self.fetch_one)(
+                 """
+                 select
+                   e.id as entity_id,
+@@ -327,7 +331,7 @@
+                 """,
+             )
+         if definition.get("fallback_name_contains"):
+-            return self.fetch_one(
++            return (fetch_one or self.fetch_one)(
+                 """
+                 select
+                   e.id as entity_id,
+@@ -356,9 +360,9 @@
+             )
+         return None
+ 
+-    def stored_binding(self, process_key: str):
++    def stored_binding(self, process_key: str, *, fetch_one=None):
+         self.ensure_schema()
+-        return self.fetch_one(
++        return (fetch_one or self.fetch_one)(
+             """
+             select
+               pb.process_key,
+@@ -385,21 +389,52 @@
+             (process_key,),
+         )
+ 
+-    def binding(self, process_key: str, include_candidates: bool = False):
++    def invalid_reason(self, process_key, row):
+         definition = self.definition(process_key)
+-        stored = self.stored_binding(process_key)
+-        selected = stored if stored and stored.get("entity_id") and stored.get("entity_name") else self.fallback_entity(process_key)
++        if not row or not row.get("entity_id") or not row.get("entity_name"):
++            return "entity_missing_or_inactive"
++        if not row.get("device_id"):
++            return "device_missing_or_inactive"
++        metrics = set(row.get("metrics") or ())
++        if not metrics.intersection(definition["candidate_metric_keys"]):
++            return "required_metric_unavailable"
++        if metrics.intersection(definition.get("exclude_metric_keys") or ()):
++            return "excluded_metric_present"
++        switches = {"switch_state", "state"}
++        if process_key in {"climate_extra_fan_socket", "marten_power_socket", "ai_node_power_plug", "combustion_extractor"}:
++            if not metrics.intersection(switches):
++                return "switch_capability_unavailable"
++            if row.get("platform") not in {"zigbee", "tuya"}:
++                return "unsupported_switch_platform"
++        if process_key == "combustion_extractor" and not metrics.intersection({"power", "power_w"}):
++            return "power_capability_unavailable"
++        if process_key == "combustion_indicator":
++            if not {"switch_state", "brightness", "color"}.issubset(metrics) or row.get("platform") != "zigbee":
++                return "indicator_capability_unavailable"
++        return None
++
++    def binding(self, process_key: str, include_candidates: bool = False, *, fetch_one=None):
++        definition = self.definition(process_key)
++        key = definition["process_key"]
++        stored = self.stored_binding(key, fetch_one=fetch_one)
++        # A row remains explicit even after ON DELETE SET NULL. It must never
++        # select a replacement through the initial-installation legacy fallback.
++        candidate = stored if stored is not None else self.fallback_entity(key, fetch_one=fetch_one)
++        reason = self.invalid_reason(key, candidate)
++        selected = candidate if reason is None else None
+         payload = {
+             **definition,
+             "candidate_metric_keys": list(definition["candidate_metric_keys"]),
+             "context_sections": list(definition["context_sections"]),
++            "configuration_state": ("valid" if selected else "invalid") if stored is not None else "not_configured",
++            "invalid_reason": reason if selected is None else None,
+             "selected_entity_id": selected.get("entity_id") if selected else None,
+             "selected_entity": selected,
+             "stored_entity_id": stored.get("entity_id") if stored else None,
+-            "uses_fallback": not bool(stored and stored.get("entity_id") and stored.get("entity_name")),
++            "uses_fallback": stored is None and selected is not None,
+         }
+         if include_candidates:
+-            payload["candidates"] = self.candidate_entities(process_key)
++            payload["candidates"] = self.candidate_entities(key)
+         return payload
+ 
+     def payload(self):
+@@ -420,6 +455,8 @@
+         return selected.get("entity_id")
+ 
+     def set_binding(self, process_key: str, entity_id: Any):
++        # Keep the deployment guard before any schema/DB or service lookup.
++        process_key = str(process_key or "").strip()
+         from deployment_policy import ai_disabled, MESSAGE
+         if process_key == 'ai_node_power_plug' and ai_disabled():
+             raise ValueError(MESSAGE)
+@@ -431,6 +468,7 @@
+ 
+     def _set_binding(self, process_key: str, entity_id: Any):
+         definition = self.definition(process_key)
++        process_key = definition["process_key"]
+         try:
+             selected_id = int(entity_id)
+         except (TypeError, ValueError):
+@@ -438,17 +476,20 @@
+         candidate_ids = {int(row["entity_id"]) for row in self.candidate_entities(process_key)}
+         if selected_id not in candidate_ids:
+             raise ValueError("entity is not a valid candidate for this process")
+-        row = self.execute_one(
+-            """
+-            insert into hc.process_sensor_binding (process_key, entity_id, updated_at)
+-            values (%s, %s, now())
+-            on conflict (process_key) do update set
+-              entity_id = excluded.entity_id,
+-              updated_at = now()
+-            returning *
+-            """,
+-            (process_key, selected_id),
+-        )
++        if process_key == "climate_extra_fan_socket":
++            row = self._set_climate_binding(selected_id)
++        else:
++            row = self.execute_one(
++                """
++                insert into hc.process_sensor_binding (process_key, entity_id, updated_at)
++                values (%s, %s, now())
++                on conflict (process_key) do update set
++                  entity_id = excluded.entity_id,
++                  updated_at = now()
++                returning *
++                """,
++                (process_key, selected_id),
++            )
+         if process_key == "irrigation_soil_moisture":
+             entity = self.fetch_one("select topic_base from hc.entity where id = %s", (selected_id,))
+             self.execute_one(
+@@ -465,18 +506,6 @@
+                 self.invalidate_pilot()
+             if self.invalidate_weather_summary:
+                 self.invalidate_weather_summary()
+-        if process_key == "climate_extra_fan_socket":
+-            self.execute_one(
+-                """
+-                insert into hc.power_wall_policy (entity_id, auto_climate, updated_at)
+-                values (%s, true, now())
+-                on conflict (entity_id) do update set
+-                  auto_climate = true,
+-                  updated_at = now()
+-                returning entity_id
+-                """,
+-                (selected_id,),
+-            )
+         for prefix in (
+             "power_wall_state",
+             "tuya_state",
+@@ -491,6 +520,39 @@
+         self.invalidate_context(*definition["context_sections"])
+         return {"ok": True, "binding": self.binding(process_key, include_candidates=True), "stored": row}
+ 
++    def _set_climate_binding(self, selected_id):
++        if self.climate_fan_coordinator is None:
++            raise RuntimeError("climate fan coordination is required")
++        self.ensure_schema()
++        with self.climate_fan_coordinator.locked() as cur:
++            def one(sql, params=()):
++                cur.execute(sql, params)
++                return cur.fetchone()
++            def all_rows(sql, params=()):
++                cur.execute(sql, params)
++                return cur.fetchall()
++            # Revalidate after waiting for another binding/policy/tick writer.
++            if selected_id not in {int(r["entity_id"]) for r in self.candidate_entities("climate_extra_fan_socket", fetch_all=all_rows)}:
++                raise ValueError("entity is not a valid candidate for this process")
++            previous = self.binding("climate_extra_fan_socket", fetch_one=one)
++            old_id = previous["selected_entity_id"] or previous["stored_entity_id"]
++            if previous["selected_entity_id"] != selected_id:
++                if old_id is not None:
++                    one("""update hc.power_wall_policy set auto_climate = false,
++                        auto_climate_on_at = null, updated_at = now()
++                        where entity_id = %s returning entity_id""", (old_id,))
++                # A->B->A cannot resurrect any old intent already on the new row.
++                one("""update hc.power_wall_policy set auto_climate_on_at = null
++                    where entity_id = %s returning entity_id""", (selected_id,))
++            row = one("""insert into hc.process_sensor_binding (process_key, entity_id, updated_at)
++                values ('climate_extra_fan_socket', %s, now())
++                on conflict (process_key) do update set entity_id = excluded.entity_id,
++                updated_at = now() returning *""", (selected_id,))
++            one("""insert into hc.power_wall_policy (entity_id, auto_climate, updated_at)
++                values (%s, true, now()) on conflict (entity_id) do update set
++                auto_climate = true, updated_at = now() returning entity_id""", (selected_id,))
++        return row
++
+ 
+ PROCESS_BINDING_SCHEMA_SQL = """
+ create table if not exists hc.process_sensor_binding (
+--- /dev/null
++++ infra/backend/climate_fan_coordination.py
+@@ -0,0 +1,26 @@
++"""HC-35/36: order fan binding, policy, intent and publish across DB clients.
++
++Always take the local lock before the transaction advisory lock. No session
++lock is used: this also works with transaction-mode PgBouncer. The binding
++mutation uses this cursor; power-wall operations retain the lock through the
++bounded publish so a completed binding change cannot be followed by an old ON.
++"""
++from contextlib import contextmanager
++import threading
++
++
++class ClimateFanCoordinator:
++    def __init__(self, connect):
++        self.connect = connect
++        self._lock = threading.RLock()
++
++    @contextmanager
++    def locked(self):
++        with self._lock:
++            with self.connect() as conn:
++                with conn.cursor() as cur:
++                    cur.execute('set transaction isolation level read committed')
++                    cur.execute("set local lock_timeout = '2s'")
++                    cur.execute("set local statement_timeout = '5s'")
++                    cur.execute('select pg_advisory_xact_lock(350036, 1)')
++                    yield cur
+--- before/infra/backend/power_wall_service.py
++++ infra/backend/power_wall_service.py
+@@ -11,7 +11,7 @@
+ def serialize_climate_switch(method):
+     @wraps(method)
+     def wrapped(self, *args, **kwargs):
+-        with self._climate_switch_lock:
++        with (self.climate_fan_coordinator.locked() if self.climate_fan_coordinator is not None else self._climate_switch_lock):
+             return method(self, *args, **kwargs)
+     return wrapped
+ 
+@@ -32,8 +32,10 @@
+         process_binding_payload: Callable[[str], Any] = None,
+         process_binding_entity_id: Callable[[str], Any] = None,
+         cached_api_payload: Callable[..., Any] = None,
++        climate_fan_coordinator=None,
+     ):
+         self._climate_switch_lock = threading.RLock()
++        self.climate_fan_coordinator = climate_fan_coordinator
+         self.fetch_all = fetch_all
+         self.fetch_one = fetch_one
+         self.execute_one = execute_one
+@@ -60,7 +62,7 @@
+             entity_id = self.process_binding_entity_id("marten_motion_sensor")
+         if self.process_binding_payload:
+             binding = self.process_binding_payload("marten_motion_sensor")
+-            entity_id = entity_id or binding.get("selected_entity_id") or binding.get("selected_entity", {}).get("entity_id")
++            entity_id = entity_id or binding.get("selected_entity_id") or (binding.get("selected_entity") or {}).get("entity_id")
+ 
+         if not entity_id:
+             payload = {
+@@ -466,6 +468,9 @@
+             return []
+         target = power == "on"
+         selected_entity_id = self.process_binding_entity_id("climate_extra_fan_socket") if self.process_binding_entity_id else None
++        self.cancel_unselected_climate_starts(selected_entity_id)
++        if selected_entity_id is None:
++            return []
+         rows = self.fetch_all(
+             """
+             select
+@@ -478,17 +483,15 @@
+             from hc.power_wall_policy wp
+             join hc.entity e on e.id = wp.entity_id
+             join hc.device d on d.id = e.device_id
+-            where (
+-                (%s::bigint is not null and e.id = %s::bigint)
+-                or (%s::bigint is null and wp.auto_climate = true)
+-              )
++            where e.id = %s
++              and (%s = false or wp.auto_climate = true)
+               and e.is_active = true
+               and d.is_active = true
+               and d.platform in ('zigbee', 'tuya')
+             order by e.name
+             """
+             ,
+-            (selected_entity_id, selected_entity_id, selected_entity_id),
++            (selected_entity_id, target),
+         )
+         results = []
+         for row in rows:
+@@ -527,6 +530,17 @@
+             })
+         return results
+ 
++    def cancel_unselected_climate_starts(self, selected_id):
++        # This column belongs only to the climate fan, not manual/scheduler jobs.
++        self.execute_one(
++            """with cancelled as (
++                update hc.power_wall_policy set auto_climate_on_at = null
++                where auto_climate_on_at is not null
++                  and (entity_id is distinct from %s::bigint or auto_climate = false)
++                returning entity_id
++            ) select count(*) as cancelled from cancelled""", (selected_id,),
++        )
++
+     def cancel_climate_start(self, entity_id):
+         self.execute_one(
+             "update hc.power_wall_policy set auto_climate_on_at = null where entity_id = %s returning entity_id",
+@@ -535,19 +549,28 @@
+ 
+     @serialize_climate_switch
+     def climate_delay_tick(self):
++        self.ensure_schema()
++        selected_id = self.process_binding_entity_id("climate_extra_fan_socket") if self.process_binding_entity_id else None
++        self.cancel_unselected_climate_starts(selected_id)
++        if selected_id is None:
++            return
+         rows = self.fetch_all(
+             """select e.id as entity_id, e.name as entity_name, e.topic_base, d.platform,
+                       wp.auto_climate_on_at
+                from hc.power_wall_policy wp
+                join hc.entity e on e.id = wp.entity_id
+                join hc.device d on d.id = e.device_id
+-               where wp.auto_climate_on_at <= now()
+-                 and e.is_active = true and d.is_active = true""",
++               where wp.entity_id = %s and wp.auto_climate = true
++                 and wp.auto_climate_on_at <= now()
++                 and e.is_active = true and d.is_active = true
++                 and d.platform in ('zigbee', 'tuya')""",
++            (selected_id,),
+         )
+         for row in rows:
+             claimed = self.execute_one(
+                 """update hc.power_wall_policy set auto_climate_on_at = null
+-                   where entity_id = %s and auto_climate_on_at = %s returning entity_id""",
++                   where entity_id = %s and auto_climate_on_at = %s
++                     and auto_climate = true returning entity_id""",
+                 (row["entity_id"], row["auto_climate_on_at"]),
+             )
+             if claimed:
+@@ -1119,12 +1142,14 @@
+             self.api_cache_delete_prefix("power_wall_state")
+         return row, {"ok": ok, "message": message, "topic": topic, "payload": payload}
+ 
++    @serialize_climate_switch
+     def tuya_switch_command(self, entity_id: Any, entity_name: str, value: bool):
+         row = self.tuya_command_entity(entity_id=entity_id, entity_name=entity_name)
+         if not row:
+             return None, None
+         if entity_blocked(row):
+             return row, {'ok': False, 'message': RESTRICTION_MESSAGE, 'topic': '', 'payload': {}}
++        self.cancel_climate_start(row["entity_id"])
+         topic = f"homecontrol/cmd/tuya/{row['entity_name']}/switch"
+         payload = {
+             "value": value,
+--- before/infra/backend/app.py
++++ infra/backend/app.py
+@@ -65,6 +65,7 @@
+ from page_usage_service import PageUsageService
+ from power_wall_service import PowerWallService
+ from process_binding_service import ProcessBindingService
++from climate_fan_coordination import ClimateFanCoordinator
+ from robot_service import RobotService
+ from scheduler_service import SchedulerService
+ from scheduler_audit import scheduler_audit_transaction
+@@ -168,6 +169,7 @@
+ _irrigation_service_lock = threading.Lock()
+ _power_wall_service = None
+ _power_wall_service_lock = threading.Lock()
++_climate_fan_coordinator = ClimateFanCoordinator(lambda: db_conn(dict_row))
+ _process_binding_service = None
+ _process_binding_service_lock = threading.Lock()
+ _scheduler_service = None
+@@ -886,6 +888,7 @@
+                         "ai_node_power_entity_id": AI_NODE_POWER_ENTITY_ID,
+                     },
+                     ai_power_coordinator=AiPowerCoordinator(get_backup_service().backup_root),
++                    climate_fan_coordinator=_climate_fan_coordinator,
+                 )
+     return _process_binding_service
+ 
+@@ -897,6 +900,7 @@
+             if _power_wall_service is None:
+                 _power_wall_service = PowerWallService(
+                     fetch_all=fetch_all,
++                    climate_fan_coordinator=_climate_fan_coordinator,
+                     fetch_one=fetch_one,
+                     execute_one=execute_one,
+                     publish_mqtt=publish_mqtt,
+--- before/infra/backend/ai_node_service.py
++++ infra/backend/ai_node_service.py
+@@ -136,7 +136,7 @@
+ 
+     def active_power_entity_id(self):
+         binding_id = self.process_binding_entity_id("ai_node_power_plug") if self.process_binding_entity_id else None
+-        return str(binding_id or self.power_entity_id or "").strip()
++        return str((binding_id if self.process_binding_entity_id else self.power_entity_id) or "").strip()
+ 
+     def health(self):
+         if ai_disabled():
+--- before/infra/backend/climate_service.py
++++ infra/backend/climate_service.py
+@@ -69,7 +69,7 @@
+ 
+     def power_meter_payload(self):
+         binding_entity_id = self.process_binding_entity_id("climate_power_meter") if self.process_binding_entity_id else None
+-        if not binding_entity_id and not self.power_meter_ext_id:
++        if (self.process_binding_entity_id and binding_entity_id is None) or (not binding_entity_id and not self.power_meter_ext_id):
+             return {"ok": False, "error": "climate power meter is not configured"}
+ 
+         row = self.fetch_one(
+--- before/infra/backend/energy_device_service.py
++++ infra/backend/energy_device_service.py
+@@ -413,6 +413,8 @@
+ 
+     def server_power_history_payload(self):
+         binding_entity_id = self.process_binding_entity_id("hc_server_power_meter") if self.process_binding_entity_id else None
++        if self.process_binding_entity_id and binding_entity_id is None:
++            return {"ok": False, "error": "HC server power meter binding unavailable", "power_24h": [], "daily_30d": []}
+         row = self.fetch_one(
+             """
+             select
+--- before/infra/backend/irrigation_service.py
++++ infra/backend/irrigation_service.py
+@@ -2049,7 +2049,7 @@
+         latest = summary["latest"] or {}
+         outdoor = self.latest_outdoor_sensor_snapshot()
+         rain_sensor = self.latest_rain_sensor_snapshot()
+-        soil_sensor = self.latest_soil_moisture_snapshot(soil_sensor_topic or PILOT_SOIL_SENSOR_TOPIC)
++        soil_sensor = self.latest_soil_moisture_snapshot(soil_sensor_topic)
+         openweather_temperature = self.to_float(latest.get("forecast_temp_max_c"), latest.get("temperature_c"))
+         openweather_humidity = self.to_float(latest.get("humidity_percent"))
+         local_temperature = outdoor.get("temperature_c")
+@@ -2080,10 +2080,9 @@
+ 
+     def evaluate_pilot(self, base_duration: Optional[int] = None, mode: Optional[str] = None):
+         config = self.fetch_pilot_config()
+-        soil_sensor_topic = None
+-        if self.process_binding_topic:
+-            soil_sensor_topic = self.process_binding_topic("irrigation_soil_moisture")
+-        snapshot = self.build_weather_snapshot(soil_sensor_topic or config.get("soil_sensor_topic_base") or PILOT_SOIL_SENSOR_TOPIC)
++        soil_sensor_topic = (self.process_binding_topic("irrigation_soil_moisture") if self.process_binding_topic
++                             else config.get("soil_sensor_topic_base") or PILOT_SOIL_SENSOR_TOPIC)
++        snapshot = self.build_weather_snapshot(soil_sensor_topic)
+         base_schedule = None
+         base_source = "schedule"
+         if base_duration is None:
+--- before/infra/backend/tests/test_power_wall_service.py
++++ infra/backend/tests/test_power_wall_service.py
+@@ -24,6 +24,7 @@
+             api_cache_delete_prefix=noop,
+             normalize_text=lambda value, default="": str(value or "").strip() or default,
+             guard_repeat_seconds=30,
++            process_binding_entity_id=lambda key: 1,
+         )
+ 
+     def test_bool_from_request_value(self):
+--- /dev/null
++++ infra/backend/tests/test_process_binding_service.py
+@@ -0,0 +1,118 @@
++import unittest
++from unittest.mock import Mock
++
++from process_binding_service import ProcessBindingService
++
++
++def service():
++    return ProcessBindingService(*(Mock() for _ in range(4)),
++        normalize_text=lambda value: str(value).strip(),
++        api_cache_delete_prefix=Mock(), invalidate_context=Mock())
++
++
++def entity(entity_id=11, **changes):
++    return dict(entity_id=entity_id, entity_name='socket', device_id=1,
++        platform='zigbee', topic_base='test/socket',
++        metrics=['switch_state','power'], **changes)
++
++
++class ProcessBindingTest(unittest.TestCase):
++    def binding(self, stored, fallback=None, key='climate_extra_fan_socket'):
++        obj=service()
++        obj.stored_binding=Mock(return_value=stored)
++        obj.fallback_entity=Mock(return_value=fallback)
++        return obj, obj.binding(key)
++
++    def test_initial_legacy_fallback_is_preserved(self):
++        obj,payload=self.binding(None,entity(22))
++        self.assertEqual(payload['configuration_state'],'not_configured')
++        self.assertTrue(payload['uses_fallback'])
++        self.assertEqual(obj.selected_entity_id('climate_extra_fan_socket'),22)
++
++    def test_explicit_valid_binding_wins(self):
++        obj,payload=self.binding(entity(),entity(22))
++        self.assertEqual(payload['configuration_state'],'valid')
++        self.assertEqual(payload['selected_entity_id'],11)
++        self.assertFalse(payload['uses_fallback'])
++        obj.fallback_entity.assert_not_called()
++
++    def test_invalid_explicit_binding_never_uses_fallback(self):
++        variants=[dict(entity_id=11,entity_name=None),dict(entity_id=None),
++                  {**entity(),'device_id':None}, {**entity(),'metrics':['power']},
++                  {**entity(),'metrics':[]}, {**entity(),'platform':'unsupported'},
++                  {**entity(),'metrics':['switch_state','contact']}]
++        for stored in variants:
++            with self.subTest(stored=stored):
++                obj,payload=self.binding(stored,entity(22))
++                self.assertEqual(payload['configuration_state'],'invalid')
++                self.assertIsNone(payload['selected_entity_id'])
++                self.assertFalse(payload['uses_fallback'])
++                self.assertIsNone(obj.selected_topic_base('climate_extra_fan_socket'))
++                obj.fallback_entity.assert_not_called()
++
++    def test_missing_or_invalid_fallback_is_unavailable(self):
++        for fallback in (None,{**entity(),'metrics':['power']}):
++            obj,payload=self.binding(None,fallback)
++            self.assertIsNone(payload['selected_entity'])
++            self.assertEqual(payload['configuration_state'],'not_configured')
++            self.assertFalse(payload['uses_fallback'])
++
++    def test_extractor_needs_switch_and_power_indicator_needs_colour_controls(self):
++        obj=service()
++        self.assertIsNone(obj.invalid_reason('combustion_extractor',entity()))
++        self.assertEqual(obj.invalid_reason('combustion_extractor',{**entity(),'metrics':['switch_state']}),'power_capability_unavailable')
++        self.assertEqual(obj.invalid_reason('combustion_indicator',entity()),'indicator_capability_unavailable')
++
++    def test_read_only_live_binding_inventory_remains_usable(self):
++        # The deployed eleven role assignments have these relevant capabilities.
++        obj=service()
++        metrics={'combustion_extractor':['switch_state','power'],
++                 'combustion_indicator':['switch_state','brightness','color'],
++                 'combustion_co_sensor':['carbon_monoxide'],
++                 'combustion_smoke_sensor':['smoke'],
++                 'irrigation_soil_moisture':['soil_moisture'],
++                 'marten_power_socket':['switch_state','power_w'],
++                 'marten_motion_sensor':['occupancy'],
++                 'climate_extra_fan_socket':['switch_state','power'],
++                 'climate_power_meter':['power_w','energy_kwh'],
++                 'ai_node_power_plug':['switch_state','power_w'],
++                 'hc_server_power_meter':['power_w','energy_kwh']}
++        for key,keys in metrics.items():
++            with self.subTest(key=key):
++                self.assertIsNone(obj.invalid_reason(key,{**entity(),'metrics':keys}))
++
++
++class BindingConsumerTest(unittest.TestCase):
++    def test_ai_cannot_reuse_raw_config_when_binding_is_unavailable(self):
++        from ai_node_service import AiNodeService
++        obj=object.__new__(AiNodeService)
++        obj.power_entity_id='22'
++        obj.process_binding_entity_id=lambda key:None
++        self.assertEqual(obj.active_power_entity_id(),'')
++        obj.process_binding_entity_id=None
++        self.assertEqual(obj.active_power_entity_id(),'22')
++
++    def test_climate_and_server_meters_do_not_query_a_replacement(self):
++        from climate_service import ClimateService
++        from energy_device_service import EnergyDeviceService
++        for cls,method in ((ClimateService,'power_meter_payload'),(EnergyDeviceService,'server_power_history_payload')):
++            with self.subTest(service=cls):
++                obj=object.__new__(cls)
++                obj.process_binding_entity_id=lambda key:None
++                obj.power_meter_ext_id='legacy'
++                obj.fetch_one=Mock(side_effect=AssertionError('legacy replacement queried'))
++                self.assertFalse(getattr(obj,method)()['ok'])
++                obj.fetch_one.assert_not_called()
++
++    def test_soil_binding_none_reaches_weather_as_unknown(self):
++        from tests.test_irrigation_service import IrrigationServiceTest
++        obj=IrrigationServiceTest().service()
++        obj.fetch_pilot_config=Mock(return_value={'soil_sensor_topic_base':'legacy'})
++        obj.process_binding_topic=lambda key:None
++        class StopAfterResolution(Exception):pass
++        obj.build_weather_snapshot=Mock(side_effect=StopAfterResolution)
++        with self.assertRaises(StopAfterResolution):obj.evaluate_pilot()
++        obj.build_weather_snapshot.assert_called_once_with(None)
++
++
++if __name__=='__main__':unittest.main()
+--- /dev/null
++++ infra/backend/tests/test_process_binding_postgres.py
+@@ -0,0 +1,274 @@
++"""Opt-in HC-35/36 tests. Dedicated internal-network PostgreSQL only."""
++from contextlib import contextmanager
++import os
++import threading
++import time
++import unittest
++from urllib.parse import urlparse
++
++from climate_fan_coordination import ClimateFanCoordinator
++from process_binding_service import ProcessBindingService
++from power_wall_service import PowerWallService
++
++
++@unittest.skipUnless(os.getenv('HC3536_TEST_POSTGRES')=='1','requires disposable HC-35/36 PostgreSQL')
++class ProcessBindingPostgresTest(unittest.TestCase):
++    def setUp(self):
++        from database_service import DatabaseService
++        from psycopg.rows import dict_row
++        url=os.environ['HC3536_TEST_DATABASE_URL']
++        parsed=urlparse(url)
++        assert parsed.hostname=='hc3536-postgres' and parsed.path=='/hc3536_test'
++        self.db=DatabaseService(url)
++        self.coord=lambda:ClimateFanCoordinator(lambda:self.db.conn(dict_row))
++        self.db.execute_sql('''create schema if not exists hc;
++          create table if not exists hc.device(id bigint primary key, name text, platform text,
++            ext_id text, location text, model text, manufacturer text, is_active boolean default true);
++          create table if not exists hc.entity(id bigint primary key, device_id bigint references hc.device,
++            name text, topic_base text, is_active boolean default true);
++          create table if not exists hc.entity_metric(entity_id bigint references hc.entity on delete cascade,
++            metric_key text, is_enabled boolean default true);
++          create table if not exists hc.process_sensor_binding(process_key text primary key,
++            entity_id bigint references hc.entity on delete set null, updated_at timestamptz default now());
++          create table if not exists hc.power_wall_policy(entity_id bigint primary key references hc.entity on delete cascade,
++            display_name text, auto_climate boolean default false, auto_climate_delay_minutes int default 3,
++            auto_climate_on_at timestamptz, updated_at timestamptz default now(), last_action_at timestamptz,
++            last_action text, last_error text, always_on boolean default false, scheduler_enabled boolean default false);
++          create table if not exists hc.power_wall_schedule_session(entity_id bigint, status text);
++          truncate hc.device, hc.entity, hc.entity_metric, hc.process_sensor_binding,
++            hc.power_wall_policy, hc.power_wall_schedule_session;
++          insert into hc.device(id,name,platform,ext_id) values(1,'A','zigbee','a'),(2,'B','zigbee','b'),(3,'C','zigbee','c');
++          insert into hc.entity values(11,1,'A','test/a',true),(22,2,'B','test/b',true),(33,3,'C','test/c',true);
++          insert into hc.entity_metric(entity_id,metric_key) select id,k from hc.entity cross join unnest(array['power','switch_state']) k;
++          insert into hc.power_wall_policy(entity_id,auto_climate) values(11,true),(22,false),(33,false);
++          insert into hc.process_sensor_binding(process_key,entity_id) values('climate_extra_fan_socket',11);
++          insert into hc.power_wall_schedule_session values(33,'planned');''')
++        self.binding=self.make_binding()
++        self.calls=[]
++        self.power=self.make_power()
++
++    def make_binding(self):
++        obj=ProcessBindingService(self.db.fetch_all,self.db.fetch_one,self.db.execute_one,self.db.execute_sql,
++             lambda x:str(x).strip(),lambda *a:None,lambda *a:None,climate_fan_coordinator=self.coord())
++        obj._schema_ready=True
++        return obj
++
++    def make_power(self):
++        obj=PowerWallService(self.db.fetch_all,self.db.fetch_one,self.db.execute_one,lambda *a:None,
++            lambda:None,lambda *a:None,lambda *a:None,lambda *a:None,lambda x,default='':str(x or default),30,
++            process_binding_entity_id=self.binding.selected_entity_id,climate_fan_coordinator=self.coord())
++        obj.publish_switch=lambda row,target,source:(self.calls.append((row['entity_id'],target)) or (True,'fake','test',{}))
++        obj.command_entity=lambda entity_id:self.db.fetch_one('select id as entity_id from hc.entity where id=%s',(entity_id,))
++        return obj
++
++    def pending(self,entity_id=11,interval="-1 second"):
++        self.db.execute_sql('update hc.power_wall_policy set auto_climate_on_at=now()+%s::interval where entity_id=%s',(interval,entity_id))
++
++    def policies(self):
++        return self.db.fetch_all('select entity_id, auto_climate, auto_climate_on_at from hc.power_wall_policy order by entity_id')
++
++    def test_missing_binding_keeps_legacy_fallback(self):
++        self.db.execute_sql('delete from hc.process_sensor_binding')
++        row=self.binding.binding('climate_extra_fan_socket')
++        self.assertEqual((row['configuration_state'],row['selected_entity_id'],row['uses_fallback']),('not_configured',11,True))
++
++    def test_missing_legacy_fallback_stays_unavailable(self):
++        self.db.execute_sql('delete from hc.process_sensor_binding;update hc.entity set is_active=false where id=11')
++        row=self.binding.binding('climate_extra_fan_socket')
++        self.assertEqual(row['configuration_state'],'not_configured')
++        self.assertIsNone(row['selected_entity_id'])
++        self.assertFalse(row['uses_fallback'])
++        self.power.sync_auto_climate('on')
++        self.assertEqual(self.calls,[])
++
++    def test_normalized_process_key_still_uses_atomic_climate_handover(self):
++        self.pending()
++        self.binding.set_binding(' climate_extra_fan_socket ',22)
++        self.assertEqual(self.binding.selected_entity_id('climate_extra_fan_socket'),22)
++        self.assertEqual(self.db.fetch_one('select count(*) n from hc.process_sensor_binding')['n'],1)
++        self.assertIsNone(self.policies()[0]['auto_climate_on_at'])
++
++    def test_inactive_entity_device_and_disabled_metric_never_choose_b(self):
++        self.db.execute_sql('update hc.power_wall_policy set auto_climate=true where entity_id=22')
++        for sql in ('update hc.entity set is_active=false where id=11',
++                    'update hc.device set is_active=false where id=1',
++                    "update hc.entity_metric set is_enabled=false where entity_id=11 and metric_key='switch_state'"):
++            with self.subTest(sql=sql):
++                self.db.execute_sql(sql)
++                row=self.binding.binding('climate_extra_fan_socket')
++                self.assertEqual(row['configuration_state'],'invalid')
++                self.assertIsNone(row['selected_entity_id'])
++                self.assertFalse(row['uses_fallback'])
++                self.pending()
++                self.power.sync_auto_climate('on');self.power.climate_delay_tick()
++                self.assertEqual(self.calls,[])
++                self.db.execute_sql('update hc.entity set is_active=true;update hc.device set is_active=true;update hc.entity_metric set is_enabled=true')
++
++    def test_entity_deletion_null_does_not_look_unconfigured(self):
++        self.db.execute_sql('delete from hc.entity where id=11;update hc.power_wall_policy set auto_climate=true where entity_id=22')
++        row=self.binding.binding('climate_extra_fan_socket')
++        self.assertIsNone(row['stored_entity_id'])
++        self.assertEqual(row['configuration_state'],'invalid')
++        self.assertIsNone(row['selected_entity_id'])
++
++    def test_invalid_candidate_rejected(self):
++        self.db.execute_sql("update hc.entity_metric set is_enabled=false where entity_id=22 and metric_key='switch_state'")
++        with self.assertRaises(ValueError):self.binding.set_binding('climate_extra_fan_socket',22)
++        self.assertEqual(self.binding.selected_entity_id('climate_extra_fan_socket'),11)
++
++    def test_a_pending_binding_b_off_tick_never_publishes_a_on(self):
++        self.pending()
++        self.binding.set_binding('climate_extra_fan_socket',22)
++        self.power.sync_auto_climate('off');self.power.climate_delay_tick()
++        self.assertEqual(self.calls,[(22,False)])
++        self.assertEqual(self.policies()[0]['auto_climate'],False)
++        self.assertIsNone(self.policies()[0]['auto_climate_on_at'])
++
++    def test_a_b_a_cannot_restore_old_pending(self):
++        self.pending();self.binding.set_binding('climate_extra_fan_socket',22)
++        self.power.sync_auto_climate('on')
++        self.binding.set_binding('climate_extra_fan_socket',11)
++        self.power.climate_delay_tick()
++        self.assertEqual(self.calls,[])
++        self.assertTrue(all(row['auto_climate_on_at'] is None for row in self.policies()))
++
++    def test_same_binding_preserves_valid_own_delay_and_repeated_on_does_not_extend(self):
++        self.pending(interval='5 minutes')
++        at=self.policies()[0]['auto_climate_on_at']
++        self.binding.set_binding('climate_extra_fan_socket',11)
++        self.power.sync_auto_climate('on')
++        self.assertEqual(self.policies()[0]['auto_climate_on_at'],at)
++
++    def test_off_before_binding_change_does_not_start_new_target(self):
++        self.pending();self.power.sync_auto_climate('off')
++        self.binding.set_binding('climate_extra_fan_socket',22)
++        self.power.climate_delay_tick()
++        self.assertEqual(self.calls,[(11,False)])
++
++    def test_new_target_has_own_delay_and_unrelated_jobs_survive(self):
++        self.pending();self.binding.set_binding('climate_extra_fan_socket',22)
++        self.power.sync_auto_climate('on')
++        self.assertIsNotNone(self.policies()[1]['auto_climate_on_at'])
++        self.pending(22);self.power.climate_delay_tick()
++        self.assertEqual(self.calls,[(22,True)])
++        self.assertEqual(self.db.fetch_one('select * from hc.power_wall_schedule_session')['status'],'planned')
++
++    def test_restart_old_a_pending_cannot_run_with_current_b(self):
++        self.binding.set_binding('climate_extra_fan_socket',22)
++        self.pending(11);self.pending(22,'5 minutes')
++        at=self.policies()[1]['auto_climate_on_at']
++        self.make_power().climate_delay_tick()
++        self.assertEqual(self.calls,[])
++        self.assertIsNone(self.policies()[0]['auto_climate_on_at'])
++        self.assertEqual(self.policies()[1]['auto_climate_on_at'],at)
++
++    def test_policy_disable_blocks_due_on(self):
++        self.pending();self.power.set_policy(11,auto_climate_marker=False)
++        self.power.climate_delay_tick()
++        self.assertEqual(self.calls,[])
++        self.assertIsNone(self.policies()[0]['auto_climate_on_at'])
++
++    def test_zero_delay_and_manual_off_cancel_pending(self):
++        self.db.execute_sql('update hc.power_wall_policy set auto_climate_delay_minutes=0 where entity_id=11')
++        self.pending();self.power.sync_auto_climate('on');self.power.sync_auto_climate('off')
++        self.power.climate_delay_tick()
++        self.assertEqual(self.calls,[(11,True),(11,False)])
++
++    def test_failed_binding_transaction_rolls_back_binding_policy_and_intent(self):
++        self.pending();before=self.policies()
++        original=self.binding.climate_fan_coordinator.locked
++        @contextmanager
++        def failed():
++            with original() as cur:
++                yield cur
++                raise RuntimeError('injected before commit')
++        self.binding.climate_fan_coordinator.locked=failed
++        with self.assertRaisesRegex(RuntimeError,'injected'):
++            self.binding.set_binding('climate_extra_fan_socket',22)
++        self.assertEqual(self.binding.selected_entity_id('climate_extra_fan_socket'),11)
++        self.assertEqual(self.policies(),before)
++
++    def test_tuya_tab_manual_off_cancels_the_same_fan_intent(self):
++        self.pending()
++        self.db.execute_sql("update hc.device set platform='tuya' where id=1")
++        self.power.tuya_command_entity=lambda **kw:self.db.fetch_one(
++            'select id as entity_id, name as entity_name from hc.entity where id=%s',(kw['entity_id'],))
++        self.power.publish_mqtt=lambda topic,payload:(self.calls.append((payload['entity_id'],payload['value'])) or (True,'fake'))
++        self.power.tuya_switch_command(11,'A',False)
++        self.power.climate_delay_tick()
++        self.assertEqual(self.calls,[(11,False)])
++        self.assertIsNone(self.policies()[0]['auto_climate_on_at'])
++
++    def start(self,callback):
++        errors=[]
++        def run():
++            try:callback()
++            except BaseException as exc:errors.append(exc)
++        thread=threading.Thread(target=run)
++        thread.start()
++        return thread,errors
++
++    def finish(self,thread,errors):
++        thread.join(8)
++        self.assertFalse(thread.is_alive())
++        self.assertEqual(errors,[])
++
++    def test_tick_publish_orders_before_concurrent_binding_and_off(self):
++        self.pending()
++        publishing,release,changed=threading.Event(),threading.Event(),threading.Event()
++        original=self.power.publish_switch
++        def publish(*args):
++            publishing.set()
++            if not release.wait(5):raise AssertionError('publisher not released')
++            return original(*args)
++        self.power.publish_switch=publish
++        tick,errors=self.start(self.power.climate_delay_tick)
++        try:
++            self.assertTrue(publishing.wait(5))
++            def change():
++                self.binding.set_binding('climate_extra_fan_socket',22);changed.set()
++            setter,set_errors=self.start(change)
++            self.assertFalse(changed.wait(.15))
++        finally:release.set()
++        self.finish(tick,errors);self.finish(setter,set_errors)
++        self.power.sync_auto_climate('off');self.power.climate_delay_tick()
++        self.assertEqual(self.calls,[(11,True),(22,False)])
++
++    def test_uncommitted_binding_is_atomic_and_tick_waits_for_commit(self):
++        self.pending()
++        written,release,ran=threading.Event(),threading.Event(),threading.Event()
++        original=self.binding.climate_fan_coordinator.locked
++        @contextmanager
++        def pause_before_commit():
++            with original() as cur:
++                yield cur
++                written.set()
++                if not release.wait(5):raise AssertionError('commit not released')
++        self.binding.climate_fan_coordinator.locked=pause_before_commit
++        setter,errors=self.start(lambda:self.binding.set_binding('climate_extra_fan_socket',22))
++        try:
++            self.assertTrue(written.wait(5))
++            self.assertEqual(self.binding.selected_entity_id('climate_extra_fan_socket'),11)
++            self.assertTrue(self.policies()[0]['auto_climate'])
++            self.assertIsNotNone(self.policies()[0]['auto_climate_on_at'])
++            def tick():self.power.climate_delay_tick();ran.set()
++            worker,worker_errors=self.start(tick)
++            self.assertFalse(ran.wait(.15))
++        finally:release.set()
++        self.finish(setter,errors);self.finish(worker,worker_errors)
++        self.assertEqual(self.calls,[])
++        self.assertEqual(self.binding.selected_entity_id('climate_extra_fan_socket'),22)
++
++    def test_lock_timeout_is_bounded_and_publishes_nothing(self):
++        self.pending()
++        with self.coord().locked():
++            started=time.monotonic()
++            worker,errors=self.start(self.power.climate_delay_tick)
++            worker.join(4)
++            self.assertFalse(worker.is_alive())
++            self.assertEqual(len(errors),1)
++            self.assertLess(time.monotonic()-started,3.5)
++            self.assertEqual(self.calls,[])
++
++
++if __name__=='__main__':unittest.main()
+--- before/infra/frontend/src/features/admin/HcAdmin.jsx
++++ infra/frontend/src/features/admin/HcAdmin.jsx
+@@ -814,7 +814,9 @@
+                     </td>
+                     <td>
+                       {entitySelectLabel(binding.selected_entity)}
+-                      {binding.uses_fallback && <small>fallback</small>}
++                      {binding.uses_fallback && <small>fallback (not configured)</small>}
++                      {binding.configuration_state === "invalid" && <small role="alert">Device unavailable or incompatible. Select a valid device.</small>}
++                      {binding.configuration_state === "not_configured" && !binding.uses_fallback && <small>No usable device configured</small>}
+                     </td>
+                     <td>
+                       <select
+@@ -822,7 +824,7 @@
+                         disabled={bindingBusy === binding.process_key}
+                         onChange={(event) => saveProcessBinding(binding.process_key, event.target.value)}
+                       >
+-                        {!candidates.length && <option value="">No candidates</option>}
++                        {!selectedId && <option value="" disabled>{candidates.length ? "Select a device" : "No candidates"}</option>}
+                         {candidates.map((candidate) => (
+                           <option value={candidate.entity_id} key={candidate.entity_id}>{entitySelectLabel(candidate)}</option>
+                         ))}
+--- before/infra/frontend/src/entityHelpers.js
++++ infra/frontend/src/entityHelpers.js
+@@ -14,6 +14,7 @@
+ 
+ export function selectedProcessDevice(state, key, fallback) {
+   const binding = processBinding(state, key);
++  if (binding.configuration_state === "invalid") return null;
+   const selectedId = binding.selected_entity_id ?? binding.selected_entity?.entity_id;
+   const devices = state?.devices || [];
+   if (selectedId) {
+@@ -21,6 +22,8 @@
+     if (selected) return selected;
+   }
+   if (binding.selected_entity) return binding.selected_entity;
++  // An authoritative empty binding must not become a different device in UI.
++  if (Object.prototype.hasOwnProperty.call(state?.process_bindings || {}, key)) return null;
+   return typeof fallback === "function" ? fallback(devices) : null;
+ }
+ 
+--- /dev/null
++++ infra/frontend/tests/process-bindings.test.mjs
+@@ -0,0 +1,31 @@
++import assert from "node:assert/strict";
++import { test } from "node:test";
++import { fileURLToPath } from "node:url";
++import Module from "node:module";
++import { build } from "esbuild";
++
++// Bundle the real helper and its real formatter imports, as the UI does.
++const result = await build({entryPoints:[fileURLToPath(new URL("../src/entityHelpers.js",import.meta.url))],
++  bundle:true,write:false,platform:"node",format:"cjs"});
++const compiled = new Module(fileURLToPath(import.meta.url));
++compiled._compile(result.outputFiles[0].text, fileURLToPath(import.meta.url));
++const {selectedProcessDevice} = compiled.exports;
++const key="marten_power_socket", a={entity_id:11}, b={entity_id:22};
++
++test("invalid explicit role cannot select the UI name-based fallback",()=>{
++  const state={devices:[a,b],process_bindings:{[key]:{configuration_state:"invalid",selected_entity_id:null,selected_entity:null}}};
++  assert.equal(selectedProcessDevice(state,key,()=>b),null);
++});
++test("authoritative missing fallback remains unavailable",()=>{
++  const state={devices:[b],process_bindings:{[key]:{configuration_state:"not_configured",selected_entity_id:null}}};
++  assert.equal(selectedProcessDevice(state,key,()=>b),null);
++});
++test("valid explicit and server-selected legacy targets keep their identity",()=>{
++  for(const configuration_state of ["valid","not_configured"]){
++    const state={devices:[a,b],process_bindings:{[key]:{configuration_state,selected_entity_id:11}}};
++    assert.equal(selectedProcessDevice(state,key,()=>b),a);
++  }
++});
++test("old payload without a binding section retains initial compatibility",()=>{
++  assert.equal(selectedProcessDevice({devices:[b]},key,()=>b),b);
++});

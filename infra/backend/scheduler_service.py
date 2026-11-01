@@ -1,6 +1,11 @@
 from datetime import datetime
+import math
+import time
 from threading import Lock
 from typing import Any, Callable, Dict, Iterable, Optional
+
+import x10_schedule_utils
+from startup_schema_contract import check_domain
 
 
 class SchedulerService:
@@ -38,6 +43,13 @@ class SchedulerService:
         running_irrigation_session: Optional[Callable[[], Optional[Dict[str, Any]]]] = None,
         execute_sql: Optional[Callable[[str], Any]] = None,
         now: Optional[Callable[[Any], datetime]] = None,
+        audit_transaction: Optional[Callable[..., Any]] = None,
+        climate_monitor_snapshot: Optional[Callable[..., Any]] = None,
+        x10_monitor_snapshot: Optional[Callable[..., Any]] = None,
+        feedback_max_age_seconds: float = 90,
+        confirmation_timeout_seconds: float = 120,
+        feedback_wall_clock: Callable[..., float] = time.time,
+        feedback_monotonic_clock: Callable[..., float] = time.monotonic,
     ):
         self.fetch_all = fetch_all
         self.fetch_one = fetch_one
@@ -73,100 +85,67 @@ class SchedulerService:
         self.manual_valve_scheduler_guard = manual_valve_scheduler_guard
         self.running_irrigation_session = running_irrigation_session
         self.now = now or (lambda tz=None: datetime.now(tz))
+        self.audit_transaction = audit_transaction
+        self.climate_monitor_snapshot = climate_monitor_snapshot or (lambda: {})
+        self.x10_monitor_snapshot = x10_monitor_snapshot or (lambda: {})
+        if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0
+               for v in (feedback_max_age_seconds, confirmation_timeout_seconds)):
+            raise ValueError('Scheduler feedback limits must be positive finite seconds')
+        self.feedback_max_age_seconds = feedback_max_age_seconds
+        self.confirmation_timeout_seconds = confirmation_timeout_seconds
+        self.feedback_wall_clock = feedback_wall_clock
+        self.feedback_monotonic_clock = feedback_monotonic_clock
+
+    def record_shadow_audit(self):
+        from scheduler_audit import SchedulerAudit
+        return SchedulerAudit(self).record_due()
+
+    def climate_scheduler_tick(self):
+        from scheduler_audit import SchedulerAudit
+        return SchedulerAudit(self).climate_tick()
 
     @staticmethod
     def normalized_segment_list(value: Any):
-        if isinstance(value, list):
-            items = value
-        else:
-            items = str(value or "").split(",")
-        result = []
-        for item in items:
-            try:
-                number = int(str(item).strip())
-            except Exception:
-                continue
-            if number:
-                result.append(number)
-        return result
+        return x10_schedule_utils.normalized_segment_list(value)
 
     @staticmethod
     def climate_command_from_payload(payload: Dict[str, Any]):
-        command = {
-            "power": payload.get("power") or "on",
-            "mode": payload.get("climate_mode") or "heat",
-            "target_temperature": payload.get("target_temperature"),
-            "fan_speed": payload.get("fan_speed") or "auto",
-            "light": payload.get("light") or "off",
-            "shadow_only": True,
-        }
-        if not command.get("mode"):
-            command["mode"] = payload.get("schedule_mode") or "heat"
-        if command.get("target_temperature") is None:
-            command["target_temperature"] = 23
+        command = {"shadow_only": True}
+        power = str(payload.get("power") or "on").strip().lower()
+        mode = str(payload.get("climate_mode") or payload.get("schedule_mode") or "heat").strip().lower()
+        fan_speed = str(payload.get("fan_speed") or "auto").strip().lower()
+        light = str(payload.get("light") or "off").strip().lower()
+        if power != "keep":
+            command["power"] = power
+        if mode != "keep":
+            command["mode"] = mode
+        if payload.get("target_temperature") is not None and mode != "keep":
+            command["target_temperature"] = payload.get("target_temperature")
+        if fan_speed != "keep":
+            command["fan_speed"] = fan_speed
+        if light != "keep":
+            command["light"] = light
         return command
 
     @staticmethod
     def normalize_x10_scalar(value: Any):
-        if value is None:
-            return None
-        text = str(value).strip()
-        if text.lower() in {"none", "null", "undefined", "unknown_none", "unknown_null"}:
-            return None
-        return text if text != "" else None
+        return x10_schedule_utils.normalize_x10_scalar(value)
 
     @classmethod
     def normalize_x10_int_text(cls, value: Any):
-        text = cls.normalize_x10_scalar(value)
-        if text is None:
-            return None
-        try:
-            return str(int(float(text)))
-        except Exception:
-            return text
+        return x10_schedule_utils.normalize_x10_int_text(value)
 
     @classmethod
     def x10_command_expected(cls, command_payload: Dict[str, Any]):
-        return {
-            "start_time": cls.normalize_x10_scalar(command_payload.get("start_time") or command_payload.get("time")),
-            "days": cls.normalize_x10_scalar(command_payload.get("days")),
-            "enabled": cls.normalize_x10_int_text(command_payload.get("enabled")),
-            "map_id": cls.normalize_x10_int_text(command_payload.get("map_id")),
-            "mode": cls.normalize_x10_int_text(command_payload.get("mode") or command_payload.get("clean_mode")),
-            "suction": cls.normalize_x10_int_text(command_payload.get("suction")),
-            "water_level": cls.normalize_x10_int_text(command_payload.get("water_level") or command_payload.get("clean_param")),
-            "segments": cls.normalized_segment_list(command_payload.get("segments")),
-        }
+        return x10_schedule_utils.x10_command_expected(command_payload)
 
     @classmethod
     def x10_entry_observed(cls, entry: Dict[str, Any]):
-        return {
-            "task_id": cls.normalize_x10_scalar(entry.get("task_id")),
-            "start_time": cls.normalize_x10_scalar(entry.get("time") or entry.get("start_time")),
-            "days": cls.normalize_x10_scalar(entry.get("days")),
-            "enabled": cls.normalize_x10_int_text(entry.get("enabled")),
-            "map_id": cls.normalize_x10_int_text(entry.get("map_id")),
-            "mode": cls.normalize_x10_int_text(entry.get("clean_mode") or entry.get("flag")),
-            "suction": cls.normalize_x10_int_text(entry.get("suction")),
-            "water_level": cls.normalize_x10_int_text(entry.get("water_level") or entry.get("clean_param")),
-            "segments": cls.normalized_segment_list(entry.get("segments")),
-            "raw": entry.get("raw"),
-        }
+        return x10_schedule_utils.x10_entry_observed(entry)
 
     @classmethod
     def x10_entry_matches_command(cls, entry: Dict[str, Any], expected: Dict[str, Any]):
-        observed = cls.x10_entry_observed(entry)
-        checks = {
-            "start_time": observed["start_time"] == expected["start_time"],
-            "days": not expected["days"] or observed["days"] == expected["days"],
-            "enabled": not expected["enabled"] or observed["enabled"] == expected["enabled"],
-            "map_id": not expected["map_id"] or observed["map_id"] == expected["map_id"],
-            "mode": not expected["mode"] or observed["mode"] == expected["mode"],
-            "suction": not expected["suction"] or observed["suction"] == expected["suction"],
-            "water_level": not expected["water_level"] or observed["water_level"] == expected["water_level"],
-            "segments": not expected["segments"] or observed["segments"] == expected["segments"],
-        }
-        return all(checks.values()), checks, observed
+        return x10_schedule_utils.x10_entry_matches_command(entry, expected)
 
     def _monitor_value(self, key: str):
         return self.x10_monitor_value(key) if self.x10_monitor_value else None
@@ -189,194 +168,7 @@ class SchedulerService:
         with self._schema_lock:
             if self._schema_ready:
                 return
-            if not self.execute_sql:
-                self.ensure_schema_callback()
-                self._schema_ready = True
-                return
-            self.execute_sql(
-                """
-                create table if not exists hc.scheduler_config (
-                  id smallint primary key default 1 check (id = 1),
-                  mode text not null default 'v2_execute_all' check (mode in ('v2_execute_irrigation', 'v2_execute_x10', 'v2_execute_climate', 'v2_execute_x10_climate', 'v2_execute_all')),
-                  updated_at timestamptz not null default now(),
-                  updated_by text not null default 'system',
-                  notes text
-                );
-
-                update hc.scheduler_config
-                set mode = 'v2_execute_all'
-                where mode in ('legacy', 'v2_shadow', 'v2_plan_only', 'unified_shadow');
-
-                do $$
-                begin
-                  alter table hc.scheduler_config
-                    drop constraint if exists scheduler_config_mode_check;
-                  alter table hc.scheduler_config
-                    alter column mode set default 'v2_execute_all';
-                  alter table hc.scheduler_config
-                    add constraint scheduler_config_mode_check
-                    check (mode in ('v2_execute_irrigation', 'v2_execute_x10', 'v2_execute_climate', 'v2_execute_x10_climate', 'v2_execute_all'));
-                end $$;
-
-                insert into hc.scheduler_config (id)
-                values (1)
-                on conflict (id) do nothing;
-
-                create table if not exists hc.scheduler_job (
-                  id bigserial primary key,
-                  domain text not null,
-                  action text not null,
-                  label text not null,
-                  schedule_kind text not null default 'weekly',
-                  day_of_week smallint check (day_of_week between 0 and 6),
-                  start_time time,
-                  stop_time time,
-                  is_enabled boolean not null default false,
-                  source text not null default 'unified',
-                  source_ref text,
-                  payload jsonb not null default '{}'::jsonb,
-                  created_at timestamptz not null default now(),
-                  updated_at timestamptz not null default now(),
-                  unique (domain, source, source_ref)
-                );
-
-                create table if not exists hc.scheduler_run (
-                  id bigserial primary key,
-                  job_id bigint references hc.scheduler_job(id) on delete set null,
-                  domain text not null,
-                  action text not null,
-                  status text not null default 'pending',
-                  attempt integer not null default 0,
-                  requested_at timestamptz not null default now(),
-                  started_at timestamptz,
-                  confirmed_started_at timestamptz,
-                  stop_requested_at timestamptz,
-                  confirmed_stopped_at timestamptz,
-                  completed_at timestamptz,
-                  error text,
-                  payload jsonb not null default '{}'::jsonb,
-                  confirmation jsonb not null default '{}'::jsonb
-                );
-
-                alter table hc.scheduler_run
-                  add column if not exists idempotency_key text;
-
-                create index if not exists ix_scheduler_job_due
-                  on hc.scheduler_job (is_enabled, day_of_week, start_time);
-
-                create index if not exists ix_scheduler_run_requested
-                  on hc.scheduler_run (requested_at desc);
-
-                create unique index if not exists ux_scheduler_run_idempotency
-                  on hc.scheduler_run (idempotency_key)
-                  where idempotency_key is not null;
-
-                create table if not exists hc.climate_schedule_rule (
-                  id bigserial primary key,
-                  label text not null,
-                  day_of_week smallint check (day_of_week between 0 and 6),
-                  start_time time not null,
-                  is_enabled boolean not null default false,
-                  power text not null default 'on' check (power in ('on', 'off')),
-                  mode text not null default 'heat' check (mode in ('auto', 'cool', 'dry', 'fan', 'heat')),
-                  target_temperature integer not null default 23 check (target_temperature between 8 and 30),
-                  fan_speed text not null default 'auto' check (fan_speed in ('auto', 'low', 'mediumlow', 'medium', 'mediumhigh', 'high')),
-                  light text not null default 'off' check (light in ('on', 'off')),
-                  rule_engine jsonb not null default '{}'::jsonb,
-                  created_at timestamptz not null default now(),
-                  updated_at timestamptz not null default now()
-                );
-
-                alter table hc.climate_schedule_rule
-                  drop constraint if exists climate_schedule_rule_label_day_of_week_start_time_key;
-
-                insert into hc.climate_schedule_rule (
-                  label,
-                  day_of_week,
-                  start_time,
-                  is_enabled,
-                  power,
-                  mode,
-                  target_temperature,
-                  fan_speed,
-                  light,
-                  rule_engine
-                )
-                select
-                  seed.label,
-                  seed.day_of_week,
-                  seed.start_time,
-                  false,
-                  'on',
-                  'heat',
-                  23,
-                  'auto',
-                  'off',
-                  '{"stage":"bootstrap","rule_engine":"manual_schedule"}'::jsonb
-                from (values
-                  ('Monday', 0::smallint, '06:30'::time),
-                  ('Tuesday', 1::smallint, '06:30'::time),
-                  ('Wednesday', 2::smallint, '06:30'::time),
-                  ('Thursday', 3::smallint, '06:30'::time),
-                  ('Friday', 4::smallint, '06:30'::time),
-                  ('Saturday', 5::smallint, '06:30'::time),
-                  ('Sunday', 6::smallint, '06:30'::time)
-                ) as seed(label, day_of_week, start_time)
-                where not exists (
-                  select 1
-                  from hc.climate_schedule_rule existing
-                  where existing.day_of_week = seed.day_of_week
-                );
-
-                with previous_rule as (
-                  select distinct on (day_of_week)
-                    day_of_week,
-                    start_time,
-                    is_enabled,
-                    power,
-                    mode,
-                    target_temperature,
-                    fan_speed,
-                    light,
-                    rule_engine
-                  from hc.climate_schedule_rule
-                  where label = 'Climate morning comfort'
-                  order by day_of_week, id
-                ),
-                canonical as (
-                  select r.id, r.day_of_week
-                  from hc.climate_schedule_rule r
-                  where r.label in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
-                )
-                update hc.climate_schedule_rule target
-                set start_time = previous_rule.start_time,
-                    is_enabled = previous_rule.is_enabled,
-                    power = previous_rule.power,
-                    mode = previous_rule.mode,
-                    target_temperature = previous_rule.target_temperature,
-                    fan_speed = previous_rule.fan_speed,
-                    light = previous_rule.light,
-                    rule_engine = previous_rule.rule_engine,
-                    updated_at = now()
-                from canonical
-                join previous_rule on previous_rule.day_of_week = canonical.day_of_week
-                where target.id = canonical.id;
-
-                delete from hc.climate_schedule_rule old
-                where old.label = 'Climate morning comfort'
-                  and exists (
-                    select 1
-                    from hc.climate_schedule_rule keep
-                    where keep.day_of_week = old.day_of_week
-                      and keep.label in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
-                  );
-
-                drop index if exists hc.ux_climate_schedule_rule_day;
-
-                create index if not exists ix_climate_schedule_rule_day_time
-                  on hc.climate_schedule_rule (day_of_week, start_time);
-                """
-            )
+            check_domain(self.fetch_one, "scheduler")
             self._schema_ready = True
 
     def config(self):
@@ -483,6 +275,7 @@ class SchedulerService:
                     "target_temperature": row.get("target_temperature"),
                     "fan_speed": row.get("fan_speed"),
                     "light": row.get("light"),
+                    "extra_fan": row.get("extra_fan") or "keep",
                     "rule_engine": row.get("rule_engine") if isinstance(row.get("rule_engine"), dict) else {},
                 },
             }
@@ -636,92 +429,53 @@ class SchedulerService:
             "read_only": True,
         }
 
-    def x10_confirmation_diagnostics(self, command_payload: Dict[str, Any]):
-        entries = self.x10_scheduler_entries() or []
-        command_result = self._monitor_value("command_result")
-        room_clean_status = self._monitor_value("room_clean/status")
-        expected = self.x10_command_expected(command_payload)
-        matching_entry = None
-        partial_entry = None
-        match_checks = {}
-        observed_entry = None
-        for entry in entries if isinstance(entries, list) else []:
-            if not isinstance(entry, dict):
-                continue
-            matched, checks, observed = self.x10_entry_matches_command(entry, expected)
-            if matched:
-                matching_entry = entry
-                match_checks = checks
-                observed_entry = observed
-                break
-            if not partial_entry and checks.get("start_time") and checks.get("segments"):
-                partial_entry = entry
-                match_checks = checks
-                observed_entry = observed
-        return {
-            "strategy": "mqtt_cached_scheduler_entries",
-            "expected": "scheduler entry matching time, day mask, enabled, map, mode, suction, water and segments",
-            "status": "matching_scheduler_entry_seen" if matching_entry else "partial_scheduler_entry_seen" if partial_entry else "not_confirmed_by_cached_entries",
-            "observed": {
-                "matching_entry": matching_entry,
-                "partial_entry": partial_entry,
-                "match_checks": match_checks,
-                "observed_entry": observed_entry,
-                "command_result": command_result,
-                "room_clean_status": room_clean_status,
-            },
-            "wanted": expected,
-            "read_only": True,
-        }
+    def x10_confirmation_diagnostics(self, command_payload: Dict[str, Any], boundary=None):
+        from scheduler_feedback import fresh_frame, entry_matches, weekly_commands, weekly_observation
+        snapshot = self.x10_monitor_snapshot()
+        wall, mono = self.feedback_wall_clock(), self.feedback_monotonic_clock()
+        if isinstance(command_payload.get("schedules"), list):
+            try:
+                commands = weekly_commands(self, command_payload["schedules"])
+                evidence = weekly_observation(snapshot, commands, boundary, self.feedback_max_age_seconds, wall, mono)
+            except ValueError:
+                evidence = {"confirmed": False, "reason": "invalid_desired_weekly_schedule"}
+        else:
+            payload, evidence = fresh_frame(snapshot, "scheduler/observation", boundary,
+                self.feedback_max_age_seconds, wall, mono)
+            entries = payload.get("entries") if isinstance(payload, dict) else None
+            evidence = {**evidence, "confirmed": isinstance(entries, list) and any(
+                isinstance(entry, dict) and entry_matches(command_payload, entry) for entry in entries)}
+        confirmed = bool(boundary and evidence.get("confirmed") and
+                         self.feedback_wall_clock() <= boundary["wall"] + self.confirmation_timeout_seconds)
+        evidence = {**evidence, "confirmed": confirmed}
+        return {"strategy": "fresh_robot_scheduler_observation", "confirmed": confirmed,
+                "status": "matching_scheduler_entry_seen" if confirmed else "not_confirmed_by_fresh_observation",
+                "observed": evidence, "wanted": command_payload, "read_only": True,
+                "confirmation_scope": "robot_weekly_schedule_not_cleaning_completion"}
 
-    def climate_confirmation_diagnostics(self, command_payload: Dict[str, Any]):
-        state = self.climate_state_payload() if self.climate_state_payload else {}
-        command_result = state.get("command_result")
-        wanted = {
-            "power": self._normalize_climate_text(command_payload.get("power")),
-            "mode": self._normalize_climate_text(command_payload.get("mode")),
-            "target_temperature": self._to_int(command_payload.get("target_temperature"), 0) if command_payload.get("target_temperature") is not None else None,
-            "fan_speed": self._normalize_climate_text(command_payload.get("fan_speed")),
-            "light": self._normalize_climate_text(command_payload.get("light")),
-        }
-        observed = {
-            "power": self._normalize_climate_text(state.get("power")),
-            "mode": self._normalize_climate_text(state.get("mode")),
-            "target_temperature": self._to_int(state.get("target_temperature"), 0) if state.get("target_temperature") is not None else None,
-            "fan_speed": self._normalize_climate_text(state.get("fan_speed")),
-            "light": self._normalize_climate_text(state.get("light")),
-            "bridge_online": state.get("bridge_online"),
-            "updated_at": state.get("updated_at"),
-            "error": state.get("error"),
-            "command_result": command_result,
-        }
-        checks = {key: value is None or observed.get(key) == value for key, value in wanted.items()}
-        matches = bool(state.get("ok")) and all(checks.values())
-        return {
-            "strategy": "mqtt_cached_climate_state",
-            "expected": "cached climate state matching desired power, mode, target temperature, fan speed and light",
-            "status": "matching_climate_state_seen" if matches else "not_confirmed_by_cached_state",
-            "observed": observed,
-            "wanted": wanted,
-            "checks": checks,
-            "read_only": True,
-        }
+    def climate_confirmation_diagnostics(self, command_payload: Dict[str, Any], boundary=None):
+        from scheduler_feedback import climate_observation
+        evidence = climate_observation(self.climate_monitor_snapshot(), command_payload, boundary,
+            self.feedback_max_age_seconds, self.feedback_wall_clock(), self.feedback_monotonic_clock())
+        confirmed = bool(boundary and evidence.get("confirmed") and
+                         self.feedback_wall_clock() <= boundary["wall"] + self.confirmation_timeout_seconds)
+        evidence = {**evidence, "confirmed": confirmed}
+        return {"strategy": "fresh_climate_device_state", "confirmed": confirmed,
+                "status": "matching_climate_state_seen" if confirmed else "not_confirmed_by_fresh_observation",
+                "observed": evidence, "wanted": command_payload, "checks": evidence.get("checks", {}),
+                "read_only": True}
 
     def confirmation_diagnostics(self, chain: Dict[str, Any]):
         command_payload = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
+        boundary = (chain.get("execution_result") or {}).get("feedback_fence")
         if chain.get("domain") == "irrigation":
             return self.irrigation_confirmation_diagnostics(command_payload)
         if chain.get("domain") == "xiaomi_x10":
-            return self.x10_confirmation_diagnostics(command_payload)
+            return self.x10_confirmation_diagnostics(command_payload, boundary)
         if chain.get("domain") == "climate":
-            return self.climate_confirmation_diagnostics(command_payload)
-        return {
-            "strategy": "none",
-            "expected": "-",
-            "status": "unsupported_domain",
-            "observed": {},
-            "read_only": True,
-        }
+            return self.climate_confirmation_diagnostics(command_payload, boundary)
+        return {"strategy": "none", "expected": "-", "status": "unsupported_domain",
+                "observed": {}, "read_only": True}
 
     @staticmethod
     def parse_dt(value: Any):
@@ -821,57 +575,22 @@ class SchedulerService:
         }
 
     def x10_legacy_comparison(self, chain: Dict[str, Any]):
-        command_payload = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
-        confirmation = self.x10_confirmation_diagnostics(command_payload)
-        observed = confirmation.get("observed") or {}
-        matching_entry = observed.get("matching_entry")
-        partial_entry = observed.get("partial_entry")
-        if matching_entry:
-            status = "match"
-            summary = "Cached X10 scheduler entries contain a strict matching task."
-        elif partial_entry:
-            status = "mismatch"
-            summary = "X10 has a task with matching time/segments, but strict schedule fields differ."
-        elif observed.get("command_result") or observed.get("room_clean_status"):
-            status = "pending"
-            summary = "X10 has command/status evidence, but no matching cached scheduler entry yet."
-        else:
-            status = "no_legacy_evidence"
-            summary = "No cached X10 scheduler evidence is available yet."
-        return {
-            "status": status,
-            "summary": summary,
-            "v2_wanted": command_payload,
-            "legacy_observed": observed,
-            "evidence": {"confirmation": confirmation},
-            "warnings": [] if matching_entry else [{"kind": "x10_strict_mismatch", "severity": "warn", "checks": observed.get("match_checks") or {}}] if partial_entry else [],
-            "read_only": True,
-        }
+        command = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
+        confirmation = self.x10_confirmation_diagnostics(command, (chain.get("execution_result") or {}).get("feedback_fence"))
+        evidence = confirmation["observed"]
+        status = "match" if confirmation["confirmed"] else "mismatch" if evidence.get("fresh") else "no_legacy_evidence"
+        return {"status": status, "summary": "X10 comparison requires a fresh device sample after the saved intent.",
+                "v2_wanted": command, "legacy_observed": evidence,
+                "evidence": {"confirmation": confirmation}, "warnings": [], "read_only": True}
 
     def climate_legacy_comparison(self, chain: Dict[str, Any]):
-        command_payload = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
-        confirmation = self.climate_confirmation_diagnostics(command_payload)
-        if confirmation.get("status") == "matching_climate_state_seen":
-            status = "match"
-            summary = "Cached climate state matches the desired scheduler state."
-            warnings = []
-        elif (confirmation.get("observed") or {}).get("command_result"):
-            status = "pending"
-            summary = "Climate bridge has command evidence, but cached state does not match yet."
-            warnings = [{"kind": "climate_state_mismatch", "severity": "warn", "checks": confirmation.get("checks") or {}}]
-        else:
-            status = "no_legacy_evidence"
-            summary = "No climate bridge command/state evidence is available yet."
-            warnings = []
-        return {
-            "status": status,
-            "summary": summary,
-            "v2_wanted": command_payload,
-            "legacy_observed": confirmation.get("observed"),
-            "evidence": {"confirmation": confirmation},
-            "warnings": warnings,
-            "read_only": True,
-        }
+        command = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
+        confirmation = self.climate_confirmation_diagnostics(command, (chain.get("execution_result") or {}).get("feedback_fence"))
+        evidence = confirmation["observed"]
+        status = "match" if confirmation["confirmed"] else "pending" if evidence.get("accepted") else "mismatch" if evidence.get("fresh") else "no_legacy_evidence"
+        return {"status": status, "summary": "Climate comparison requires a fresh device sample after the saved intent.",
+                "v2_wanted": command, "legacy_observed": evidence,
+                "evidence": {"confirmation": confirmation}, "warnings": [], "read_only": True}
 
     def legacy_comparison(self, chain: Dict[str, Any]):
         if chain.get("domain") == "irrigation":
@@ -1012,6 +731,7 @@ class SchedulerService:
                     "target_temperature": job_payload.get("target_temperature"),
                     "fan_speed": job_payload.get("fan_speed"),
                     "light": job_payload.get("light"),
+                    "extra_fan": job_payload.get("extra_fan"),
                     "days_mask": job_payload.get("days"),
                 }
             )
@@ -1391,6 +1111,7 @@ class SchedulerService:
             "climate": {
                 "current_state": self.climate_state_payload() if self.climate_state_payload else {},
                 "desired_state": command,
+                "extra_fan": payload.get("extra_fan") or "keep",
             },
             "rule_engine": rule_engine,
             "shadow": {"command_owner": "v2_audit", "side_effects": False},
@@ -1432,30 +1153,26 @@ class SchedulerService:
         first_action = actions[0] if actions and isinstance(actions[0], dict) else {}
         command_payload = dict(first_action.get("command") or {})
         engine = self.engine_state(self.config())
-        can_publish = "climate" in (engine.get("publish_domains") or [])
-        command_payload["shadow_only"] = not can_publish
+        can_publish = engine['enabled'] and "climate" in (engine.get("publish_domains") or [])
+        legacy_recovery = bool(payload.get('_audit_legacy_recovery'))
+        command_payload["shadow_only"] = not can_publish or legacy_recovery
         metadata = {
             "model": "HC_V2",
-            "component": "v2_scheduler_executor" if can_publish else "v2_scheduler_shadow",
-            "command_owner": "v2" if can_publish else "blocked",
-            "side_effects": bool(can_publish),
+            "component": "v2_scheduler_shadow",
+            "command_owner": "v2_climate_dispatch" if can_publish and not legacy_recovery else "blocked",
+            "side_effects": False,
             "scheduler_run_id": payload.get("scheduler_run_id"),
+            "audit_protocol": "hc08-v1",
         }
-        ok = False
-        message = "v2_publish_blocked_by_engine"
-        auto_power_wall = []
-        if can_publish and self.publish_mqtt:
-            ok, message = self.publish_mqtt(self.climate_command_topic, command_payload)
-            if ok and command_payload.get("power") in {"on", "off"} and self.sync_auto_climate_power_wall:
-                auto_power_wall = self.sync_auto_climate_power_wall(command_payload["power"])
         result = {
-            "shadow": not can_publish,
+            "shadow": not can_publish or legacy_recovery,
             "would_publish": True,
-            "published": bool(ok),
-            "publish_attempted": bool(can_publish),
-            "message": message,
-            "reason": "v2_command_owner" if can_publish else "v2_publish_blocked_by_engine",
-            "auto_power_wall": auto_power_wall,
+            "published": None if legacy_recovery else False,
+            "publish_attempted": None if legacy_recovery else False,
+            "reason": "legacy_partial_chain_publish_unknown" if legacy_recovery else "awaiting_explicit_dispatch" if can_publish else "v2_publish_blocked_by_engine",
+            "delivery_uncertain": legacy_recovery,
+            "auto_power_wall": [],
+            "extra_fan": payload.get("extra_fan") or "keep",
         }
         return self.execute_one(
             """
@@ -1472,8 +1189,8 @@ class SchedulerService:
             (
                 plan_row.get("id"),
                 plan_row.get("event_id"),
-                "v2_gree_climate" if can_publish else "v2_gree_climate_audit",
-                "confirmed" if ok else "failed" if can_publish else "shadow_ready",
+                "v2_gree_climate" if can_publish and not legacy_recovery else "v2_gree_climate_audit",
+                "unknown" if legacy_recovery else "pending" if can_publish else "shadow_ready",
                 self.climate_command_topic,
                 self.json_dumps(command_payload),
                 self.json_dumps(result),
@@ -1746,47 +1463,21 @@ class SchedulerService:
 
     def x10_scheduler_tick(self):
         engine = self.engine_state(self.config())
-        if "xiaomi_x10" not in (engine.get("publish_domains") or []):
+        if not engine.get("enabled") or "xiaomi_x10" not in (engine.get("publish_domains") or []):
             return {"ok": True, "skipped": True, "reason": "x10_publish_not_enabled", "engine": engine}
-
         desired_all = self.x10_desired_weekly_schedules()
         desired = [item for item in desired_all if str(item.get("enabled")) == "1" or item.get("enabled") is True]
-        entries = self.x10_scheduler_entries() or []
         if not desired:
             result = {"published": False, "publish_attempted": False, "reason": "no_enabled_hc_owned_schedule", "total_hc_owned": len(desired_all)}
-            self.mark_v2_x10_executions("confirmed", result)
+            self.mark_v2_x10_executions("skipped", result)
             return {"ok": True, "status": "skipped", "result": result}
         validation = self.validate_x10_weekly_schedules(desired)
         if not validation["ok"]:
             result = {"published": False, "publish_attempted": False, "reason": "invalid_x10_schedule_payload", "validation": validation}
             self.mark_v2_x10_executions("blocked", result, "invalid_x10_schedule_payload")
-            print("[V2 X10] blocked: invalid schedule payload", flush=True)
             return {"ok": False, "status": "blocked", "result": result}
-        desired = validation["schedules"]
-        diff = self.x10_schedule_diff(desired, entries)
-        if diff["diff_count"] == 0:
-            result = {"published": False, "publish_attempted": False, "reason": "robot_schedule_already_matches", "diff": diff}
-            self.mark_v2_x10_executions("confirmed", result)
-            return {"ok": True, "status": "confirmed", "result": result}
-
-        active = self.x10_active_cleaning_state()
-        if active.get("active"):
-            result = {"published": False, "publish_attempted": False, "reason": "x10_active_cleaning", "active": active}
-            self.mark_v2_x10_executions("blocked", result, "x10_active_cleaning")
-            print("[V2 X10] blocked: robot appears active", flush=True)
-            return {"ok": False, "status": "blocked", "result": result}
-
-        ok, message, publish_info = self.publish_x10_weekly_schedule(desired)
-        result = {
-            "published": bool(ok),
-            "publish_attempted": True,
-            "message": message,
-            "diff": diff,
-            **publish_info,
-        }
-        self.mark_v2_x10_executions("confirmed" if ok else "failed", result, None if ok else message)
-        print(f"[V2 X10] weekly schedule publish ok={ok} message={message}", flush=True)
-        return {"ok": bool(ok), "status": "confirmed" if ok else "failed", "result": result}
+        from x10_schedule_delivery import X10ScheduleDelivery
+        return X10ScheduleDelivery(self).tick(validation["schedules"])
 
     def v2_x10_preflight(self, engine: Dict[str, Any], chains: Iterable[Dict[str, Any]]):
         checks = []
@@ -2095,6 +1786,7 @@ class SchedulerService:
             "target_temperature": data.get("target_temperature") or data.get("targetTemperature") or 23,
             "fan_speed": self.normalize_text(data.get("fan_speed") or data.get("fanSpeed"), "auto"),
             "light": self.normalize_text(data.get("light"), "off"),
+            "extra_fan": self.normalize_text(data.get("extra_fan") or data.get("extraFan"), "keep"),
             "rule_engine": data.get("rule_engine") if isinstance(data.get("rule_engine"), dict) else {"mode": "simulation", "stage": "bootstrap"},
             "days_mask": data.get("days_mask"),
             "event_time": self.normalize_text(data.get("event_time"), data.get("start_time") or "00:00"),
@@ -2257,6 +1949,7 @@ class SchedulerService:
                 "target_temperature": payload.get("target_temperature"),
                 "fan_speed": payload.get("fan_speed"),
                 "light": payload.get("light"),
+                "extra_fan": payload.get("extra_fan"),
                 "rule_engine": payload.get("rule_engine"),
                 "legacy_status": payload.get("legacy_status"),
             },

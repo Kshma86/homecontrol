@@ -1,0 +1,32 @@
+{
+  "audit_point": "HC-11",
+  "date": "2026-10-28",
+  "status": "verified locally, not deployed",
+  "approved_loss_policy": "counted drop during DB outage; no offline replay",
+  "unit_and_regression_tests": 37,
+  "real_mqtt_postgres_integration_tests": 1,
+  "failed_tests": 0,
+  "scope": {
+    "changed_existing_functions_or_classes": [
+      "main"
+    ],
+    "unchanged_existing_functions_or_classes": 46,
+    "hc33_flush_measurements_unchanged": true,
+    "hc34_map_key_unchanged": true
+  },
+  "production_unchanged": true,
+  "dependencies_left_open": [
+    "HC-33",
+    "HC-34",
+    "HC-12",
+    "HC-32",
+    "HC-43"
+  ],
+  "source_sha256": {
+    "apps/hc_ingest/mqtt_ingest_multi.py": "947d921f16321e038537ca6a972603d25641b9fd57e32c7cde20f471c393292b",
+    "apps/hc_ingest/ingest_runtime.py": "d9e4121323a18f3eb8855b5822dad9109eb86113e8394722dcfc2b90709a5461",
+    "apps/hc_ingest/Dockerfile": "c003c8caf1dd363bb4426cfb784d4aa7bb1bb28f587595e6897ad9797414efab",
+    "apps/hc_ingest/test_ingest_runtime.py": "67886543fffb1841af2e39102189fd38ab007f7b54fadc6ba254c84320d04a98",
+    "apps/hc_ingest/test_ingest_recovery_postgres.py": "4cbbc10e9a920fa077727f21699171c1b33d870244f8a2b93e40020d3695ab43"
+  }
+}

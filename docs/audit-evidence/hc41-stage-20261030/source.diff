@@ -1,0 +1,938 @@
+--- a/apps/gree-climate/gree_climate_bridge.py
++++ b/apps/gree-climate/gree_climate_bridge.py
+@@ -1,3 +1,4 @@
++from mqtt_credentials import configure_mqtt_auth
+ import asyncio
+ import json
+ import os
+@@ -209,6 +210,7 @@
+ class Bridge:
+     def __init__(self):
+         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id="homecontrol-gree-climate")
++        configure_mqtt_auth(self.client)
+         self.client.will_set(f"{BASE_TOPIC}/availability", "offline", retain=True)
+         self.client.on_connect = self.on_connect
+         self.client.on_message = self.on_message
+--- a/apps/ha-growatt-poller/ha_growatt_poller.py
++++ b/apps/ha-growatt-poller/ha_growatt_poller.py
+@@ -1,4 +1,5 @@
+ #!/usr/bin/env python3
++from mqtt_credentials import configure_mqtt_auth
+ 
+ import json
+ import os
+@@ -122,6 +123,7 @@
+     })
+ 
+     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=MQTT_CLIENT_ID)
++    configure_mqtt_auth(client)
+     client.connect(MQTT_HOST, MQTT_PORT, keepalive=30)
+     client.loop_start()
+     client.publish(f"{BASE_TOPIC}/availability", "online", qos=MQTT_QOS, retain=True)
+--- a/apps/hc_ingest/Dockerfile
++++ b/apps/hc_ingest/Dockerfile
+@@ -6,7 +6,7 @@
+ COPY requirements.txt .
+ RUN pip install --no-cache-dir -r requirements.txt
+ 
+-COPY mqtt_ingest_multi.py mqtt_flood_detector.py ingest_runtime.py measurement_batch.py ingest_healthcheck.py ./
++COPY mqtt_ingest_multi.py mqtt_flood_detector.py ingest_runtime.py measurement_batch.py ingest_healthcheck.py mqtt_credentials.py ./
+ 
+ HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=3 CMD ["python", "ingest_healthcheck.py", "--mode", "live"]
+ 
+--- a/apps/hc_ingest/mqtt_ingest_multi.py
++++ b/apps/hc_ingest/mqtt_ingest_multi.py
+@@ -1,3 +1,4 @@
++from mqtt_credentials import configure_mqtt_auth
+ import json
+ import os
+ import signal
+@@ -1762,6 +1763,7 @@
+         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+     except Exception:
+         client = mqtt.Client()
++    configure_mqtt_auth(client)
+     client.connect_timeout = INGEST_DB_CONNECT_TIMEOUT_SECONDS
+     client.reconnect_delay_set(min_delay=2, max_delay=30)
+     client.on_connect, client.on_disconnect, client.on_message = on_connect, on_disconnect, on_message
+--- a/apps/tuya-poller/tuya_poller.py
++++ b/apps/tuya-poller/tuya_poller.py
+@@ -1,4 +1,5 @@
+ #!/usr/bin/env python3
++from mqtt_credentials import configure_mqtt_auth
+ # -*- coding: utf-8 -*-
+ 
+ """
+@@ -74,8 +75,8 @@
+ 
+ # ------------------ MQTT config ------------------
+ MQTT_CFG = (cfg.get("mqtt", {}) or {})
+-MQTT_HOST = str(MQTT_CFG.get("host", "127.0.0.1"))
+-MQTT_PORT = int(MQTT_CFG.get("port", 1883))
++MQTT_HOST = os.getenv("MQTT_HOST", str(MQTT_CFG.get("host", "127.0.0.1")))
++MQTT_PORT = int(os.getenv("MQTT_PORT", str(MQTT_CFG.get("port", 1883))))
+ MQTT_USER = MQTT_CFG.get("username")
+ MQTT_PASS = MQTT_CFG.get("password")
+ MQTT_CLIENT_ID = str(MQTT_CFG.get("client_id", f"hc-tuya-poller-{socket.gethostname()}"))
+@@ -419,8 +420,7 @@
+     c.on_disconnect = mqtt_on_disconnect
+     c.on_message = mqtt_on_message
+ 
+-    if MQTT_USER:
+-        c.username_pw_set(MQTT_USER, MQTT_PASS)
++    configure_mqtt_auth(c, fallback=(MQTT_USER, MQTT_PASS))
+ 
+     c.will_set(_mqtt_topic_join(MQTT_BASE_TOPIC, "poller", "availability"),
+                payload="offline", qos=1, retain=True)
+--- a/apps/xiaomi-x10/xiaomi_x10_api.py
++++ b/apps/xiaomi-x10/xiaomi_x10_api.py
+@@ -1,3 +1,4 @@
++from mqtt_credentials import configure_mqtt_auth
+ import json
+ import time
+ from flask import Blueprint, jsonify, request
+@@ -13,6 +14,7 @@
+ 
+ state_cache = {}
+ mqtt_client = mqtt.Client()
++configure_mqtt_auth(mqtt_client, prefix="X10_MQTT")
+ 
+ 
+ def parse_payload(payload):
+--- a/apps/xiaomi-x10/xiaomi_x10_bridge.py
++++ b/apps/xiaomi-x10/xiaomi_x10_bridge.py
+@@ -1,4 +1,5 @@
+ #!/usr/bin/env python3
++from mqtt_credentials import configure_mqtt_auth
+ import ast
+ import json
+ import re
+@@ -72,6 +73,7 @@
+ ROBOT_DAY_MASK_INDEX_BY_HC_DAY = [1, 2, 3, 4, 5, 6, 0]
+ 
+ client = mqtt.Client()
++configure_mqtt_auth(client, prefix="X10_MQTT")
+ command_lock = threading.Lock()
+ live_map_client = None
+ progress_watchdog = None
+--- a/infra/backend/mqtt_monitor_service.py
++++ b/infra/backend/mqtt_monitor_service.py
+@@ -5,6 +5,7 @@
+ from typing import Any, Callable, Dict, Iterable, Optional
+ 
+ import paho.mqtt.client as mqtt
++from mqtt_credentials import configure_mqtt_auth
+ from deployment_policy import command_blocked, MESSAGE as RESTRICTION_MESSAGE
+ 
+ 
+@@ -94,6 +95,7 @@
+             client = None
+             try:
+                 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id=self.client_id)
++                configure_mqtt_auth(client)
+                 client.on_connect = self._on_connect
+                 client.on_disconnect = self._on_disconnect
+                 client.on_message = self._on_message
+@@ -302,6 +304,7 @@
+             client.disconnect()
+ 
+         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
++        configure_mqtt_auth(client)
+         client.on_connect = on_connect
+         client.connect(self.mqtt_host, self.mqtt_port, keepalive=10)
+         client.loop_start()
+@@ -319,6 +322,7 @@
+         if not topic:
+             return False, "missing topic"
+         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
++        configure_mqtt_auth(client)
+         try:
+             client.connect(self.mqtt_host, self.mqtt_port, keepalive=10)
+             client.loop_start()
+--- /dev/null
++++ b/infra/backend/mqtt_credentials.py
+@@ -0,0 +1,46 @@
++"""HC-41 MQTT credentials; mirrored verbatim into independent build contexts."""
++import os
++from pathlib import Path
++
++
++def configure_mqtt_auth(client, *, prefix="MQTT", fallback=None):
++    """Configure before connect; invalid explicit credentials never become anonymous.
++
++    No credentials preserves the existing deployment until AUTH_REQUIRED is enabled.
++    A password file takes precedence only when no plaintext password was supplied.
++    """
++    names = [prefix] if prefix == "MQTT" else [prefix, "MQTT"]
++    configured = None
++    for name in names:
++        keys = (name + "_USERNAME", name + "_USER", name + "_PASSWORD", name + "_PASSWORD_FILE")
++        if any(key in os.environ for key in keys):
++            configured = name
++            break
++    required = any(os.getenv(name + "_AUTH_REQUIRED", "").lower() in ("1", "true", "yes") for name in names)
++    if configured:
++        username = os.getenv(configured + "_USERNAME", os.getenv(configured + "_USER", ""))
++        password = os.getenv(configured + "_PASSWORD")
++        path = os.getenv(configured + "_PASSWORD_FILE")
++        if password is not None and path:
++            raise ValueError("MQTT password and password file are mutually exclusive")
++        if path:
++            try:
++                with Path(path).open(encoding="utf-8") as stream:
++                    raw = stream.read(4098)
++                    if len(raw) > 4097:
++                        raise ValueError("MQTT password file exceeds size limit")
++                    password = raw.removesuffix("\n")
++            except (OSError, UnicodeError):
++                raise ValueError("MQTT password file cannot be read") from None
++    elif fallback:
++        username, password = fallback
++    else:
++        username, password = None, None
++    if not configured and not username and not password and not required:
++        return False
++    if not isinstance(username, str) or not username or any(c in username for c in "\r\n\0"):
++        raise ValueError("MQTT username is required")
++    if not isinstance(password, str) or not password or len(password) > 4096 or any(c in password for c in "\r\n\0"):
++        raise ValueError("MQTT password is missing or invalid")
++    client.username_pw_set(username, password)
++    return True
+--- /dev/null
++++ b/infra/backend/mqtt_read_probe.py
+@@ -0,0 +1,42 @@
++"""Bounded read-only MQTT probe for the staged post-boot adapter."""
++import argparse
++import os
++import threading
++import time
++import paho.mqtt.client as mqtt
++from mqtt_credentials import configure_mqtt_auth
++
++
++def read_one(topic, timeout=4):
++    if not topic or any(char in topic for char in ('#', '+', '\0')):
++        raise ValueError('A single concrete topic is required')
++    done = threading.Event()
++    values = []
++    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
++    configure_mqtt_auth(client)
++    def connected(c, userdata, flags, rc, properties=None):
++        if rc == 0:c.subscribe(topic, qos=0)
++        else:done.set()
++    def message(c, userdata, msg):
++        if len(msg.payload) <= 65536:
++            values.append(msg.payload.decode('utf-8', errors='replace'))
++        done.set()
++    client.on_connect = connected
++    client.on_message = message
++    deadline = time.monotonic() + timeout
++    client.connect_timeout = max(.1, timeout)
++    try:
++        client.connect(os.getenv('MQTT_HOST', 'mqtt'), int(os.getenv('MQTT_PORT', '1883')), keepalive=10)
++        while not done.is_set() and time.monotonic() < deadline:
++            client.loop(timeout=min(.1, max(.001, deadline-time.monotonic())))
++        if not values:raise TimeoutError('MQTT read probe received no allowed message')
++        return values[0]
++    finally:
++        client.disconnect()
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--topic', required=True)
++    args = parser.parse_args()
++    print(read_one(args.topic))
+--- /dev/null
++++ b/infra/backend/tests/test_mqtt_credentials.py
+@@ -0,0 +1,120 @@
++import importlib.util
++import os
++from pathlib import Path
++import tempfile
++import unittest
++from unittest.mock import Mock, patch
++
++from mqtt_credentials import configure_mqtt_auth
++
++ROOT = Path(__file__).resolve().parents[3]
++spec = importlib.util.spec_from_file_location('hc41_prepare', ROOT/'scripts/prepare_mqtt_access.py')
++prepare_module = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(prepare_module)
++
++
++class MqttCredentialsTest(unittest.TestCase):
++    def setUp(self):
++        self.env = patch.dict(os.environ, {}, clear=True);self.env.start();self.addCleanup(self.env.stop)
++        self.client = Mock()
++
++    def test_existing_unconfigured_deployment_remains_compatible(self):
++        self.assertFalse(configure_mqtt_auth(self.client))
++        self.client.username_pw_set.assert_not_called()
++
++    def test_required_missing_credentials_fail_closed(self):
++        os.environ['MQTT_AUTH_REQUIRED'] = '1'
++        with self.assertRaises(ValueError):configure_mqtt_auth(self.client)
++        self.client.username_pw_set.assert_not_called()
++
++    def test_file_and_x10_generic_fallback(self):
++        with tempfile.TemporaryDirectory() as folder:
++            p = Path(folder)/'secret';p.write_text('test-password\n')
++            os.environ.update(MQTT_USERNAME='hc_x10', MQTT_PASSWORD_FILE=str(p))
++            self.assertTrue(configure_mqtt_auth(self.client, prefix='X10_MQTT'))
++            self.client.username_pw_set.assert_called_once_with('hc_x10', 'test-password')
++
++    def test_partial_explicit_x10_does_not_use_another_identity(self):
++        os.environ.update(X10_MQTT_USERNAME='hc_x10', MQTT_USERNAME='other', MQTT_PASSWORD='other-secret')
++        with self.assertRaises(ValueError):configure_mqtt_auth(self.client, prefix='X10_MQTT')
++
++    def test_invalid_explicit_credentials_do_not_fall_back_to_tuya_config(self):
++        os.environ['MQTT_USERNAME'] = 'hc_tuya'
++        with self.assertRaises(ValueError):configure_mqtt_auth(self.client, fallback=('old', 'old-secret'))
++
++    def test_existing_tuya_configuration_is_supported(self):
++        self.assertTrue(configure_mqtt_auth(self.client, fallback=('old', 'old-secret')))
++        self.client.username_pw_set.assert_called_once_with('old', 'old-secret')
++
++    def test_conflicting_secrets_are_rejected(self):
++        os.environ.update(MQTT_USERNAME='a', MQTT_PASSWORD='b', MQTT_PASSWORD_FILE='/missing')
++        with self.assertRaises(ValueError):configure_mqtt_auth(self.client)
++
++    def test_unreadable_oversized_and_multiline_secrets_are_not_exposed(self):
++        with tempfile.TemporaryDirectory() as folder:
++            p = Path(folder)/'secret'
++            os.environ.update(MQTT_USERNAME='a', MQTT_PASSWORD_FILE=str(p))
++            for value in (None, 'private-marker\nsecond', 'x'*4096+'\nmore'):
++                if value is not None:p.write_text(value)
++                with self.subTest(value_length=len(value or '')), self.assertRaises(ValueError) as caught:
++                    configure_mqtt_auth(self.client)
++                self.assertNotIn('private-marker', str(caught.exception))
++            self.client.username_pw_set.assert_not_called()
++
++    def test_all_independent_image_contexts_have_the_same_helper(self):
++        source = (ROOT/'infra/backend/mqtt_credentials.py').read_bytes()
++        for folder in ('hc_ingest', 'tuya-poller', 'xiaomi-x10', 'gree-climate', 'ha-growatt-poller'):
++            self.assertEqual((ROOT/'apps'/folder/'mqtt_credentials.py').read_bytes(), source)
++        self.assertIn('mqtt_credentials.py', (ROOT/'apps/hc_ingest/Dockerfile').read_text())
++
++    def test_prepare_package_is_new_private_and_not_applied(self):
++        with tempfile.TemporaryDirectory() as folder:
++            root = Path(folder)/'candidate'
++            result = prepare_module.prepare(root, esp_ip='192.168.1.179')
++            self.assertFalse(result['applied']);self.assertFalse(result['esp_ip_confirmed'])
++            self.assertTrue(result['passwords_need_hashing'])
++            self.assertEqual(root.stat().st_mode & 0o777, 0o700)
++            acl = (root/'legacy.acl').read_text()
++            self.assertNotIn('zigbee', acl);self.assertNotIn('topic readwrite #', acl)
++            self.assertIn('topic read homecontrol/cmd/irrigation/esp-irrigation-1/#', acl)
++            self.assertIn('127.0.0.1:1884:1884', (root/'compose.override.json').read_text())
++            dashboard=(root/'dashboard-client.env').read_text()
++            self.assertIn('MQTT_USERNAME=hc_dashboard', dashboard)
++            self.assertIn('MQTT_PORT=21884', dashboard)
++            self.assertEqual((root/'dashboard-client.env').stat().st_mode & 0o777, 0o600)
++            with self.assertRaises(FileExistsError):prepare_module.prepare(root)
++
++    def test_unsafe_irrigation_id_and_address_are_rejected_before_writing(self):
++        with tempfile.TemporaryDirectory() as folder:
++            root = Path(folder)/'candidate'
++            for options in ({'device':'a/#'}, {'esp_ip':'0.0.0.0'}, {'esp_ip':'127.0.0.1'}):
++                with self.subTest(options=options), self.assertRaises(ValueError):prepare_module.prepare(root, **options)
++                self.assertFalse(root.exists())
++
++    def test_packages_cannot_put_credentials_into_exported_source(self):
++        for folder in ('infra', 'apps', 'scripts', 'homeassistant', 'docs'):
++            with self.subTest(folder=folder), self.assertRaises(ValueError):
++                prepare_module.prepare(ROOT/folder/'hc41-secret-package-must-not-exist')
++
++    def test_optional_grott_profile_is_not_activated_or_verbose(self):
++        import json
++        with tempfile.TemporaryDirectory() as folder:
++            root=Path(folder)/'candidate';prepare_module.prepare(root)
++            config=json.loads((root/'compose.override.json').read_text())
++            self.assertNotIn('growatt-grott', config['services'])
++            self.assertIn('gverbose=False', (root/'grott.optional.env').read_text())
++
++    def test_legacy_network_plan_covers_direct_docker_host_and_ipv6_paths(self):
++        spec=importlib.util.spec_from_file_location('hc41_network', ROOT/'scripts/plan_mqtt_legacy.py')
++        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
++        result=module.plan('192.168.1.179','172.19.0.9')
++        self.assertFalse(result['applied']);self.assertFalse(result['ready_to_apply'])
++        commands=result['commands_for_review_only']
++        accepts=[c for c in commands if c[-1]=='ACCEPT']
++        self.assertEqual(len(accepts),1);self.assertIn('192.168.1.179',accepts[0])
++        self.assertTrue(any('DOCKER-USER' in c and '172.19.0.9' in c for c in commands))
++        self.assertTrue(any('OUTPUT' in c and c[-1]=='DROP' for c in commands))
++        self.assertTrue(any(c[0]=='ip6tables' and c[-1]=='DROP' for c in commands))
++
++
++if __name__ == '__main__':unittest.main()
+--- /dev/null
++++ b/scripts/prepare_mqtt_access.py
+@@ -0,0 +1,148 @@
++#!/usr/bin/env python3
++"""HC-41 staged MQTT configuration. Writes a NEW private package, never applies it."""
++import argparse
++import ipaddress
++import json
++import os
++from pathlib import Path
++import re
++import secrets
++
++ROLES = ('backend', 'ingest', 'tuya', 'x10', 'x10_api', 'climate', 'growatt', 'grott', 'dashboard')
++PYTHON_SERVICES = {
++    'backend': 'backend', 'hc_ingest': 'ingest',
++    'homecontrol-tuya-poller': 'tuya', 'homecontrol-xiaomi-x10': 'x10',
++    'homecontrol-gree-climate': 'climate', 'homecontrol-ha-growatt-poller': 'growatt',
++}
++
++
++def access_rules(device):
++    if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', device):
++        raise ValueError('Invalid irrigation device identity')
++    tele = f'homecontrol/tele/irrigation/{device}/#'
++    stat = f'homecontrol/stat/irrigation/{device}/#'
++    cmd = f'homecontrol/cmd/irrigation/{device}/#'
++    rules = {
++        'backend': [('read', 'zigbee/#'), ('read', 'homecontrol/#'),
++            ('write', 'zigbee/+/set'), ('write', 'zigbee/+/get'),
++            ('write', 'zigbee/bridge/request/#'), ('write', cmd),
++            ('write', 'homecontrol/cmd/tuya/+/switch'),
++            ('write', 'homecontrol/xiaomi_x10/command/#'),
++            ('write', 'homecontrol/gree_climate/command'),
++            ('write', 'homecontrol/mower/cmd/#')],
++        'ingest': [('read', t) for t in ('zigbee/#', 'homecontrol/tele/tuya/#',
++            'homecontrol/tele/growatt/#', 'homecontrol/tele/irrigation/+/pump_metrics',
++            'homecontrol/tele/irrigation/+/solar', 'homecontrol/stat/irrigation/+/availability',
++            'homecontrol/xiaomi_x10/#', 'homecontrol/gree_climate/#')],
++        'tuya': [('read', 'homecontrol/cmd/tuya/+/switch'), ('write', 'homecontrol/tele/tuya/#')],
++        'x10': [('read', 'homecontrol/xiaomi_x10/command/#'), ('write', 'homecontrol/xiaomi_x10/#')],
++        'x10_api': [('read', 'homecontrol/xiaomi_x10/#'), ('write', 'homecontrol/xiaomi_x10/command/#')],
++        'climate': [('read', 'homecontrol/gree_climate/command')] + [('write', 'homecontrol/gree_climate/' + t)
++            for t in ('availability', 'state', 'error', 'command_result')],
++        'growatt': [('write', 'homecontrol/tele/growatt/cloud/#')],
++        'grott': [('write', 'homecontrol/tele/growatt/inverter/#')],
++        'dashboard': [('read', tele), ('read', stat), ('write', cmd)],
++        'zigbee2mqtt': [('readwrite', 'zigbee/#')],
++    }
++    legacy = [('write', tele), ('write', stat), ('read', cmd)]
++    return rules, legacy
++
++
++def prepare(root, *, device='esp-irrigation-1', esp_ip=None, ip_confirmed=False):
++    root = Path(root).resolve()
++    project = Path(__file__).resolve().parents[1]
++    if any(root.is_relative_to(project / name) for name in ('infra', 'apps', 'scripts', 'homeassistant', 'docs')):
++        raise ValueError('Credential packages must remain outside exported source/configuration trees')
++    rules, legacy = access_rules(device)
++    if esp_ip:
++        address = ipaddress.ip_address(esp_ip)
++        if address.is_unspecified or address.is_multicast or address.is_loopback:
++            raise ValueError('ESP address must be an explicit unicast address')
++    root.mkdir(mode=0o700)  # Refuse overwrite or reuse of an existing package.
++    root.chmod(0o700)
++    credential_dir = root / 'credentials'
++    credential_dir.mkdir(mode=0o700)
++    passwords = {role: secrets.token_urlsafe(36) for role in (*ROLES, 'zigbee2mqtt')}
++    def write(path, value, mode=0o600):
++        path.write_text(value, encoding='utf-8');path.chmod(mode)
++    # The parent is private. Individual bind-mounted secret files are readable by
++    # each container's unprivileged UID, without exposing the other role files.
++    for role, password in passwords.items():
++        write(credential_dir / (role + '.password'), password + '\n', 0o444)
++    write(credential_dir / 'passwords', ''.join('hc_' + role + ':' + password + '\n' for role, password in passwords.items()))
++    acl = ''.join('user hc_' + role + '\n' + ''.join('topic ' + access + ' ' + topic + '\n' for access, topic in entries) + '\n'
++        for role, entries in rules.items())
++    write(root / 'authenticated.acl', acl, 0o444)
++    write(root / 'legacy.acl', ''.join('topic ' + access + ' ' + topic + '\n' for access, topic in legacy), 0o444)
++    write(root / 'mosquitto.conf', '''# HC-41 candidate; deploy only after password hashing and network verification.
++per_listener_settings true
++persistence true
++persistence_location /mosquitto/data/
++log_dest stdout
++log_type error
++log_type warning
++log_type notice
++
++listener 1884 0.0.0.0
++allow_anonymous false
++password_file /mosquitto/config/credentials/passwords
++acl_file /mosquitto/config/authenticated.acl
++
++listener 1883 0.0.0.0
++allow_anonymous true
++acl_file /mosquitto/config/legacy.acl
++''', 0o444)
++    services = {'mqtt': {'volumes': [str(root) + ':/mosquitto/config:ro'],
++        'ports': ['127.0.0.1:1884:1884']}}
++    for service, role in PYTHON_SERVICES.items():
++        target = '/run/secrets/hc-mqtt.password'
++        environment = dict(MQTT_USERNAME='hc_' + role, MQTT_PASSWORD_FILE=target, MQTT_AUTH_REQUIRED='1')
++        if role == 'x10':
++            environment.update(X10_MQTT_HOST='mqtt', X10_MQTT_PORT='1884')
++        else:
++            environment.update(MQTT_HOST='127.0.0.1' if role in ('climate', 'growatt') else 'mqtt', MQTT_PORT='1884')
++        services[service] = {'environment': environment,
++            'volumes': [str(credential_dir / (role + '.password')) + ':' + target + ':ro']}
++    env = root / 'zigbee2mqtt.env'
++    write(env, 'ZIGBEE2MQTT_CONFIG_MQTT_SERVER=mqtt://mqtt:1884\n'
++        'ZIGBEE2MQTT_CONFIG_MQTT_USER=hc_zigbee2mqtt\n'
++        'ZIGBEE2MQTT_CONFIG_MQTT_PASSWORD=' + passwords['zigbee2mqtt'] + '\n')
++    services['zigbee2mqtt'] = {'env_file': [str(env)]}
++    write(root / 'dashboard-client.env', '# Generic client template; adapt to the dashboard configuration schema.\n'
++        'MQTT_HOST=127.0.0.1\nMQTT_PORT=21884\nMQTT_USERNAME=hc_dashboard\n'
++        'MQTT_PASSWORD=' + passwords['dashboard'] + '\n')
++    # Optional profile is not enabled. Upstream verbose logs may expose secrets.
++    write(root / 'grott.optional.env', 'gmqttport=1884\ngmqttauth=True\ngmqttuser=hc_grott\n'
++        'gmqttpassword=' + passwords['grott'] + '\ngverbose=False\n')
++    write(root / 'compose.override.json', json.dumps({'services': services}, indent=2) + '\n')
++    manifest = dict(finding='HC-41', applied=False, state='prepared_not_deployed',
++        device=device, esp_ip=esp_ip, esp_ip_confirmed=ip_confirmed,
++        passwords_need_hashing=True, authenticated_port=1884, legacy_port=1883,
++        roles=list(passwords),
++        blockers=['Password database must be hashed with mosquitto_passwd -U in an isolated helper',
++            'Review immutable release/images and merge with the active frozen Compose',
++            'Apply and verify ESP-only IPv4/IPv6 network restriction before opening the legacy listener',
++            'Configure and verify the approved dev-PC dashboard credentials over SSH tunnel; confirm fixed ESP address/DHCP reservation',
++            'Install the authenticated post-boot probe adapter with the release',
++            'Verify broker UID ownership/readability of the private config/password database',
++            'Include new MQTT secrets in the encrypted restore bundle, never in config Git exports',
++            'Supervised telemetry/STOP/ack/reconnect validation and rollback required'],
++        network_applied=False, broker_restarted=False,
++        later_phase='Move ESP to authenticated 1884, remove anonymous listener and its publication/rules')
++    if not ip_confirmed:manifest['blockers'].append('ESP IP/DHCP identity is not confirmed')
++    write(root / 'manifest.json', json.dumps(manifest, indent=2) + '\n')
++    return manifest
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--output', required=True, type=Path)
++    parser.add_argument('--device', default='esp-irrigation-1')
++    parser.add_argument('--esp-ip')
++    parser.add_argument('--esp-ip-confirmed', action='store_true')
++    args = parser.parse_args()
++    # The summary deliberately contains no passwords or environment values.
++    print(json.dumps(prepare(args.output, device=args.device, esp_ip=args.esp_ip, ip_confirmed=args.esp_ip_confirmed), indent=2))
++
++
++if __name__ == '__main__':main()
+--- /dev/null
++++ b/scripts/plan_mqtt_legacy.py
+@@ -0,0 +1,40 @@
++#!/usr/bin/env python3
++"""HC-41 legacy IP restriction review plan. Never executes firewall commands."""
++import argparse
++import ipaddress
++import json
++
++
++def plan(esp_ip, broker_ip):
++    esp = ipaddress.IPv4Address(esp_ip)
++    broker = ipaddress.IPv4Address(broker_ip)
++    if any(v.is_unspecified or v.is_loopback or v.is_multicast for v in (esp, broker)):
++        raise ValueError('Explicit unicast ESP and broker container IPv4 addresses required')
++    # The destination is post-DNAT. Matching only the host's published address
++    # would miss direct bridge-to-broker connections from other containers.
++    commands = [
++        ['iptables', '-N', 'HC41_LEGACY'],
++        ['iptables', '-A', 'HC41_LEGACY', '-s', str(esp), '-j', 'ACCEPT'],
++        ['iptables', '-A', 'HC41_LEGACY', '-j', 'DROP'],
++        ['iptables', '-I', 'DOCKER-USER', '1', '-p', 'tcp', '-d', str(broker), '--dport', '1883', '-j', 'HC41_LEGACY'],
++        ['iptables', '-I', 'OUTPUT', '1', '-p', 'tcp', '-d', str(broker), '--dport', '1883', '-j', 'DROP'],
++        ['ip6tables', '-I', 'INPUT', '1', '-p', 'tcp', '--dport', '1883', '-j', 'DROP'],
++        ['ip6tables', '-I', 'DOCKER-USER', '1', '-p', 'tcp', '--dport', '1883', '-j', 'DROP'],
++    ]
++    return dict(applied=False,ready_to_apply=False,esp_ip=str(esp),broker_container_ip=str(broker),
++        commands_for_review_only=commands,
++        requirements=['Confirm ESP identity and DHCP reservation',
++            'Verify iptables backend, bridge netfilter and IPv6/proxy paths on the actual host',
++            'Verify broker container address after recreation; regenerate rules on IP change',
++            'Install persistent idempotent owner rules and exact inverse rollback; do not flush other rules',
++            'Prove unrelated LAN, IPv6, host and Docker peers cannot access legacy MQTT',
++            'Preserve the original ESP source address; NAT/proxy masking must fail closed',
++            'Keep legacy access closed until rules and supervised STOP/ack route are verified'])
++
++
++if __name__ == '__main__':
++    parser=argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--esp-ip',required=True)
++    parser.add_argument('--broker-ip',required=True)
++    args=parser.parse_args()
++    print(json.dumps(plan(args.esp_ip,args.broker_ip),indent=2))
+--- /dev/null
++++ b/scripts/mqtt_access/post_boot_health.sh
+@@ -0,0 +1,128 @@
++#!/usr/bin/env bash
++set -Eeuo pipefail
++
++BASE="/srv/docker/homecontrol"
++INFRA="$BASE/infra"
++STATE_DIR="${HC_BOOT_HEALTH_STATE_DIR:-/run/homecontrol-post-boot-health}"
++GROWATT_FAILURE_FILE="$STATE_DIR/growatt-unavailable"
++COORDINATOR_HOST="${ZIGBEE_COORDINATOR_HOST:-192.168.1.59}"
++COORDINATOR_PORT="${ZIGBEE_COORDINATOR_PORT:-6638}"
++GROWATT_ENTITY="${HC_GROWATT_HEALTH_ENTITY:-sensor.pyl0chj016_output_power}"
++
++mkdir -p "$STATE_DIR"
++
++log() {
++  printf '[%s] %s\n' "$(date --iso-8601=seconds)" "$*"
++}
++
++container_running() {
++  [ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null || true)" = "true" ]
++}
++
++restart_container() {
++  log "restarting container: $1"
++  docker restart "$1" >/dev/null
++}
++
++coordinator_reachable() {
++  timeout 5 bash -c "exec 3<>/dev/tcp/$COORDINATOR_HOST/$COORDINATOR_PORT" 2>/dev/null
++}
++
++zigbee_bridge_online() {
++  local payload
++  payload="$(docker exec homecontrol-backend python /app/mqtt_read_probe.py \
++    --topic zigbee/bridge/state 2>/dev/null || true)"
++  [[ "$payload" == *'online'* ]]
++}
++
++growatt_available() {
++  docker exec -e HC_HEALTH_ENTITY="$GROWATT_ENTITY" homecontrol-ha-growatt-poller python -c '
++import os
++import requests
++
++base = os.environ["HA_BASE_URL"].rstrip("/")
++token = os.environ.get("HA_TOKEN", "")
++entity = os.environ["HC_HEALTH_ENTITY"]
++response = requests.get(
++    f"{base}/api/states/{entity}",
++    headers={"Authorization": f"Bearer {token}"},
++    timeout=10,
++)
++if response.status_code != 200:
++    raise SystemExit(1)
++state = str(response.json().get("state", "")).strip().lower()
++raise SystemExit(1 if state in {"", "unknown", "unavailable", "none"} else 0)
++' >/dev/null 2>&1
++}
++
++report_stale_zigbee() {
++  local active_ids row ext_id
++  active_ids="$(docker exec homecontrol-postgres sh -c \
++    'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select ext_id from hc.device where platform='"'"'zigbee'"'"' and is_active=true"' \
++    2>/dev/null || true)"
++
++  while IFS= read -r row; do
++    ext_id="${row%%|*}"
++    if grep -Fqx "$ext_id" <<<"$active_ids"; then
++      printf '%s\n' "$row"
++    fi
++  done < <(docker exec zigbee2mqtt node -e '
++const fs = require("fs");
++const cutoff = Date.now() - 6 * 60 * 60 * 1000;
++const rows = fs.readFileSync("/app/data/database.db", "utf8")
++  .split(/\r?\n/)
++  .filter(Boolean)
++  .map((line) => JSON.parse(line))
++  .filter((row) => row.type === "EndDevice" && (!row.lastSeen || row.lastSeen < cutoff))
++  .sort((a, b) => (a.lastSeen || 0) - (b.lastSeen || 0));
++for (const row of rows) {
++  const latest = row.lastSeen ? new Date(row.lastSeen).toISOString() : "never";
++  console.log(`${row.ieeeAddr}|${row.modelId || "unknown"}|radio|${latest}`);
++}
++' 2>/dev/null || true)
++}
++
++log "post-boot health check started"
++
++if coordinator_reachable; then
++  if ! container_running zigbee2mqtt || ! zigbee_bridge_online; then
++    restart_container zigbee2mqtt
++    sleep 15
++    if zigbee_bridge_online; then
++      log "Zigbee2MQTT recovered"
++    else
++      log "WARNING: Zigbee2MQTT is still offline"
++    fi
++  else
++    log "Zigbee coordinator and bridge are online"
++  fi
++else
++  log "WARNING: Zigbee coordinator is unreachable at $COORDINATOR_HOST:$COORDINATOR_PORT"
++fi
++
++if container_running homeassistant && container_running homecontrol-ha-growatt-poller; then
++  if growatt_available; then
++    rm -f "$GROWATT_FAILURE_FILE"
++    log "Home Assistant Growatt entity is available"
++  elif [ -f "$GROWATT_FAILURE_FILE" ]; then
++    log "Growatt is unavailable for a second consecutive check"
++    restart_container homeassistant
++    rm -f "$GROWATT_FAILURE_FILE"
++  else
++    date --iso-8601=seconds >"$GROWATT_FAILURE_FILE"
++    log "WARNING: Growatt is unavailable; confirmation required on next check"
++  fi
++else
++  log "WARNING: Home Assistant or Growatt poller container is not running"
++fi
++
++stale_rows="$(report_stale_zigbee)"
++if [ -n "$stale_rows" ]; then
++  while IFS='|' read -r ext_id name location latest; do
++    log "WARNING: stale Zigbee device: $name ($ext_id), location=$location, latest=$latest"
++  done <<<"$stale_rows"
++else
++  log "No Zigbee device has stale state data"
++fi
++
++log "post-boot health check finished"
+--- /dev/null
++++ b/apps/hc_ingest/mqtt_credentials.py
+@@ -0,0 +1,46 @@
++"""HC-41 MQTT credentials; mirrored verbatim into independent build contexts."""
++import os
++from pathlib import Path
++
++
++def configure_mqtt_auth(client, *, prefix="MQTT", fallback=None):
++    """Configure before connect; invalid explicit credentials never become anonymous.
++
++    No credentials preserves the existing deployment until AUTH_REQUIRED is enabled.
++    A password file takes precedence only when no plaintext password was supplied.
++    """
++    names = [prefix] if prefix == "MQTT" else [prefix, "MQTT"]
++    configured = None
++    for name in names:
++        keys = (name + "_USERNAME", name + "_USER", name + "_PASSWORD", name + "_PASSWORD_FILE")
++        if any(key in os.environ for key in keys):
++            configured = name
++            break
++    required = any(os.getenv(name + "_AUTH_REQUIRED", "").lower() in ("1", "true", "yes") for name in names)
++    if configured:
++        username = os.getenv(configured + "_USERNAME", os.getenv(configured + "_USER", ""))
++        password = os.getenv(configured + "_PASSWORD")
++        path = os.getenv(configured + "_PASSWORD_FILE")
++        if password is not None and path:
++            raise ValueError("MQTT password and password file are mutually exclusive")
++        if path:
++            try:
++                with Path(path).open(encoding="utf-8") as stream:
++                    raw = stream.read(4098)
++                    if len(raw) > 4097:
++                        raise ValueError("MQTT password file exceeds size limit")
++                    password = raw.removesuffix("\n")
++            except (OSError, UnicodeError):
++                raise ValueError("MQTT password file cannot be read") from None
++    elif fallback:
++        username, password = fallback
++    else:
++        username, password = None, None
++    if not configured and not username and not password and not required:
++        return False
++    if not isinstance(username, str) or not username or any(c in username for c in "\r\n\0"):
++        raise ValueError("MQTT username is required")
++    if not isinstance(password, str) or not password or len(password) > 4096 or any(c in password for c in "\r\n\0"):
++        raise ValueError("MQTT password is missing or invalid")
++    client.username_pw_set(username, password)
++    return True
+--- /dev/null
++++ b/apps/tuya-poller/mqtt_credentials.py
+@@ -0,0 +1,46 @@
++"""HC-41 MQTT credentials; mirrored verbatim into independent build contexts."""
++import os
++from pathlib import Path
++
++
++def configure_mqtt_auth(client, *, prefix="MQTT", fallback=None):
++    """Configure before connect; invalid explicit credentials never become anonymous.
++
++    No credentials preserves the existing deployment until AUTH_REQUIRED is enabled.
++    A password file takes precedence only when no plaintext password was supplied.
++    """
++    names = [prefix] if prefix == "MQTT" else [prefix, "MQTT"]
++    configured = None
++    for name in names:
++        keys = (name + "_USERNAME", name + "_USER", name + "_PASSWORD", name + "_PASSWORD_FILE")
++        if any(key in os.environ for key in keys):
++            configured = name
++            break
++    required = any(os.getenv(name + "_AUTH_REQUIRED", "").lower() in ("1", "true", "yes") for name in names)
++    if configured:
++        username = os.getenv(configured + "_USERNAME", os.getenv(configured + "_USER", ""))
++        password = os.getenv(configured + "_PASSWORD")
++        path = os.getenv(configured + "_PASSWORD_FILE")
++        if password is not None and path:
++            raise ValueError("MQTT password and password file are mutually exclusive")
++        if path:
++            try:
++                with Path(path).open(encoding="utf-8") as stream:
++                    raw = stream.read(4098)
++                    if len(raw) > 4097:
++                        raise ValueError("MQTT password file exceeds size limit")
++                    password = raw.removesuffix("\n")
++            except (OSError, UnicodeError):
++                raise ValueError("MQTT password file cannot be read") from None
++    elif fallback:
++        username, password = fallback
++    else:
++        username, password = None, None
++    if not configured and not username and not password and not required:
++        return False
++    if not isinstance(username, str) or not username or any(c in username for c in "\r\n\0"):
++        raise ValueError("MQTT username is required")
++    if not isinstance(password, str) or not password or len(password) > 4096 or any(c in password for c in "\r\n\0"):
++        raise ValueError("MQTT password is missing or invalid")
++    client.username_pw_set(username, password)
++    return True
+--- /dev/null
++++ b/apps/xiaomi-x10/mqtt_credentials.py
+@@ -0,0 +1,46 @@
++"""HC-41 MQTT credentials; mirrored verbatim into independent build contexts."""
++import os
++from pathlib import Path
++
++
++def configure_mqtt_auth(client, *, prefix="MQTT", fallback=None):
++    """Configure before connect; invalid explicit credentials never become anonymous.
++
++    No credentials preserves the existing deployment until AUTH_REQUIRED is enabled.
++    A password file takes precedence only when no plaintext password was supplied.
++    """
++    names = [prefix] if prefix == "MQTT" else [prefix, "MQTT"]
++    configured = None
++    for name in names:
++        keys = (name + "_USERNAME", name + "_USER", name + "_PASSWORD", name + "_PASSWORD_FILE")
++        if any(key in os.environ for key in keys):
++            configured = name
++            break
++    required = any(os.getenv(name + "_AUTH_REQUIRED", "").lower() in ("1", "true", "yes") for name in names)
++    if configured:
++        username = os.getenv(configured + "_USERNAME", os.getenv(configured + "_USER", ""))
++        password = os.getenv(configured + "_PASSWORD")
++        path = os.getenv(configured + "_PASSWORD_FILE")
++        if password is not None and path:
++            raise ValueError("MQTT password and password file are mutually exclusive")
++        if path:
++            try:
++                with Path(path).open(encoding="utf-8") as stream:
++                    raw = stream.read(4098)
++                    if len(raw) > 4097:
++                        raise ValueError("MQTT password file exceeds size limit")
++                    password = raw.removesuffix("\n")
++            except (OSError, UnicodeError):
++                raise ValueError("MQTT password file cannot be read") from None
++    elif fallback:
++        username, password = fallback
++    else:
++        username, password = None, None
++    if not configured and not username and not password and not required:
++        return False
++    if not isinstance(username, str) or not username or any(c in username for c in "\r\n\0"):
++        raise ValueError("MQTT username is required")
++    if not isinstance(password, str) or not password or len(password) > 4096 or any(c in password for c in "\r\n\0"):
++        raise ValueError("MQTT password is missing or invalid")
++    client.username_pw_set(username, password)
++    return True
+--- /dev/null
++++ b/apps/gree-climate/mqtt_credentials.py
+@@ -0,0 +1,46 @@
++"""HC-41 MQTT credentials; mirrored verbatim into independent build contexts."""
++import os
++from pathlib import Path
++
++
++def configure_mqtt_auth(client, *, prefix="MQTT", fallback=None):
++    """Configure before connect; invalid explicit credentials never become anonymous.
++
++    No credentials preserves the existing deployment until AUTH_REQUIRED is enabled.
++    A password file takes precedence only when no plaintext password was supplied.
++    """
++    names = [prefix] if prefix == "MQTT" else [prefix, "MQTT"]
++    configured = None
++    for name in names:
++        keys = (name + "_USERNAME", name + "_USER", name + "_PASSWORD", name + "_PASSWORD_FILE")
++        if any(key in os.environ for key in keys):
++            configured = name
++            break
++    required = any(os.getenv(name + "_AUTH_REQUIRED", "").lower() in ("1", "true", "yes") for name in names)
++    if configured:
++        username = os.getenv(configured + "_USERNAME", os.getenv(configured + "_USER", ""))
++        password = os.getenv(configured + "_PASSWORD")
++        path = os.getenv(configured + "_PASSWORD_FILE")
++        if password is not None and path:
++            raise ValueError("MQTT password and password file are mutually exclusive")
++        if path:
++            try:
++                with Path(path).open(encoding="utf-8") as stream:
++                    raw = stream.read(4098)
++                    if len(raw) > 4097:
++                        raise ValueError("MQTT password file exceeds size limit")
++                    password = raw.removesuffix("\n")
++            except (OSError, UnicodeError):
++                raise ValueError("MQTT password file cannot be read") from None
++    elif fallback:
++        username, password = fallback
++    else:
++        username, password = None, None
++    if not configured and not username and not password and not required:
++        return False
++    if not isinstance(username, str) or not username or any(c in username for c in "\r\n\0"):
++        raise ValueError("MQTT username is required")
++    if not isinstance(password, str) or not password or len(password) > 4096 or any(c in password for c in "\r\n\0"):
++        raise ValueError("MQTT password is missing or invalid")
++    client.username_pw_set(username, password)
++    return True
+--- /dev/null
++++ b/apps/ha-growatt-poller/mqtt_credentials.py
+@@ -0,0 +1,46 @@
++"""HC-41 MQTT credentials; mirrored verbatim into independent build contexts."""
++import os
++from pathlib import Path
++
++
++def configure_mqtt_auth(client, *, prefix="MQTT", fallback=None):
++    """Configure before connect; invalid explicit credentials never become anonymous.
++
++    No credentials preserves the existing deployment until AUTH_REQUIRED is enabled.
++    A password file takes precedence only when no plaintext password was supplied.
++    """
++    names = [prefix] if prefix == "MQTT" else [prefix, "MQTT"]
++    configured = None
++    for name in names:
++        keys = (name + "_USERNAME", name + "_USER", name + "_PASSWORD", name + "_PASSWORD_FILE")
++        if any(key in os.environ for key in keys):
++            configured = name
++            break
++    required = any(os.getenv(name + "_AUTH_REQUIRED", "").lower() in ("1", "true", "yes") for name in names)
++    if configured:
++        username = os.getenv(configured + "_USERNAME", os.getenv(configured + "_USER", ""))
++        password = os.getenv(configured + "_PASSWORD")
++        path = os.getenv(configured + "_PASSWORD_FILE")
++        if password is not None and path:
++            raise ValueError("MQTT password and password file are mutually exclusive")
++        if path:
++            try:
++                with Path(path).open(encoding="utf-8") as stream:
++                    raw = stream.read(4098)
++                    if len(raw) > 4097:
++                        raise ValueError("MQTT password file exceeds size limit")
++                    password = raw.removesuffix("\n")
++            except (OSError, UnicodeError):
++                raise ValueError("MQTT password file cannot be read") from None
++    elif fallback:
++        username, password = fallback
++    else:
++        username, password = None, None
++    if not configured and not username and not password and not required:
++        return False
++    if not isinstance(username, str) or not username or any(c in username for c in "\r\n\0"):
++        raise ValueError("MQTT username is required")
++    if not isinstance(password, str) or not password or len(password) > 4096 or any(c in password for c in "\r\n\0"):
++        raise ValueError("MQTT password is missing or invalid")
++    client.username_pw_set(username, password)
++    return True

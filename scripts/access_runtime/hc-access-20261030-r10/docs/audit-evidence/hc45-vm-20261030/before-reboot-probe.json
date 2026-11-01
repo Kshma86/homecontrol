@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "real_systemd_pid1": true,
+  "system_scope_only": true,
+  "unit_count": 14,
+  "access_unit_and_dropin_files": 12,
+  "next_triggers": {
+    "homecontrol-backup.timer": "NextElapseUSecRealtime=Sat 2026-10-31 04:27:00 CET\nNextElapseUSecMonotonic=0",
+    "homecontrol-log-maintenance.timer": "NextElapseUSecRealtime=Sat 2026-10-31 03:30:00 CET\nNextElapseUSecMonotonic=0",
+    "homecontrol-post-boot-health.timer": "NextElapseUSecRealtime=\nNextElapseUSecMonotonic=13min 11.906991s"
+  },
+  "enabled": {
+    "homecontrol-backup.timer": true,
+    "homecontrol-ai-weekly-backup.timer": false,
+    "homecontrol-restic-check.timer": false,
+    "homecontrol-log-maintenance.timer": true,
+    "homecontrol-full-ai-backup-request.path": true,
+    "homecontrol-backup-apply.path": true,
+    "homecontrol-post-boot-health.timer": true
+  },
+  "unit_bytes_verified": true,
+  "backend_health": {
+    "db_ok": true,
+    "error": null,
+    "mqtt_ok": true,
+    "ok": true
+  },
+  "backend_nonroot_readonly_no_socket": true,
+  "root_socket_0660_10001": true,
+  "host_rpc": {
+    "real_docker_inventory_count": 14,
+    "uid": 10001,
+    "source_and_archive_writes_denied": true
+  },
+  "interrupted_job_uncertain": true,
+  "ai_offline_policy": {
+    "profile": "ai-offline",
+    "restricted": true,
+    "policy_valid": true,
+    "message": "Az AI-szerver SSD-probl\u00e9ma miatt ideiglenesen ki van hagyva; csak helyi ment\u00e9s \u00e9rhet\u0151 el.",
+    "ai_enabled": false,
+    "remote_backup_enabled": false,
+    "restore_in_place_enabled": false,
+    "local_backup_only": true
+  },
+  "measurement_rows": 7006298,
+  "entity_rows": 66,
+  "hc_table_count": 61,
+  "selected_dump_sha256": "344d4cf4a3adf7e76297ea914a6b0e744e56fec89748f945599082594fcfeb66",
+  "hardware_network": false
+}

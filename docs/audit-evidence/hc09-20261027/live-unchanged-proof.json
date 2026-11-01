@@ -1,0 +1,12 @@
+{
+  "containers_unchanged": 9,
+  "active_host_files_unchanged": 37,
+  "original_audit_unchanged": true,
+  "live_safety_source_preserved": true,
+  "db_mqtt_health": true,
+  "restricted_profile_preserved": true,
+  "active_override": "/srv/docker/homecontrol/backups/releases/hc-refactor-ai-offline-20261027-r6/release.override.json",
+  "production_deployed": false,
+  "production_backfill_performed": false,
+  "physical_commands_sent": false
+}

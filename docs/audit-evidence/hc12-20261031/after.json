@@ -1,0 +1,33 @@
+{
+  "checked_at": "2026-10-31T15:45:45.901086+00:00",
+  "production_containers_unchanged": 16,
+  "active_runtime_source_files_unchanged": 646,
+  "audit_unchanged": true,
+  "new_local_source_sha256": {
+    "apps/tuya-poller/tuya_poller.py": "27d2a24ea0f5cbbe5a15952d2e54dcbf866eae42a46ecce383d97f05f1ce08db",
+    "apps/gree-climate/gree_climate_bridge.py": "71afbb0acdc1ce8f89d4649515e3149bf7e829f93e15c126e424c67abc75b3d6",
+    "apps/xiaomi-x10/xiaomi_x10_bridge.py": "5bd2a020b9054ea4ecbd76c0f7259f8ee90af8314f393f388b108e50b70c37f1",
+    "apps/xiaomi-x10/x10_runtime.py": "de078d0e36c2e9bc3e44f77bd496465c177e6fe2b2e70f6c9275b9d756e530fc",
+    "apps/tuya-poller/Dockerfile": "b8ccef278850c06ea04a736ae5d596533fa989aa0e530f3bfc9f944b0973693e",
+    "apps/gree-climate/Dockerfile": "316981e5d24641db074d14ea77d21eb3b329f57d28bf6baa970030249fa2a989",
+    "apps/bridge_runtime/command_dispatcher.py": "075b4a91b51f4dc95ed110bcd8478f04e8a72417b6f79b0c3fee130a4c8626f1",
+    "apps/tuya-poller/command_dispatcher.py": "075b4a91b51f4dc95ed110bcd8478f04e8a72417b6f79b0c3fee130a4c8626f1",
+    "apps/gree-climate/command_dispatcher.py": "075b4a91b51f4dc95ed110bcd8478f04e8a72417b6f79b0c3fee130a4c8626f1",
+    "apps/xiaomi-x10/command_dispatcher.py": "075b4a91b51f4dc95ed110bcd8478f04e8a72417b6f79b0c3fee130a4c8626f1",
+    "apps/bridge_runtime/tests/test_command_dispatcher.py": "2234b760f3dcdd75310abe8f1089fe00e972c80827d7f4d43d4bf36b372284e9",
+    "apps/bridge_runtime/tests/test_bridge_commands.py": "d8bc0e6f91c76a007f76274120174a60602efb4f19b9cd30ec58c0c4032d77d8",
+    "apps/xiaomi-x10/tests/test_x10_runtime.py": "eb5adeee4e471f2810d4ab7a26836d6e3e31ef35c6a69728a4dc108b50e2e5d9"
+  },
+  "production_deployed": false,
+  "original_sources_verified_against_f0": {
+    "HC_REFACTOR_AUDIT.md": "unchanged local file",
+    "apps/tuya-poller/tuya_poller.py": "immutable active runtime",
+    "apps/gree-climate/gree_climate_bridge.py": "immutable active runtime",
+    "apps/xiaomi-x10/xiaomi_x10_bridge.py": "immutable active runtime",
+    "apps/xiaomi-x10/x10_runtime.py": "unchanged active image source; F0 hash verified",
+    "apps/xiaomi-x10/config.py": "unchanged local file",
+    "apps/tuya-poller/Dockerfile": "immutable active runtime",
+    "apps/gree-climate/Dockerfile": "immutable active runtime",
+    "apps/xiaomi-x10/Dockerfile": "immutable active runtime"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "finding": "HC-44",
+  "applied": false,
+  "release_root": "/srv/docker/homecontrol",
+  "prerequisites": [
+    "Frozen reviewed release, verified backup and previous runtime/unit metadata",
+    "Old backend stopped and both common backup locks idle",
+    "All allowed operations passed isolated tests; no unverified in-place archives",
+    "HC-45 restore manifest must include hostops service and F6 drop-ins before deployment"
+  ],
+  "service_template": "scripts/systemd/hostops/homecontrol-hostops.service",
+  "executor_entrypoint": "/srv/docker/homecontrol/scripts/hostops/server.py",
+  "canonical_runner_template": "scripts/hostops/canonical_backup_runner.py.in",
+  "units": [
+    "scripts/systemd/hostops/homecontrol-ai-weekly-backup.service.d/hc44.conf",
+    "scripts/systemd/hostops/homecontrol-backup.service.d/hc44.conf",
+    "scripts/systemd/hostops/homecontrol-full-ai-backup-request.service.d/hc44.conf",
+    "scripts/systemd/hostops/homecontrol-hostops.service",
+    "scripts/systemd/hostops/homecontrol-log-maintenance.service.d/hc44.conf",
+    "scripts/systemd/hostops/homecontrol-restic-check.service.d/hc44.conf"
+  ],
+  "permissions": [
+    {
+      "path": "backups/ai-control",
+      "uid": 10001,
+      "gid": 10001,
+      "mode": "0700",
+      "purpose": "AI state only"
+    },
+    {
+      "path": "infra/private",
+      "uid": 10001,
+      "gid": 10001,
+      "mode": "0700",
+      "purpose": "Rover JSON data only"
+    },
+    {
+      "path": "backups/ai-backup.lock",
+      "gid": 10001,
+      "mode": "0660",
+      "preserve_inode": true
+    },
+    {
+      "path": "backups/homecontrol-backup.lock",
+      "gid": 10001,
+      "mode": "0660",
+      "preserve_inode": true
+    }
+  ],
+  "protected": [
+    "backups archives/receipts/settings",
+    "restore_staging journals",
+    "source trees",
+    "host job journal"
+  ],
+  "steps": [
+    "Render service/drop-in ExecStart paths to the frozen release, not the mutable worktree",
+    "Snapshot existing units and file metadata; never unlink or replace a held lock inode",
+    "Create missing data directories and lock files, reject symlinks and unsafe API ownership of protected parents",
+    "With old backend/F6 consumers stopped and locks idle, preserve and validate the existing AI coordination state; transfer it to ai-control and reconcile pending intents instead of starting from an empty state",
+    "Atomically replace the canonical scripts/backup_runner.py with the frozen launcher; all existing CLI wrappers must use it",
+    "Install hostops unit and all five F6 drop-ins together, daemon-reload, start host executor",
+    "Start only the new non-root backend; check UID, mounts, RPC status and allowed/denied operations",
+    "Verify AI-offline/winter policies and backups; preserve interrupted job states without automatic replay"
+  ],
+  "rollback": [
+    "Stop new backend and executor; reconcile any running backup/restore or uncertain job",
+    "Restore exact previous backend image, units and original permission metadata",
+    "Reconcile the current scoped AI state with the restored coordinator path; never restore an old shutdown intent or generation blindly",
+    "Keep archive, staging and job data; do not resurrect old AI/actuator intents"
+  ]
+}

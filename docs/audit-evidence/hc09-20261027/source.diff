@@ -1,0 +1,1719 @@
+--- before/infra/backend/app.py
++++ after/infra/backend/app.py
+@@ -685,6 +685,10 @@
+             if _scheduler_service is None:
+                 _scheduler_service = SchedulerService(
+                     audit_transaction=lambda: scheduler_audit_transaction(lambda: db_conn(dict_row)),
++                    climate_monitor_snapshot=climate_monitor.snapshot,
++                    x10_monitor_snapshot=x10_monitor.snapshot,
++                    feedback_max_age_seconds=SETTINGS.scheduler_feedback_max_age_seconds,
++                    confirmation_timeout_seconds=SETTINGS.scheduler_confirmation_timeout_seconds,
+                     fetch_all=fetch_all,
+                     fetch_one=fetch_one,
+                     execute_one=execute_one,
+--- before/infra/backend/settings.py
++++ after/infra/backend/settings.py
+@@ -87,6 +87,8 @@
+     irrigation_daily_summary_refresh_sec: float = env_float("IRRIGATION_DAILY_SUMMARY_REFRESH_SEC", 300)
+     safety_worker_enabled: bool = os.environ.get("HC_ENABLE_SAFETY_WORKER", "1") != "0"
+     scheduler_poll_seconds: int = env_int("IRRIGATION_SCHEDULER_POLL_SECONDS", 5)
++    scheduler_feedback_max_age_seconds: float = env_float("HC_SCHEDULER_FEEDBACK_MAX_AGE_SECONDS", 90)
++    scheduler_confirmation_timeout_seconds: float = env_float("HC_SCHEDULER_CONFIRMATION_TIMEOUT_SECONDS", 120)
+     combustion_command_retry_seconds: float = env_float("COMBUSTION_COMMAND_RETRY_SECONDS", 10)
+     combustion_command_max_attempts: int = env_int("COMBUSTION_COMMAND_MAX_ATTEMPTS", 3)
+     combustion_observation_max_age_seconds: float = env_float("COMBUSTION_OBSERVATION_MAX_AGE_SECONDS", 60)
+--- before/infra/backend/mqtt_monitor_service.py
++++ after/infra/backend/mqtt_monitor_service.py
+@@ -1,6 +1,7 @@
+ import json
+ import threading
+ import time
++import uuid
+ from typing import Any, Callable, Dict, Iterable, Optional
+ 
+ import paho.mqtt.client as mqtt
+@@ -39,6 +40,7 @@
+         self.lock = threading.RLock()
+         self.connected = False
+         self.connection_generation = 0
++        self.observation_epoch = uuid.uuid4().hex
+         self.last_error = ""
+         self.topic_state = {}
+         self.raw_messages = []
+@@ -138,6 +140,7 @@
+             return {
+                 "mqtt_connected": self.connected,
+                 "connection_generation": self.connection_generation,
++                "observation_epoch": self.observation_epoch,
+                 "last_error": self.last_error,
+                 "broker": self.broker_meta,
+                 "subscriptions": self.subscriptions(),
+@@ -273,16 +276,20 @@
+             else:
+                 payload_text = str(payload)
+             result = client.publish(topic, payload_text, qos=qos, retain=retain)
+-            result.wait_for_publish(timeout=3)
+-            client.loop_stop()
+-            client.disconnect()
+             if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                 return False, f"publish failed rc={result.rc}"
++            result.wait_for_publish(timeout=3)
++            if result.rc != mqtt.MQTT_ERR_SUCCESS:
++                return False, f"publish failed rc={result.rc}"
++            if result.is_published() is not True:
++                return False, "publish outcome uncertain: acknowledgement timeout"
+             return True, "published"
+         except Exception as exc:
+-            try:
+-                client.loop_stop()
+-                client.disconnect()
+-            except Exception:
+-                pass
+             return False, str(exc)
++        finally:
++            # Each cleanup is independent, including connect/wait failures.
++            for cleanup in (client.loop_stop, client.disconnect):
++                try:
++                    cleanup()
++                except Exception:
++                    pass
+--- before/infra/backend/scheduler_service.py
++++ after/infra/backend/scheduler_service.py
+@@ -1,4 +1,6 @@
+ from datetime import datetime
++import math
++import time
+ from threading import Lock
+ from typing import Any, Callable, Dict, Iterable, Optional
+ 
+@@ -42,6 +44,12 @@
+         execute_sql: Optional[Callable[[str], Any]] = None,
+         now: Optional[Callable[[Any], datetime]] = None,
+         audit_transaction: Optional[Callable[..., Any]] = None,
++        climate_monitor_snapshot: Optional[Callable[..., Any]] = None,
++        x10_monitor_snapshot: Optional[Callable[..., Any]] = None,
++        feedback_max_age_seconds: float = 90,
++        confirmation_timeout_seconds: float = 120,
++        feedback_wall_clock: Callable[..., float] = time.time,
++        feedback_monotonic_clock: Callable[..., float] = time.monotonic,
+     ):
+         self.fetch_all = fetch_all
+         self.fetch_one = fetch_one
+@@ -78,6 +86,15 @@
+         self.running_irrigation_session = running_irrigation_session
+         self.now = now or (lambda tz=None: datetime.now(tz))
+         self.audit_transaction = audit_transaction
++        self.climate_monitor_snapshot = climate_monitor_snapshot or (lambda: {})
++        self.x10_monitor_snapshot = x10_monitor_snapshot or (lambda: {})
++        if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0
++               for v in (feedback_max_age_seconds, confirmation_timeout_seconds)):
++            raise ValueError('Scheduler feedback limits must be positive finite seconds')
++        self.feedback_max_age_seconds = feedback_max_age_seconds
++        self.confirmation_timeout_seconds = confirmation_timeout_seconds
++        self.feedback_wall_clock = feedback_wall_clock
++        self.feedback_monotonic_clock = feedback_monotonic_clock
+ 
+     def record_shadow_audit(self):
+         from scheduler_audit import SchedulerAudit
+@@ -412,92 +429,53 @@
+             "read_only": True,
+         }
+ 
+-    def x10_confirmation_diagnostics(self, command_payload: Dict[str, Any]):
+-        entries = self.x10_scheduler_entries() or []
+-        command_result = self._monitor_value("command_result")
+-        room_clean_status = self._monitor_value("room_clean/status")
+-        expected = self.x10_command_expected(command_payload)
+-        matching_entry = None
+-        partial_entry = None
+-        match_checks = {}
+-        observed_entry = None
+-        for entry in entries if isinstance(entries, list) else []:
+-            if not isinstance(entry, dict):
+-                continue
+-            matched, checks, observed = self.x10_entry_matches_command(entry, expected)
+-            if matched:
+-                matching_entry = entry
+-                match_checks = checks
+-                observed_entry = observed
+-                break
+-            if not partial_entry and checks.get("start_time") and checks.get("segments"):
+-                partial_entry = entry
+-                match_checks = checks
+-                observed_entry = observed
+-        return {
+-            "strategy": "mqtt_cached_scheduler_entries",
+-            "expected": "scheduler entry matching time, day mask, enabled, map, mode, suction, water and segments",
+-            "status": "matching_scheduler_entry_seen" if matching_entry else "partial_scheduler_entry_seen" if partial_entry else "not_confirmed_by_cached_entries",
+-            "observed": {
+-                "matching_entry": matching_entry,
+-                "partial_entry": partial_entry,
+-                "match_checks": match_checks,
+-                "observed_entry": observed_entry,
+-                "command_result": command_result,
+-                "room_clean_status": room_clean_status,
+-            },
+-            "wanted": expected,
+-            "read_only": True,
+-        }
+-
+-    def climate_confirmation_diagnostics(self, command_payload: Dict[str, Any]):
+-        state = self.climate_state_payload() if self.climate_state_payload else {}
+-        command_result = state.get("command_result")
+-        wanted = {
+-            "power": self._normalize_climate_text(command_payload.get("power")),
+-            "mode": self._normalize_climate_text(command_payload.get("mode")),
+-            "target_temperature": self._to_int(command_payload.get("target_temperature"), 0) if command_payload.get("target_temperature") is not None else None,
+-            "fan_speed": self._normalize_climate_text(command_payload.get("fan_speed")),
+-            "light": self._normalize_climate_text(command_payload.get("light")),
+-        }
+-        observed = {
+-            "power": self._normalize_climate_text(state.get("power")),
+-            "mode": self._normalize_climate_text(state.get("mode")),
+-            "target_temperature": self._to_int(state.get("target_temperature"), 0) if state.get("target_temperature") is not None else None,
+-            "fan_speed": self._normalize_climate_text(state.get("fan_speed")),
+-            "light": self._normalize_climate_text(state.get("light")),
+-            "bridge_online": state.get("bridge_online"),
+-            "updated_at": state.get("updated_at"),
+-            "error": state.get("error"),
+-            "command_result": command_result,
+-        }
+-        checks = {key: value is None or observed.get(key) == value for key, value in wanted.items()}
+-        matches = bool(state.get("ok")) and all(checks.values())
+-        return {
+-            "strategy": "mqtt_cached_climate_state",
+-            "expected": "cached climate state matching desired power, mode, target temperature, fan speed and light",
+-            "status": "matching_climate_state_seen" if matches else "not_confirmed_by_cached_state",
+-            "observed": observed,
+-            "wanted": wanted,
+-            "checks": checks,
+-            "read_only": True,
+-        }
++    def x10_confirmation_diagnostics(self, command_payload: Dict[str, Any], boundary=None):
++        from scheduler_feedback import fresh_frame, entry_matches, weekly_commands, weekly_observation
++        snapshot = self.x10_monitor_snapshot()
++        wall, mono = self.feedback_wall_clock(), self.feedback_monotonic_clock()
++        if isinstance(command_payload.get("schedules"), list):
++            try:
++                commands = weekly_commands(self, command_payload["schedules"])
++                evidence = weekly_observation(snapshot, commands, boundary, self.feedback_max_age_seconds, wall, mono)
++            except ValueError:
++                evidence = {"confirmed": False, "reason": "invalid_desired_weekly_schedule"}
++        else:
++            payload, evidence = fresh_frame(snapshot, "scheduler/observation", boundary,
++                self.feedback_max_age_seconds, wall, mono)
++            entries = payload.get("entries") if isinstance(payload, dict) else None
++            evidence = {**evidence, "confirmed": isinstance(entries, list) and any(
++                isinstance(entry, dict) and entry_matches(command_payload, entry) for entry in entries)}
++        confirmed = bool(boundary and evidence.get("confirmed") and
++                         self.feedback_wall_clock() <= boundary["wall"] + self.confirmation_timeout_seconds)
++        evidence = {**evidence, "confirmed": confirmed}
++        return {"strategy": "fresh_robot_scheduler_observation", "confirmed": confirmed,
++                "status": "matching_scheduler_entry_seen" if confirmed else "not_confirmed_by_fresh_observation",
++                "observed": evidence, "wanted": command_payload, "read_only": True,
++                "confirmation_scope": "robot_weekly_schedule_not_cleaning_completion"}
++
++    def climate_confirmation_diagnostics(self, command_payload: Dict[str, Any], boundary=None):
++        from scheduler_feedback import climate_observation
++        evidence = climate_observation(self.climate_monitor_snapshot(), command_payload, boundary,
++            self.feedback_max_age_seconds, self.feedback_wall_clock(), self.feedback_monotonic_clock())
++        confirmed = bool(boundary and evidence.get("confirmed") and
++                         self.feedback_wall_clock() <= boundary["wall"] + self.confirmation_timeout_seconds)
++        evidence = {**evidence, "confirmed": confirmed}
++        return {"strategy": "fresh_climate_device_state", "confirmed": confirmed,
++                "status": "matching_climate_state_seen" if confirmed else "not_confirmed_by_fresh_observation",
++                "observed": evidence, "wanted": command_payload, "checks": evidence.get("checks", {}),
++                "read_only": True}
+ 
+     def confirmation_diagnostics(self, chain: Dict[str, Any]):
+         command_payload = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
++        boundary = (chain.get("execution_result") or {}).get("feedback_fence")
+         if chain.get("domain") == "irrigation":
+             return self.irrigation_confirmation_diagnostics(command_payload)
+         if chain.get("domain") == "xiaomi_x10":
+-            return self.x10_confirmation_diagnostics(command_payload)
++            return self.x10_confirmation_diagnostics(command_payload, boundary)
+         if chain.get("domain") == "climate":
+-            return self.climate_confirmation_diagnostics(command_payload)
+-        return {
+-            "strategy": "none",
+-            "expected": "-",
+-            "status": "unsupported_domain",
+-            "observed": {},
+-            "read_only": True,
+-        }
++            return self.climate_confirmation_diagnostics(command_payload, boundary)
++        return {"strategy": "none", "expected": "-", "status": "unsupported_domain",
++                "observed": {}, "read_only": True}
+ 
+     @staticmethod
+     def parse_dt(value: Any):
+@@ -597,57 +575,22 @@
+         }
+ 
+     def x10_legacy_comparison(self, chain: Dict[str, Any]):
+-        command_payload = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
+-        confirmation = self.x10_confirmation_diagnostics(command_payload)
+-        observed = confirmation.get("observed") or {}
+-        matching_entry = observed.get("matching_entry")
+-        partial_entry = observed.get("partial_entry")
+-        if matching_entry:
+-            status = "match"
+-            summary = "Cached X10 scheduler entries contain a strict matching task."
+-        elif partial_entry:
+-            status = "mismatch"
+-            summary = "X10 has a task with matching time/segments, but strict schedule fields differ."
+-        elif observed.get("command_result") or observed.get("room_clean_status"):
+-            status = "pending"
+-            summary = "X10 has command/status evidence, but no matching cached scheduler entry yet."
+-        else:
+-            status = "no_legacy_evidence"
+-            summary = "No cached X10 scheduler evidence is available yet."
+-        return {
+-            "status": status,
+-            "summary": summary,
+-            "v2_wanted": command_payload,
+-            "legacy_observed": observed,
+-            "evidence": {"confirmation": confirmation},
+-            "warnings": [] if matching_entry else [{"kind": "x10_strict_mismatch", "severity": "warn", "checks": observed.get("match_checks") or {}}] if partial_entry else [],
+-            "read_only": True,
+-        }
++        command = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
++        confirmation = self.x10_confirmation_diagnostics(command, (chain.get("execution_result") or {}).get("feedback_fence"))
++        evidence = confirmation["observed"]
++        status = "match" if confirmation["confirmed"] else "mismatch" if evidence.get("fresh") else "no_legacy_evidence"
++        return {"status": status, "summary": "X10 comparison requires a fresh device sample after the saved intent.",
++                "v2_wanted": command, "legacy_observed": evidence,
++                "evidence": {"confirmation": confirmation}, "warnings": [], "read_only": True}
+ 
+     def climate_legacy_comparison(self, chain: Dict[str, Any]):
+-        command_payload = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
+-        confirmation = self.climate_confirmation_diagnostics(command_payload)
+-        if confirmation.get("status") == "matching_climate_state_seen":
+-            status = "match"
+-            summary = "Cached climate state matches the desired scheduler state."
+-            warnings = []
+-        elif (confirmation.get("observed") or {}).get("command_result"):
+-            status = "pending"
+-            summary = "Climate bridge has command evidence, but cached state does not match yet."
+-            warnings = [{"kind": "climate_state_mismatch", "severity": "warn", "checks": confirmation.get("checks") or {}}]
+-        else:
+-            status = "no_legacy_evidence"
+-            summary = "No climate bridge command/state evidence is available yet."
+-            warnings = []
+-        return {
+-            "status": status,
+-            "summary": summary,
+-            "v2_wanted": command_payload,
+-            "legacy_observed": confirmation.get("observed"),
+-            "evidence": {"confirmation": confirmation},
+-            "warnings": warnings,
+-            "read_only": True,
+-        }
++        command = chain.get("command_payload") if isinstance(chain.get("command_payload"), dict) else {}
++        confirmation = self.climate_confirmation_diagnostics(command, (chain.get("execution_result") or {}).get("feedback_fence"))
++        evidence = confirmation["observed"]
++        status = "match" if confirmation["confirmed"] else "pending" if evidence.get("accepted") else "mismatch" if evidence.get("fresh") else "no_legacy_evidence"
++        return {"status": status, "summary": "Climate comparison requires a fresh device sample after the saved intent.",
++                "v2_wanted": command, "legacy_observed": evidence,
++                "evidence": {"confirmation": confirmation}, "warnings": [], "read_only": True}
+ 
+     def legacy_comparison(self, chain: Dict[str, Any]):
+         if chain.get("domain") == "irrigation":
+@@ -1520,47 +1463,21 @@
+ 
+     def x10_scheduler_tick(self):
+         engine = self.engine_state(self.config())
+-        if "xiaomi_x10" not in (engine.get("publish_domains") or []):
++        if not engine.get("enabled") or "xiaomi_x10" not in (engine.get("publish_domains") or []):
+             return {"ok": True, "skipped": True, "reason": "x10_publish_not_enabled", "engine": engine}
+-
+         desired_all = self.x10_desired_weekly_schedules()
+         desired = [item for item in desired_all if str(item.get("enabled")) == "1" or item.get("enabled") is True]
+-        entries = self.x10_scheduler_entries() or []
+         if not desired:
+             result = {"published": False, "publish_attempted": False, "reason": "no_enabled_hc_owned_schedule", "total_hc_owned": len(desired_all)}
+-            self.mark_v2_x10_executions("confirmed", result)
++            self.mark_v2_x10_executions("skipped", result)
+             return {"ok": True, "status": "skipped", "result": result}
+         validation = self.validate_x10_weekly_schedules(desired)
+         if not validation["ok"]:
+             result = {"published": False, "publish_attempted": False, "reason": "invalid_x10_schedule_payload", "validation": validation}
+             self.mark_v2_x10_executions("blocked", result, "invalid_x10_schedule_payload")
+-            print("[V2 X10] blocked: invalid schedule payload", flush=True)
+             return {"ok": False, "status": "blocked", "result": result}
+-        desired = validation["schedules"]
+-        diff = self.x10_schedule_diff(desired, entries)
+-        if diff["diff_count"] == 0:
+-            result = {"published": False, "publish_attempted": False, "reason": "robot_schedule_already_matches", "diff": diff}
+-            self.mark_v2_x10_executions("confirmed", result)
+-            return {"ok": True, "status": "confirmed", "result": result}
+-
+-        active = self.x10_active_cleaning_state()
+-        if active.get("active"):
+-            result = {"published": False, "publish_attempted": False, "reason": "x10_active_cleaning", "active": active}
+-            self.mark_v2_x10_executions("blocked", result, "x10_active_cleaning")
+-            print("[V2 X10] blocked: robot appears active", flush=True)
+-            return {"ok": False, "status": "blocked", "result": result}
+-
+-        ok, message, publish_info = self.publish_x10_weekly_schedule(desired)
+-        result = {
+-            "published": bool(ok),
+-            "publish_attempted": True,
+-            "message": message,
+-            "diff": diff,
+-            **publish_info,
+-        }
+-        self.mark_v2_x10_executions("confirmed" if ok else "failed", result, None if ok else message)
+-        print(f"[V2 X10] weekly schedule publish ok={ok} message={message}", flush=True)
+-        return {"ok": bool(ok), "status": "confirmed" if ok else "failed", "result": result}
++        from x10_schedule_delivery import X10ScheduleDelivery
++        return X10ScheduleDelivery(self).tick(validation["schedules"])
+ 
+     def v2_x10_preflight(self, engine: Dict[str, Any], chains: Iterable[Dict[str, Any]]):
+         checks = []
+--- before/infra/backend/scheduler_audit.py
++++ after/infra/backend/scheduler_audit.py
+@@ -5,6 +5,7 @@
+ """
+ from contextlib import contextmanager
+ from copy import copy
++from scheduler_feedback import fence, climate_observation
+ 
+ 
+ PROTOCOL = 'hc08-v1'
+@@ -181,12 +182,16 @@
+                 return None
+             result = {**row['result'], 'shadow': False, 'publish_attempted': True, 'published': None,
+                       'delivery_uncertain': True, 'reason': 'dispatch_claimed_do_not_replay'}
++            result['feedback_fence'] = fence(self.scheduler.climate_monitor_snapshot(),
++                                            self.scheduler.feedback_wall_clock(), self.scheduler.feedback_monotonic_clock())
++            command = {**row['command_payload'], 'hc_execution_id': str(row['id'])}
+             metadata = {**row['metadata'], 'component': 'v2_scheduler_executor',
+                         'command_owner': 'v2_climate_dispatch', 'side_effects': True}
+             return queries.execute_one("""update hc.execution set status='unknown', attempt=1,
+                 started_at=now(), updated_at=now(), result=%s::jsonb, metadata=%s::jsonb
++                ,command_payload=%s::jsonb
+                 where id=%s and status='pending' returning *""",
+-                (self.scheduler.json_dumps(result), self.scheduler.json_dumps(metadata), execution_id))
++                (self.scheduler.json_dumps(result), self.scheduler.json_dumps(metadata), self.scheduler.json_dumps(command), execution_id))
+ 
+     def dispatch(self, execution_id):
+         # The context must commit successfully before any external side effect.
+@@ -215,6 +220,7 @@
+         except Exception as exc:
+             result.update(delivery_uncertain=True, reason='dispatch_exception', exception_type=type(exc).__name__)
+             error = 'Dispatch outcome uncertain; automatic replay is disabled'
++        result['delivery_finalized'] = True
+         with self.transaction() as queries:
+             saved = queries.execute_one("""update hc.execution set status=%s, result=%s::jsonb,
+                 error=%s, ended_at=now(), updated_at=now()
+@@ -230,4 +236,31 @@
+             candidates = queries.fetch_all("""select id from hc.execution
+                 where domain='climate' and status='pending' and metadata->>'audit_protocol'=%s
+                 order by created_at, id limit 50""", (PROTOCOL,))
+-        return [self.dispatch(row['id']) for row in candidates]
++        dispatched = [self.dispatch(row['id']) for row in candidates]
++        self.reconcile_climate()
++        return dispatched
++
++    def reconcile_climate(self):
++        snapshot = self.scheduler.climate_monitor_snapshot()
++        wall, mono = self.scheduler.feedback_wall_clock(), self.scheduler.feedback_monotonic_clock()
++        with self.transaction() as queries:
++            rows = queries.fetch_all("""select * from hc.execution where domain='climate'
++                and status in ('sent','accepted','unknown') and metadata->>'audit_protocol'=%s
++                and result->>'delivery_finalized'='true' and result ? 'feedback_fence'
++                and coalesce(confirmation->>'terminal','false')<>'true'
++                order by created_at, id limit 100 for update skip locked""", (PROTOCOL,))
++            for row in rows:
++                boundary = row['result']['feedback_fence']
++                observation = climate_observation(snapshot, row['command_payload'], boundary,
++                    self.scheduler.feedback_max_age_seconds, wall, mono)
++                expired = wall > boundary['wall'] + self.scheduler.confirmation_timeout_seconds
++                confirmed = observation['confirmed'] and not expired
++                status = 'confirmed' if confirmed else 'unknown' if expired else 'accepted' if observation['accepted'] is True else row['status']
++                observation.update(terminal=bool(confirmed or expired), confirmed=confirmed)
++                if expired:
++                    observation['reason'] = 'confirmation_timeout_no_automatic_replay'
++                result = {**row['result'], 'physical_confirmation': confirmed,
++                          'bridge_accepted': observation['accepted']}
++                queries.execute_one("""update hc.execution set status=%s, confirmation=%s::jsonb,
++                    result=%s::jsonb, updated_at=now() where id=%s returning *""",
++                    (status, self.scheduler.json_dumps(observation), self.scheduler.json_dumps(result), row['id']))
+--- before/infra/backend/tests/test_scheduler_service.py
++++ after/infra/backend/tests/test_scheduler_service.py
+@@ -220,7 +220,7 @@
+         self.assertEqual(execution["command_topic"], "x10/command/schedule_clean")
+         self.assertTrue(execution["command_payload"]["shadow_only"])
+ 
+-    def test_x10_scheduler_tick_publishes_weekly_schedule(self):
++    def test_x10_transport_publish_does_not_confirm_execution(self):
+         published = []
+         execution_updates = []
+ 
+@@ -258,12 +258,12 @@
+             publish_mqtt=lambda topic, payload: published.append((topic, payload)) or (True, "published"),
+         )
+ 
+-        result = service.x10_scheduler_tick()
+-
+-        self.assertEqual(result["status"], "confirmed")
++        ok, message, result = service.publish_x10_weekly_schedule(service.x10_desired_weekly_schedules())
++
++        self.assertTrue(ok)
+         self.assertEqual(published[0][0], "x10/command/schedule_clean_week")
+         self.assertEqual(published[0][1]["schedules"][0]["start_time"], "09:00")
+-        self.assertEqual(execution_updates[0][0], "confirmed")
++        self.assertEqual(execution_updates, [])
+ 
+     def test_x10_scheduler_tick_blocks_invalid_weekly_schedule_payload(self):
+         published = []
+@@ -348,7 +348,7 @@
+         self.assertFalse(execution["result"]["published"])
+         self.assertFalse(execution["result"]["publish_attempted"])
+ 
+-    def test_x10_legacy_comparison_reports_strict_match(self):
++    def test_x10_legacy_comparison_rejects_unstamped_cached_match(self):
+         service = self.service(
+             x10_scheduler_entries=lambda: [
+                 {
+@@ -380,9 +380,9 @@
+ 
+         comparison = service.legacy_comparison(chain)
+ 
+-        self.assertEqual(comparison["status"], "match")
+-
+-    def test_climate_confirmation_compares_cached_state(self):
++        self.assertEqual(comparison["status"], "no_legacy_evidence")
++
++    def test_climate_confirmation_rejects_unstamped_cached_state(self):
+         service = self.service(
+             climate_state_payload=lambda: {
+                 "ok": True,
+@@ -399,7 +399,7 @@
+             {"power": "on", "mode": "heat", "target_temperature": "23", "fan_speed": "auto", "light": "off"}
+         )
+ 
+-        self.assertEqual(confirmation["status"], "matching_climate_state_seen")
++        self.assertFalse(confirmation["confirmed"])
+ 
+     def test_irrigation_legacy_comparison_reports_stop_drift_warning(self):
+         requested = datetime(2026, 7, 24, 8, 0, tzinfo=timezone.utc)
+--- before/infra/backend/tests/test_scheduler_audit_postgres.py
++++ after/infra/backend/tests/test_scheduler_audit_postgres.py
+@@ -201,7 +201,8 @@
+         row=self.execution()
+         self.assertEqual(row['status'],'sent')
+         self.assertFalse(row['result']['physical_confirmation'])
+-        self.assertEqual(row['confirmation'],{})
++        self.assertFalse(row['confirmation']['confirmed'])
++        self.assertFalse(row['confirmation']['fresh'])
+         self.assertEqual(len(self.published),1)
+ 
+     def test_claim_commit_reply_lost_never_authorizes_publish(self):
+--- before/apps/gree-climate/gree_climate_bridge.py
++++ after/apps/gree-climate/gree_climate_bridge.py
+@@ -127,11 +127,13 @@
+ 
+ 
+ async def read_state() -> Dict[str, Any]:
++    sampled_at = time.time()
+     device = await connect_device()
+-    return state_payload(device)
++    return {**state_payload(device), "sampled_at": sampled_at}
+ 
+ 
+ async def apply_command(command: Dict[str, Any]) -> Dict[str, Any]:
++    sampled_at = time.time()
+     device = await connect_device()
+     changed = False
+     if "buzzer" in command:
+@@ -195,9 +197,11 @@
+     if changed:
+         await asyncio.wait_for(device.push_state_update(), timeout=COMMAND_TIMEOUT)
+         await asyncio.sleep(2)
++        sampled_at = time.time()
+         await update_state_and_wait(device)
+ 
+     payload = state_payload(device)
++    payload["sampled_at"] = sampled_at
+     payload["changed"] = changed
+     return payload
+ 
+@@ -211,6 +215,8 @@
+         self.lock = threading.Lock()
+ 
+     def publish_json(self, topic: str, payload: Dict[str, Any], retain: bool = True):
++        if topic == f"{BASE_TOPIC}/command_result":
++            payload = {**payload, "reported_at": time.time()}
+         self.client.publish(topic, json.dumps(payload, ensure_ascii=False), retain=retain)
+ 
+     def publish_state(self, payload: Dict[str, Any]):
+--- before/apps/xiaomi-x10/xiaomi_x10_bridge.py
++++ after/apps/xiaomi-x10/xiaomi_x10_bridge.py
+@@ -100,6 +100,7 @@
+         "ok": ok,
+         "message": message,
+         "ts": int(time.time()),
++        "reported_at": time.time(),
+     }
+     if extra is not None:
+         data["extra"] = extra
+@@ -878,9 +879,15 @@
+ 
+ 
+ def read_scheduler():
++    sampled_at = time.time()
+     scheduler = get_property(8, 2)
++    entries = parse_scheduler_entries_payload(scheduler)
+     publish("scheduler/raw", scheduler)
+-    publish("scheduler/entries", parse_scheduler_entries_payload(scheduler))
++    publish("scheduler/entries", entries)
++    # A fresh device read, even when the legacy retained list did not change.
++    if (isinstance(scheduler, str) and
++            len(entries) == len([item for item in scheduler.split(";") if item.strip()])):
++        publish("scheduler/observation", {"sampled_at": sampled_at, "entries": entries}, retain=False, force=True)
+     publish("scheduler/last_read", int(time.time()))
+     return scheduler
+ 
+@@ -1522,7 +1529,8 @@
+             "result": result,
+         },
+     )
+-    publish_command_result("schedule_clean_week", True, "weekly clean schedule written", result)
++    publish_command_result("schedule_clean_week", True, "weekly clean schedule written",
++                           {**result, "hc_execution_id": data.get("hc_execution_id")})
+ 
+ 
+ def parse_command_payload(payload):
+--- before/AUDIT_REPAIR.md
++++ after/AUDIT_REPAIR.md
+@@ -10,7 +10,7 @@
+ 51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2
+ ```
+ 
+-**Aktuális állapot (2026-10-27):** az éles rendszer a korlátozott `hc-refactor-ai-offline-20261027-r6` kiadást futtatja; AI és távoli mentés tiltott. Az átadás és a friss helyi mentés sikeres, REPAIR-027. A HC-08 ezután helyileg javított és izolált környezetben ellenőrzött, **nincs élesítve**: 282 kapcsolódó teszt, hiba/kihagyás nélkül, valamint a valódi auditmásolat három régi lánchiányának sikeres, parancsküldés nélküli pótlása. **24 ellenőrzött, 23 nyitott, 1 javítva – ellenőrzésre váró auditpont.** A HC-31 fizikai AI-próbája továbbra is elhalasztva; a HC-45 valódi üres VM/systemd/offline-kulcs full restore-próbája hiányzik. A HC-08 munka nem módosította az éles konténereket, a 37 aktív hostfájlt vagy az eredeti auditot. Részletek: REPAIR-028, [HC-08](docs/hc-08-repair.md), [élesítési állapot](DEPLOYMENT_PREP.md).
++**Aktuális állapot (2026-10-27):** az éles rendszer a korlátozott `hc-refactor-ai-offline-20261027-r6` kiadást futtatja; AI és távoli mentés tiltott. Az átadást REPAIR-027 rögzíti. A HC-08 és HC-09 ezután helyileg javított és izolált környezetben ellenőrzött, **nincs élesítve**. A HC-09 végső kapcsolódó csomagja 330 sikeres teszt, hiba/kihagyás nélkül. **25 ellenőrzött, 22 nyitott, 1 javítva – ellenőrzésre váró auditpont.** A HC-31 fizikai AI-próbája elhalasztva; a HC-45 valódi VM/systemd/offline-kulcs full restore-próbája hiányzik. A HC-09 munka nem módosította a 9 ellenőrzött éles konténert, a 37 aktív hostfájlt vagy az eredeti auditot. Részletek: REPAIR-028/029, [HC-09](docs/hc-09-repair.md), [élesítési állapot](DEPLOYMENT_PREP.md).
+ 
+ ## Az áttekintés eredménye
+ 
+@@ -43,7 +43,7 @@
+ | HC-06 | P1 | Safety GET állapotléptetése és a memóriabeli latch | F5 | Ellenőrzött |
+ | HC-07 | P1 | Üzleti konfigurációt átíró induláskori bootstrap | F7 | Ellenőrzött |
+ | HC-08 | P1 | Félbemaradó scheduler-auditlánc és rejtett parancsküldés | F4 | Ellenőrzött |
+-| HC-09 | P1 | Publikálás, befogadás és fizikai teljesülés szétválasztása | F2, F3 | Nyitott |
++| HC-09 | P1 | Publikálás, befogadás és fizikai teljesülés szétválasztása | F2, F3 | Ellenőrzött |
+ | HC-10 | P2 | Cache-rétegek és invalidálási versenyhelyzet | F9 | Nyitott |
+ | HC-11 | P2 | MQTT-feldolgozást blokkoló ingest DB-recovery | F10 | Nyitott |
+ | HC-12 | P2 | Bridge-parancsfeldolgozás korlátai és sorrendje | F10 | Nyitott |
+@@ -86,7 +86,7 @@
+ 
+ **Kezdő összesítés:** 48 nyitott; 0 folyamatban; 0 javított; 0 ellenőrzött; 0 halasztott. Éles bevezetés nem történt.
+ 
+-**Aktuális összesítés:** 23 nyitott; 0 folyamatban; 1 javítva – ellenőrzésre vár (HC-45, valódi VM/systemd); 24 ellenőrzött; 0 halasztott. A HC-08 csak helyi javítás, nincs élesítve; a korlátozott r6 átadását REPAIR-027 rögzíti. A HC-31 felügyelt fizikai próbája külön, elhalasztott ellenőrzési függőség; a tételes szoftveres státusz ezt nem helyettesíti.
++**Aktuális összesítés:** 22 nyitott; 0 folyamatban; 1 javítva – ellenőrzésre vár (HC-45, valódi VM/systemd); 25 ellenőrzött; 0 halasztott. A HC-08/09 csak helyi javítás, nincs élesítve; a korlátozott r6 átadását REPAIR-027 rögzíti. A HC-31 felügyelt fizikai próbája külön, elhalasztott ellenőrzési függőség; a tételes szoftveres státusz ezt nem helyettesíti.
+ 
+ ## Végrehajtási támpontok
+ 
+@@ -1659,3 +1659,63 @@
+ nem futott éles backfill, migráció vagy eszközparancs. Az eredeti audit SHA-ja
+ változatlan. Részletes működés/rollback és tartós bizonyíték:
+ [HC-08 javítás](docs/hc-08-repair.md).
++
++
++## REPAIR-029 — HC-09: transport, befogadás és friss eszközmegfigyelés
++
++**Dátum:** 2026-10-27. **Állapot:** helyileg javítva és ellenőrizve, nincs
++élesítve. Kizárólag HC-09 kapott új javítást/státuszt; az eredeti audit megmaradt.
++Áttekintve a HC-09 bizonyítéka, az F2 transport-/stop-határ, az F3 friss
++forrásminta és az F4/HC-08 tranzakciós függőség.
++
++**Módosítás:** a generikus MQTT-publish a várakozás után `is_published()`
++értéket is ellenőriz. Timeout/kivétel bizonytalan eredmény, a cleanup ágak
++függetlenek. Új retry nincs; a meglévő safety és stop korlátai megmaradtak.
++A klíma tartós küldési foglalásához execution-korreláció és megfigyelési
++időhatár társul. A `sent`, `accepted`, `confirmed` és `unknown` külön állapot;
++friss fizikai állapot nélkül a transport/bridge sikere nem lesz confirmation.
++
++Az X10 heti szinkron atomi run/event/plan/execution szándékkal, közös lockkal
++és egyszeri olvasási kéréssel indul. Friss eltérés és megfelelő engedélyek
++után legfeljebb egy programírás következik, commit után. Válaszvesztés vagy
++restart nem ad replay-jogot. Csak a roboton tárolt program friss egyezése
++igazolható, a takarítás teljesülése nem. A kapcsolt egyedi auditok pontos
++illeszkedését és saját időhatárát is ellenőrizzük; nincs tömeges sikerjelzés.
++
++A bridge-ek additív `sampled_at`/`reported_at` mezőket és korrelációt kaptak.
++Az X10 új, nem retained `scheduler/observation` topicja minden sikeres,
++feldolgozható eszközolvasáskor kimegy; a régi topicok megmaradnak. Hibás
++olvasat nem lesz friss minta. A forráskorhoz hozzáadódik az MQTT-fogadás óta
++eltelt idő; régi, retained, korábbi kapcsolatból maradt, jövőbeli, hiányos
++vagy szándék előtti minta nem igazolhat eredményt. A diagnosztikai fogyasztók
++is ezt követik. Kezdeti, konfigurálható korhatár 90 s, külön confirmation
++határidő 120 s; a Nano saját korhatárai és parancstimeoutjai változatlanok.
++
++**Ellenőrzés:** 330 kapcsolódó teszt, 0 failure/error/skip. Ebből 48 új HC-09
++eset: 23 valódi PG16/hc_app teszt, 6 bridge-függvénypróba, 19 transport és
++frissességi teszt. Ellenőrizve a timeout tényleges Paho 2.1.0 példánnyal,
++a sikeres transport/eszköz-visszajelzés különválása, retained/reconnect,
++forráskor+MQTT-késés, késő válasz, hibás/nulla értékek, két DB-kapcsolat,
++négy insert hibahelye, commit-válaszvesztés, MQTT közbeni crash,
++eredménymentési hiba, restart, kapcsolt audit és tiltott/aktív domain.
++A meglévő HC-01–08, safety/stop és AI-offline regressziók is sikeresek.
++A labor network-none PG16 névterében futott, hostport/LAN/Docker socket
++nélkül; a saját konténerek és tmpfs DB törölve.
++
++**Éles változatlanság:** 9 konténer ID/image/start/restart, 37 aktív hostfájl,
++az éles safety-forrás és az eredeti audit hash-e egyezik. DB/MQTT health jó,
++AI-offline profil megmaradt. Nem küldtünk éles eszközparancsot; nem történt
++migráció, éles auditpótlás vagy kiadás. A forrás Compose két additív env-je
++nem módosítja a fagyasztott r6 konfigurációt.
++
++**Függőség/korlát:** HC-08 helyi javításával és mindkét bridge-del összehangolt
++későbbi kiadás szükséges; régi bridge nem szolgáltat elfogadható új nyugtát.
++Új migráció nincs. HC-12/13 worker/határidő, HC-35/36 ventilátor/binding külön
++nyitott pont marad. A korábbi physical_manual session 125 egyeztetése, a
++felügyelt klíma-/robotpróba és a késések mérése kiadási feladat. Az AI/VM
++próba nem történt meg. Bizonytalan szándékot és történeti confirmed sort nem
++írtunk át; rollback előtt a függő műveleteket egyeztetni kell, az auditadatokat
++meg kell őrizni.
++
++Részletes szerződés és rollback: [HC-09](docs/hc-09-repair.md).
++[Tartós, titokmentes bizonyítékok](docs/audit-evidence/hc09-20261027/).
+--- before/DEPLOYMENT_PREP.md
++++ after/DEPLOYMENT_PREP.md
+@@ -193,3 +193,36 @@
+ lánc- és nyitottművelet-leltár, a régi scheduler leállítása és az uncertain/pending
+ állapotok egyeztetése kell. A r6 helper nem általános jövőbeli rollback.
+ Részletek: [HC-08 javítás](docs/hc-08-repair.md), REPAIR-028.
++
++
++## HC-09 — helyi javítás, nincs élesítve (2026-10-27)
++
++A HC-08 után a HC-09 is elkészült helyileg. **Az aktív kiadás továbbra is a
++korlátozott `hc-refactor-ai-offline-20261027-r6`.** Nem készült új élesítési
++csomag, a 9 ellenőrzött éles konténer és a 37 aktív hostfájl változatlan.
++DB/MQTT health és AI-offline profil ellenőrizve. A munkafa alap Compose-ja
++két új konfigurálható limittel bővült; a fagyasztott r6 nem ezt olvassa.
++
++A transport timeout most pontos; klíma és X10 esetén a publikálás csak
++`sent`, korrelált bridge-nyugta `accepted`, friss parancs utáni eszközminta
++`confirmed`. Az X10 confirmation a tárolt heti programot igazolja, nem
++elvégzett takarítást. Visszajelzés nélkül nincs vak program-újraírás.
++
++Későbbi kiadáskor a HC-08 és HC-09 backendmoduljait/app-bekötését, a Gree
++`sampled_at`/korrelációt és az X10 `scheduler/observation`/korrelációt együtt
++kell átadni, rögzített és kompatibilis rollback image-ekkel. Új migráció nincs.
++A korábbi bridge-ekkel az új backend nem állít friss confirmationt; X10
++friss olvasat nélkül nem ír programot. Függő fizikai szándékokat és a régi
++physical_manual session 125 állapotát átadás előtt egyeztetni kell.
++
++Kezdeti env: `HC_SCHEDULER_FEEDBACK_MAX_AGE_SECONDS=90`,
++`HC_SCHEDULER_CONFIRMATION_TIMEOUT_SECONDS=120`. A véglegesítéshez felügyelt
++klíma-/robotpróba és késésmérés szükséges. A HC-12/13 és HC-35/36 további
++nyitott munka; itt nem változott. AI-offline és helyi mentési korlátok,
++valamint az éles nyitásérzékelős safety-javítás megőrzendők. Az AI SSD-hiba
++és a HC-45 teljes VM-restore hiánya továbbra is fennáll.
++
++330 kapcsolódó teszt sikeres, hiba/kihagyás nélkül; 48 új HC-09 eset,
++köztük 23 valódi PG16 tranzakciós teszt. A szoftveres ellenőrzés nem éles
++eszközátvétel. Részletek és bizonyítékok: [HC-09](docs/hc-09-repair.md),
++AUDIT_REPAIR.md REPAIR-029.
+--- before/infra/docker-compose.yml
++++ after/infra/docker-compose.yml
+@@ -203,6 +203,8 @@
+       HC_V2_EXECUTION_ALLOW_IRRIGATION: ${HC_V2_EXECUTION_ALLOW_IRRIGATION:-0}
+       HC_V2_EXECUTION_ALLOW_X10: ${HC_V2_EXECUTION_ALLOW_X10:-0}
+       HC_V2_EXECUTION_ALLOW_CLIMATE: ${HC_V2_EXECUTION_ALLOW_CLIMATE:-0}
++      HC_SCHEDULER_FEEDBACK_MAX_AGE_SECONDS: ${HC_SCHEDULER_FEEDBACK_MAX_AGE_SECONDS:-90}
++      HC_SCHEDULER_CONFIRMATION_TIMEOUT_SECONDS: ${HC_SCHEDULER_CONFIRMATION_TIMEOUT_SECONDS:-120}
+       DOCKER_SOCKET: /var/run/docker.sock
+     volumes:
+       - /var/run/docker.sock:/var/run/docker.sock:ro
+--- /dev/null
++++ after/infra/backend/scheduler_feedback.py
+@@ -0,0 +1,170 @@
++"""HC-09 observation checks. MQTT receipt time alone is never a device sample."""
++import math
++import re
++
++
++WEEKLY_TASK_IDS = (12, 13, 14, 17, 15, 16, 11)
++
++
++def number(value):
++    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
++        return None
++    return float(value)
++
++
++def fence(snapshot, wall, monotonic):
++    return {'wall': wall, 'monotonic': monotonic, 'monitor_epoch': snapshot.get('observation_epoch')}
++
++
++def fresh_frame(snapshot, topic, boundary, max_age, wall, monotonic, *, source=None):
++    frame = snapshot.get('topics', {}).get(topic)
++    if snapshot.get('mqtt_connected') is not True or not isinstance(frame, dict):
++        return None, {'fresh': False, 'reason': 'monitor_offline_or_sample_missing'}
++    if (frame.get('retain') is not False or not isinstance(snapshot.get('observation_epoch'), str)
++            or frame.get('connection_generation') != snapshot.get('connection_generation')):
++        return None, {'fresh': False, 'reason': 'retained_or_old_connection'}
++    payload = frame.get('json')
++    sample = source(payload) if source and isinstance(payload, dict) else payload
++    sampled = number(sample.get('sampled_at')) if isinstance(sample, dict) else None
++    receipt, received_mono = number(frame.get('timestamp')), number(frame.get('received_monotonic'))
++    if (sampled is None or receipt is None or received_mono is None or sampled <= 0
++            or not sampled <= receipt <= wall or received_mono > monotonic
++            or wall - sampled > max_age
++            or receipt - sampled + monotonic - received_mono > max_age):
++        return None, {'fresh': False, 'reason': 'invalid_future_or_stale_source_sample'}
++    if boundary:
++        start = number(boundary.get('wall'))
++        if start is None or sampled <= start or receipt < start:
++            return None, {'fresh': False, 'reason': 'sample_precedes_intent'}
++        if boundary.get('monitor_epoch') == snapshot.get('observation_epoch'):
++            start_mono = number(boundary.get('monotonic'))
++            if start_mono is None or received_mono < start_mono:
++                return None, {'fresh': False, 'reason': 'receipt_precedes_intent'}
++    return payload, {'fresh': True, 'sampled_at': sampled, 'source_age_seconds': max(wall - sampled, receipt - sampled + monotonic - received_mono),
++                     'received_at': receipt, 'scope': 'device_observation'}
++
++
++def climate_matches(command, state):
++    fields = ('power', 'mode', 'target_temperature', 'fan_speed', 'light')
++    checks = {}
++    if not isinstance(state, dict) or state.get('ok') is not True:
++        return False, checks
++    for name in fields:
++        if name not in command or command[name] is None or command[name] == 'keep':
++            continue
++        wanted, observed = command[name], state.get(name)
++        if name == 'target_temperature':
++            checks[name] = number(wanted) is not None and number(observed) == number(wanted)
++        else:
++            checks[name] = (isinstance(wanted, str) and isinstance(observed, str)
++                            and wanted.lower() == observed.lower() and bool(wanted.strip()))
++    return bool(checks) and all(checks.values()), checks
++
++
++def climate_observation(snapshot, command, boundary, max_age, wall, monotonic):
++    accepted = None
++    result, reply_evidence = fresh_frame(snapshot, 'command_result', boundary, max_age, wall, monotonic,
++                                        source=lambda p: {'sampled_at': p.get('reported_at')})
++    if (result and command.get('hc_execution_id') and isinstance(result.get('command'), dict)
++            and result['command'].get('hc_execution_id') == command['hc_execution_id']):
++        accepted = result.get('ok') if type(result.get('ok')) is bool else None
++    candidates = [('state', None), ('command_result', lambda p: p.get('state'))]
++    last = {'fresh': False, 'reason': 'sample_missing'}
++    for topic, source in candidates:
++        payload, evidence = fresh_frame(snapshot, topic, boundary, max_age, wall, monotonic, source=source)
++        if payload is None:
++            last = evidence
++            continue
++        if topic == 'command_result':
++            if (accepted is not True or not isinstance(payload.get('command'), dict)
++                    or payload['command'].get('hc_execution_id') != command.get('hc_execution_id')):
++                continue
++            state = payload.get('state')
++        else:
++            state = payload
++        matches, checks = climate_matches(command, state)
++        evidence = {**evidence, 'checks': checks, 'topic': topic, 'accepted': accepted,
++                    'confirmed': matches, 'confirmation_scope': 'climate_device_state',
++                    'reason': 'fresh_device_state_matches' if matches else 'fresh_device_state_mismatch'}
++        if matches:
++            return evidence
++        last = evidence
++    return {**last, 'accepted': accepted, 'confirmed': False, 'confirmation_scope': 'climate_device_state'}
++
++
++def integer(value):
++    if isinstance(value, bool):
++        return None
++    try:
++        numeric = float(value)
++        return int(numeric) if math.isfinite(numeric) and numeric.is_integer() else None
++    except (ValueError, TypeError, OverflowError):
++        return None
++
++
++def minute(value):
++    text = str(value or '')
++    if re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d(?::00(?:\.0+)?)?', text):
++        return text[:5]
++    return None
++
++
++def first(row, *names):
++    return next((row[name] for name in names if row.get(name) is not None), None)
++
++
++def entry_values(row):
++    segments = row.get('segments')
++    if not isinstance(segments, list):
++        segments = str(segments or '').split(',')
++    values = dict(time=minute(first(row, 'start_time', 'time')), days=row.get('days'),
++                  enabled=integer(row.get('enabled')), map_id=integer(row.get('map_id')),
++                  mode=integer(first(row, 'mode', 'clean_mode', 'flag')),
++                  suction=integer(row.get('suction')), water=integer(first(row, 'water_level', 'clean_param')),
++                  segments=[integer(v) for v in segments])
++    valid = (all(v is not None for v in values.values()) and values['enabled'] in (0, 1)
++             and isinstance(values['days'], str) and re.fullmatch('[01]{7}', values['days'])
++             and bool(values['segments']) and all(v is not None for v in values['segments']))
++    return values, bool(valid)
++
++
++def entry_matches(command, entry):
++    wanted, wanted_ok = entry_values(command)
++    observed, observed_ok = entry_values(entry)
++    return wanted_ok and observed_ok and wanted == observed
++
++
++def weekly_commands(scheduler, desired):
++    commands = []
++    for item in desired:
++        day = integer(item.get('day_index'))
++        if day is None or not 0 <= day <= 6:
++            raise ValueError('Invalid weekly schedule day')
++        days = ['0'] * 7
++        days[scheduler.x10_day_mask_index_by_hc_day()[day]] = '1'
++        commands.append({**item, 'start_time': minute(item.get('start_time')), 'days': ''.join(days),
++                         'enabled': integer(item.get('enabled')), 'task_id': str(WEEKLY_TASK_IDS[day]),
++                         'mode': first(item, 'mode', 'clean_mode'),
++                         'water_level': first(item, 'water_level', 'clean_param')})
++    if not commands or any(not entry_values(c)[1] for c in commands):
++        raise ValueError('Incomplete weekly schedule cannot be confirmed')
++    return commands
++
++
++def weekly_observation(snapshot, commands, boundary, max_age, wall, monotonic):
++    payload, evidence = fresh_frame(snapshot, 'scheduler/observation', boundary, max_age, wall, monotonic)
++    if not isinstance(payload, dict) or not isinstance(payload.get('entries'), list):
++        return {**evidence, 'confirmed': False, 'reason': evidence.get('reason', 'invalid_scheduler_entries')}
++    entries = payload['entries']
++    if any(not isinstance(e, dict) for e in entries):
++        return {**evidence, 'confirmed': False, 'reason': 'invalid_scheduler_entries'}
++    wanted_ids = {c['task_id'] for c in commands}
++    matches = [len([e for e in entries if str(e.get('task_id')) == c['task_id']]) == 1
++               and any(str(e.get('task_id')) == c['task_id'] and entry_matches(c, e) for e in entries)
++               for c in commands]
++    unexpected = any(integer(e.get('task_id')) in WEEKLY_TASK_IDS and str(e.get('task_id')) not in wanted_ids
++                     and integer(e.get('enabled')) != 0 for e in entries)
++    return {**evidence, 'confirmed': all(matches) and not unexpected, 'matches': matches,
++            'unexpected_enabled_weekly_slot': unexpected,
++            'reason': 'fresh_robot_schedule_matches' if all(matches) and not unexpected else 'fresh_robot_schedule_mismatch',
++            'confirmation_scope': 'robot_weekly_schedule_not_cleaning_completion'}
+--- /dev/null
++++ after/infra/backend/x10_schedule_delivery.py
+@@ -0,0 +1,163 @@
++"""HC-09: persist one weekly-sync intent, observe/read, write once, then observe.
++
++Missing feedback never authorizes a repeated write. All MQTT calls follow a
++committed claim; a new read cycle requires a changed desired layout, a new due
++audit after confirmation, or newly observed drift after a confirmed layout.
++"""
++import hashlib
++import json
++import uuid
++
++from scheduler_audit import SchedulerAudit
++from scheduler_feedback import fence, fresh_frame, entry_matches, weekly_commands, weekly_observation
++
++
++EXECUTOR = 'v2_x10_weekly_sync'
++
++
++class X10ScheduleDelivery:
++    def __init__(self, scheduler):
++        self.s = scheduler
++        self.audit = SchedulerAudit(scheduler)
++
++    def observe(self, snapshot, commands, boundary):
++        return weekly_observation(snapshot, commands, boundary, self.s.feedback_max_age_seconds,
++                                  self.s.feedback_wall_clock(), self.s.feedback_monotonic_clock())
++
++    def bound_audits(self, queries, commands):
++        rows = queries.fetch_all("""select * from hc.execution where domain='xiaomi_x10'
++            and executor='v2_x10_audit' and status in ('shadow_ready','pending')
++            and created_at>=now()-interval '2 days' order by created_at,id limit 100""")
++        return [r for r in rows if any(entry_matches(r['command_payload'], c) for c in commands)]
++
++    def create(self, queries, commands, fingerprint, snapshot, audits):
++        execution_id, event_id, plan_id = (str(uuid.uuid4()) for _ in range(3))
++        command = {'map_id': commands[0]['map_id'], 'schedules': commands, 'source': 'v2_scheduler',
++                   'hc_execution_id': execution_id}
++        metadata = {'feedback_protocol': 'hc09-v1', 'desired_fingerprint': fingerprint,
++                    'bound_audits': [str(r['id']) for r in audits], 'side_effects': False}
++        run = self.audit.scoped(queries).insert_run_once('hc09:x10-weekly:'+execution_id,
++                'xiaomi_x10', 'weekly_sync', 'dispatch_intent', payload=command)
++        queries.execute_one("""insert into hc.event(id,type,source,domain,idempotency_key,payload,metadata)
++            values(%s,'scheduler.weekly_sync','v2_scheduler','xiaomi_x10',%s,%s::jsonb,%s::jsonb) returning *""",
++            (event_id, 'hc09:x10-weekly:'+execution_id, self.s.json_dumps({**command,'scheduler_run_id':run['id']}), self.s.json_dumps(metadata)))
++        queries.execute_one("""insert into hc.plan(id,event_id,domain,type,status,actions,metadata)
++            values(%s,%s,'xiaomi_x10','xiaomi_x10.weekly_sync','prepared',%s::jsonb,%s::jsonb) returning *""",
++            (plan_id,event_id,self.s.json_dumps([{'command':command}]),self.s.json_dumps(metadata)))
++        result = {'phase': 'observing', 'published': False, 'publish_attempted': False,
++                  'read_requested': True, 'physical_confirmation': False,
++                  'feedback_fence': fence(snapshot,self.s.feedback_wall_clock(),self.s.feedback_monotonic_clock())}
++        return queries.execute_one("""insert into hc.execution(id,event_id,plan_id,domain,executor,status,
++            command_topic,command_payload,result,metadata,started_at)
++            values(%s,%s,%s,'xiaomi_x10',%s,'unknown',%s,%s::jsonb,%s::jsonb,%s::jsonb,now()) returning *""",
++            (execution_id,event_id,plan_id,EXECUTOR,self.s.x10_weekly_schedule_topic,
++             self.s.json_dumps(command),self.s.json_dumps(result),self.s.json_dumps(metadata)))
++
++    def update_bound(self, queries, row, status, result, observation):
++        for execution_id in row['metadata'].get('bound_audits', []):
++            audit = queries.fetch_one("""select * from hc.execution where id=%s and executor='v2_x10_audit'
++                and status in ('shadow_ready','pending','sent','accepted','unknown') for update""", (execution_id,))
++            if not audit:
++                continue
++            # A fresh weekly snapshot must also follow this individual audit.
++            if status == 'confirmed' and observation.get('sampled_at',0) < audit['created_at'].timestamp():
++                continue
++            queries.execute_one("""update hc.execution set status=%s,result=result || %s::jsonb,
++                confirmation=%s::jsonb,updated_at=now(),ended_at=now() where id=%s returning *""",
++                (status,self.s.json_dumps({'weekly_sync_id':str(row['id']),
++                    'physical_confirmation':status=='confirmed','feedback_fence':result['feedback_fence'],
++                    'confirmation_scope':'robot_weekly_schedule_not_cleaning_completion'}),
++                 self.s.json_dumps(observation),execution_id))
++
++    def save_observation(self, queries, row, observation, status, phase):
++        result = {**row['result'], 'phase':phase, 'physical_confirmation':status=='confirmed'}
++        terminal = phase in ('confirmed','unknown','blocked')
++        observation = {**observation,'terminal':terminal,'confirmed':status=='confirmed'}
++        saved = queries.execute_one("""update hc.execution set status=%s,result=%s::jsonb,
++            confirmation=%s::jsonb,updated_at=now(),ended_at=case when %s then now() else ended_at end
++            where id=%s returning *""",(status,self.s.json_dumps(result),self.s.json_dumps(observation),terminal,row['id']))
++        self.update_bound(queries,saved,status,result,observation)
++        return saved
++
++    def tick(self, desired):
++        commands = weekly_commands(self.s,desired)
++        fingerprint = hashlib.sha256(json.dumps(json.loads(self.s.json_dumps(commands)),sort_keys=True,separators=(',',':')).encode()).hexdigest()
++        snapshot = self.s.x10_monitor_snapshot()
++        action = None
++        with self.audit.transaction() as queries:
++            queries.fetch_one('select pg_advisory_xact_lock(8009009)')
++            row = queries.fetch_one("""select * from hc.execution where domain='xiaomi_x10'
++                and executor=%s order by created_at desc,id desc limit 1 for update""",(EXECUTOR,))
++            audits = self.bound_audits(queries,commands)
++            new_cycle = row is None or row['metadata'].get('desired_fingerprint') != fingerprint
++            if row and row['status']=='confirmed' and not new_cycle:
++                new_audits = {str(r['id']) for r in audits} - set(row['metadata'].get('bound_audits',[]))
++                observation = self.observe(snapshot,commands,None)
++                drift = (observation.get('fresh') and not observation['confirmed']
++                         and observation.get('sampled_at',0)>row['confirmation'].get('sampled_at',0))
++                new_cycle = bool(new_audits or drift)
++            if new_cycle:
++                scoped = self.audit.scoped(queries)
++                engine = scoped.engine_state(scoped.config())
++                if not engine['enabled'] or 'xiaomi_x10' not in engine['publish_domains']:
++                    return {'ok': True, 'skipped': True, 'reason': 'x10_publish_not_enabled'}
++                row = self.create(queries,commands,fingerprint,snapshot,audits)
++                action = 'read'
++            elif row['result']['phase'] in ('observing','awaiting'):
++                boundary = row['result']['feedback_fence']
++                observation = self.observe(snapshot,commands,boundary)
++                expired = self.s.feedback_wall_clock()>boundary['wall']+self.s.confirmation_timeout_seconds
++                if expired:
++                    row = self.save_observation(queries,row,{**observation,'reason':'confirmation_timeout_no_replay'},'unknown','unknown')
++                elif observation['confirmed']:
++                    row = self.save_observation(queries,row,observation,'confirmed','confirmed')
++                elif observation.get('fresh') and row['result']['phase']=='observing':
++                    engine = self.audit.scoped(queries).engine_state(self.audit.scoped(queries).config())
++                    if not engine['enabled'] or 'xiaomi_x10' not in engine['publish_domains']:
++                        row = self.save_observation(queries,row,{'reason':'x10_domain_disabled'},'blocked','blocked')
++                    elif not self.s.x10_active_cleaning_state()['active']:
++                        # Persist the post-WRITE observation fence before I/O.
++                        result = {**row['result'],'phase':'awaiting','publish_attempted':True,'published':None,
++                                  'feedback_fence':fence(snapshot,self.s.feedback_wall_clock(),self.s.feedback_monotonic_clock())}
++                        row = queries.execute_one("""update hc.execution set status='unknown',attempt=1,
++                            result=%s::jsonb,metadata=metadata || '{"side_effects":true}'::jsonb,
++                            updated_at=now() where id=%s returning *""",(self.s.json_dumps(result),row['id']))
++                        action = 'write'
++                else:
++                    accepted = self.acceptance(snapshot,row)
++                    row = self.save_observation(queries,row,{**observation,'accepted':accepted},
++                        'accepted' if accepted is True else row['status'],row['result']['phase'])
++        if action:
++            self.perform(row,action)
++        # Read back the committed current row; no device I/O here.
++        current = self.s.fetch_one('select * from hc.execution where id=%s',(row['id'],))
++        return {'ok':current['status']=='confirmed','status':current['status'],
++                'result':current['result'],'confirmation':current['confirmation'],'execution_id':str(current['id'])}
++
++    def acceptance(self,snapshot,row):
++        reply,_ = fresh_frame(snapshot,'command_result',row['result']['feedback_fence'],
++            self.s.feedback_max_age_seconds,self.s.feedback_wall_clock(),self.s.feedback_monotonic_clock(),
++            source=lambda p:{'sampled_at':p.get('reported_at')})
++        if (reply and reply.get('command')=='schedule_clean_week' and isinstance(reply.get('extra'),dict)
++                and reply['extra'].get('hc_execution_id')==str(row['id']) and type(reply.get('ok')) is bool):
++            return reply['ok']
++        return None
++
++    def perform(self,row,action):
++        topic = self.s.x10_weekly_schedule_topic
++        command = row['command_payload']
++        if action=='read':
++            topic = topic.rsplit('/',1)[0]+'/scheduler'
++            command = {'hc_execution_id':str(row['id']),'source':'v2_scheduler_observation'}
++        try:
++            ok,message = self.s.publish_mqtt(topic,command) if self.s.publish_mqtt else (False,'publisher unavailable')
++        except Exception as exc:
++            ok,message = False,'publisher exception: '+type(exc).__name__
++        delta = {action+'_transport_published':bool(ok),action+'_transport_message':str(message)[:512]}
++        if action=='write':delta['published']=bool(ok)
++        with self.audit.transaction() as queries:
++            saved = queries.execute_one("""update hc.execution set result=result || %s::jsonb,
++                status=case when %s='write' and status='unknown' and result->>'phase'='awaiting'
++                            then %s else status end,updated_at=now() where id=%s returning *""",
++                (self.s.json_dumps(delta),action,'sent' if ok else 'unknown',row['id']))
++            if action=='write':self.update_bound(queries,saved,saved['status'],saved['result'],{'confirmed':False})
+--- /dev/null
++++ after/infra/backend/tests/test_scheduler_feedback.py
+@@ -0,0 +1,161 @@
++"""HC-09: source samples, transport completion and device evidence are distinct."""
++import copy
++import json
++import unittest
++from types import SimpleNamespace
++from unittest.mock import Mock, patch
++
++from mqtt_monitor_service import MqttClientService
++from scheduler_feedback import (climate_observation, entry_matches, fence, fresh_frame,
++                                weekly_commands, weekly_observation)
++from tests import test_scheduler_service as fixtures
++
++
++def snapshot(topic, payload, sample=101., receipt=102., mono=12.):
++    return {'mqtt_connected': True, 'connection_generation': 1, 'observation_epoch': 'epoch',
++            'topics': {topic: {'json': {'sampled_at': sample, **payload}, 'timestamp': receipt,
++                              'received_monotonic': mono, 'retain': False, 'connection_generation': 1}}}
++
++
++BOUNDARY = {'wall': 100., 'monotonic': 10., 'monitor_epoch': 'epoch'}
++SCHEDULE = dict(day_index=0, start_time='09:00', enabled=1, map_id=3, mode=0, suction=0,
++                water_level=0, segments=[1, 2])
++
++
++class TransportCompletionTest(unittest.TestCase):
++    def run_publish(self, published=True, rc=0, wait_error=None, cleanup_error=False):
++        info = Mock(rc=rc)
++        info.is_published.return_value = published
++        info.wait_for_publish.side_effect = wait_error
++        client = Mock()
++        client.publish.return_value = info
++        if cleanup_error: client.loop_stop.side_effect = RuntimeError('cleanup')
++        with patch('mqtt_monitor_service.mqtt.Client', return_value=client), \
++                patch('mqtt_monitor_service.command_blocked', return_value=False):
++            result = MqttClientService('unused.invalid', 1883, json.dumps).publish('audit/hc09', {})
++        self.assertTrue(client.disconnect.called)
++        self.assertTrue(client.loop_stop.called)
++        return result
++
++    def test_rc_success_without_completion_is_uncertain(self):
++        ok, message = self.run_publish(False)
++        self.assertFalse(ok)
++        self.assertIn('uncertain', message)
++
++    def test_completed_transport_only_reports_published(self):
++        self.assertEqual(self.run_publish(), (True, 'published'))
++
++    def test_rc_error_wait_exception_and_cleanup_failure(self):
++        self.assertFalse(self.run_publish(rc=4)[0])
++        self.assertFalse(self.run_publish(wait_error=RuntimeError('wait failed'))[0])
++        self.assertTrue(self.run_publish(cleanup_error=True)[0])
++
++    def test_policy_and_empty_topic_never_connect(self):
++        client = Mock()
++        with patch('mqtt_monitor_service.mqtt.Client', client), \
++                patch('mqtt_monitor_service.command_blocked', return_value=True):
++            self.assertFalse(MqttClientService('unused',1883,json.dumps).publish('audit/hc09',{})[0])
++        client.assert_not_called()
++
++    def test_real_paho_timeout_has_success_rc_without_completion(self):
++        import paho.mqtt.client as mqtt
++        info = mqtt.MQTTMessageInfo(1)
++        info.wait_for_publish(timeout=0.001)
++        self.assertEqual(info.rc, mqtt.MQTT_ERR_SUCCESS)
++        self.assertFalse(info.is_published())
++
++
++class FreshObservationTest(unittest.TestCase):
++    def check(self, snap, boundary=BOUNDARY):
++        return fresh_frame(snap, 'state', boundary, 90, 105., 15.)
++
++    def test_fresh_post_intent_sample(self):
++        self.assertTrue(self.check(snapshot('state', {}))[1]['fresh'])
++
++    def test_retained_disconnect_old_generation_missing_epoch(self):
++        original = snapshot('state', {})
++        variants = []
++        for key, value in [('mqtt_connected',False),('connection_generation',2),('observation_epoch',None)]:
++            s=copy.deepcopy(original);s[key]=value;variants.append(s)
++        s=copy.deepcopy(original);s['topics']['state']['retain']=True;variants.append(s)
++        for s in variants:
++            with self.subTest(snapshot=s):self.assertIsNone(self.check(s)[0])
++
++    def test_republication_cannot_refresh_old_device_sample(self):
++        self.assertIsNone(self.check(snapshot('state', {}, sample=1.))[0])
++        self.assertIsNone(self.check(snapshot('state', {}, sample=99.))[0])
++
++    def test_invalid_future_source_or_receipt_clocks(self):
++        for sample in (None, True, float('nan'), float('inf'), 0., 106., '101'):
++            with self.subTest(sample=sample):self.assertIsNone(self.check(snapshot('state', {},sample=sample))[0])
++        self.assertIsNone(self.check(snapshot('state', {},receipt=106.))[0])
++        self.assertIsNone(self.check(snapshot('state', {},mono=16.))[0])
++        self.assertIsNone(self.check(snapshot('state', {},mono=9.))[0])
++
++    def test_restart_uses_source_time_not_old_monotonic_clock(self):
++        s=snapshot('state', {},mono=1.);s['observation_epoch']='new-process'
++        self.assertTrue(self.check(s)[1]['fresh'])
++        s['topics']['state']['json']['sampled_at']=99.
++        self.assertIsNone(self.check(s)[0])
++
++    def test_bridge_acceptance_is_not_device_confirmation(self):
++        command={'power':'on','hc_execution_id':'one'}
++        s=snapshot('command_result', {'reported_at':101.,'command':command,'ok':True})
++        result=climate_observation(s,command,BOUNDARY,90,105.,15.)
++        self.assertTrue(result['accepted']);self.assertFalse(result['confirmed'])
++
++    def test_nested_state_requires_post_intent_source_sample(self):
++        command={'power':'on','hc_execution_id':'one'}
++        for sample, expected in [(99.,False),(101.,True)]:
++            s=snapshot('command_result',{'reported_at':101.,'command':command,'ok':True,
++                       'state':{'sampled_at':sample,'ok':True,'power':'on'}})
++            result=climate_observation(s,command,BOUNDARY,90,105.,15.)
++            self.assertEqual(result['confirmed'],expected)
++
++    def test_climate_requires_all_requested_fields_and_actual_numeric_value(self):
++        command={'power':'on','target_temperature':23}
++        for temp, expected in [(23,True),(23.9,False),(None,False),(True,False),('23',False)]:
++            s=snapshot('state',{'ok':True,'power':'on','target_temperature':temp})
++            self.assertEqual(climate_observation(s,command,BOUNDARY,90,105.,15.)['confirmed'],expected)
++
++    def test_diagnostics_need_persisted_boundary(self):
++        s=fixtures.SchedulerServiceTest().service(climate_monitor_snapshot=lambda:snapshot('state',{'ok':True,'power':'on'}),
++             feedback_wall_clock=lambda:105.,feedback_monotonic_clock=lambda:15.)
++        self.assertFalse(s.climate_confirmation_diagnostics({'power':'on'})['confirmed'])
++        self.assertTrue(s.confirmation_diagnostics({'domain':'climate','command_payload':{'power':'on'},
++            'execution_result':{'feedback_fence':BOUNDARY}})['confirmed'])
++
++    def test_x10_zero_fields_missing_fields_and_other_task(self):
++        s=fixtures.SchedulerServiceTest().service()
++        commands=weekly_commands(s,[SCHEDULE]);entry=commands[0]
++        self.assertTrue(entry_matches(entry,entry))
++        for field in ('mode','water_level','enabled','map_id','suction','segments'):
++            changed={**entry};changed.pop(field)
++            with self.subTest(field=field):self.assertFalse(entry_matches(entry,changed))
++        obs=snapshot('scheduler/observation',{'entries':[entry,{'task_id':'quick-clean','enabled':0}]})
++        self.assertTrue(weekly_observation(obs,commands,BOUNDARY,90,105.,15.)['confirmed'])
++        obs['topics']['scheduler/observation']['json']['entries'].append({**entry,'task_id':'13','days':'0010000'})
++        self.assertFalse(weekly_observation(obs,commands,BOUNDARY,90,105.,15.)['confirmed'])
++
++    def test_x10_retained_matching_schedule_cannot_confirm(self):
++        commands=weekly_commands(fixtures.SchedulerServiceTest().service(),[SCHEDULE])
++        obs=snapshot('scheduler/observation',{'entries':commands})
++        obs['topics']['scheduler/observation']['retain']=True
++        self.assertFalse(weekly_observation(obs,commands,BOUNDARY,90,105.,15.)['confirmed'])
++
++    def test_duplicate_owned_slot_cannot_confirm(self):
++        commands=weekly_commands(fixtures.SchedulerServiceTest().service(),[SCHEDULE])
++        entries=[commands[0],{**commands[0],'suction':2}]
++        self.assertFalse(weekly_observation(snapshot('scheduler/observation',{'entries':entries}),
++            commands,BOUNDARY,90,105.,15.)['confirmed'])
++
++    def test_diagnostics_cannot_reconfirm_timed_out_intent(self):
++        s=fixtures.SchedulerServiceTest().service(climate_monitor_snapshot=lambda:snapshot('state',{'ok':True,'power':'on'},sample=230.,receipt=231.),
++             feedback_wall_clock=lambda:232.,feedback_monotonic_clock=lambda:15.)
++        result=s.climate_confirmation_diagnostics({'power':'on'},BOUNDARY)
++        self.assertFalse(result['confirmed']);self.assertFalse(result['observed']['confirmed'])
++
++    def test_sample_age_includes_mqtt_delay_even_after_wall_clock_adjustment(self):
++        snap=snapshot('state',{},sample=20.,receipt=100.,mono=1.)
++        # Wall age is 85s; source age at receipt plus monotonic delay is 94s.
++        self.assertIsNone(self.check(snap,boundary=None)[0])
+--- /dev/null
++++ after/infra/backend/tests/test_scheduler_feedback_postgres.py
+@@ -0,0 +1,255 @@
++"""HC-09 real transactions, no LAN/device access; opt-in disposable HC08 database."""
++import copy
++import os
++import time
++import unittest
++
++from scheduler_audit import SchedulerAudit
++from scheduler_feedback import weekly_commands
++from x10_schedule_delivery import X10ScheduleDelivery
++from tests import test_scheduler_audit_postgres as fixtures
++from tests.test_scheduler_feedback import SCHEDULE, snapshot
++
++
++@unittest.skipUnless(os.environ.get('HC08_TEST_POSTGRES') == '1', 'requires isolated HC-08 PostgreSQL')
++class FeedbackPostgresTest(unittest.TestCase):
++    def setUp(self):
++        self.f=fixtures.SchedulerAuditPostgresTest()
++        self.f.setUp()
++        self.now=time.time()+1
++        self.mono=100.
++        self.snap={'mqtt_connected':True,'connection_generation':1,'observation_epoch':'epoch','topics':{}}
++        self.s=self.service()
++        self.commands=weekly_commands(self.s,[SCHEDULE])
++        self.f.admin.execute_sql("update hc.scheduler_config set mode='v2_execute_x10'")
++
++    def service(self,**kwargs):
++        return self.f.make_service(v2_allow_x10=True,x10_weekly_schedule_topic='audit/x10/command/schedule_clean_week',
++            x10_monitor_snapshot=lambda:self.snap,climate_monitor_snapshot=lambda:self.snap,
++            feedback_wall_clock=lambda:self.now,feedback_monotonic_clock=lambda:self.mono,**kwargs)
++
++    def observe(self,topic,payload):
++        self.now+=1;self.mono+=1
++        self.snap=snapshot(topic,payload,sample=self.now-.2,receipt=self.now-.1,mono=self.mono-.1)
++
++    def tick(self,service=None):
++        return X10ScheduleDelivery(service or self.s).tick([SCHEDULE])
++
++    def write(self):
++        self.tick()
++        self.assertEqual(self.f.published[0][0],'audit/x10/command/scheduler')
++        self.observe('scheduler/observation',{'entries':[]})
++        result=self.tick()
++        self.assertEqual(result['status'],'sent')
++        self.assertEqual(len(self.f.published),2)
++        return result
++
++    def test_read_then_one_write_then_only_fresh_schedule_confirms(self):
++        result=self.write()
++        self.assertFalse(result['result']['physical_confirmation'])
++        self.assertEqual(self.f.counts(),[1,1,1,1])
++        self.observe('scheduler/observation',{'entries':self.commands})
++        result=self.tick()
++        self.assertEqual(result['status'],'confirmed')
++        self.assertEqual(result['confirmation']['confirmation_scope'],'robot_weekly_schedule_not_cleaning_completion')
++        for _ in range(3):self.tick(self.service())
++        self.assertEqual(len(self.f.published),2)
++
++    def test_missing_feedback_and_restart_never_repeat_write(self):
++        self.write()
++        for _ in range(5):self.tick(self.service())
++        self.now+=121;self.mono+=121
++        self.assertEqual(self.tick()['status'],'unknown')
++        self.observe('scheduler/observation',{'entries':self.commands})
++        self.assertEqual(self.tick()['status'],'unknown')
++        self.assertEqual(len(self.f.published),2)
++
++    def test_transport_failure_is_unknown_and_not_replayed(self):
++        self.tick()
++        self.observe('scheduler/observation',{'entries':[]})
++        calls=[]
++        service=self.service(publish_mqtt=lambda *a:calls.append(a) or (False,'ack timeout'))
++        self.assertEqual(self.tick(service)['status'],'unknown')
++        for _ in range(3):self.tick(service)
++        self.assertEqual(len(calls),1)
++        self.observe('scheduler/observation',{'entries':self.commands})
++        self.assertEqual(self.tick(service)['status'],'confirmed')
++
++    def test_bridge_acceptance_does_not_confirm_robot_schedule(self):
++        result=self.write()
++        self.observe('command_result',{'reported_at':self.now+.8,'ok':True,'command':'schedule_clean_week',
++                     'extra':{'hc_execution_id':result['execution_id']}})
++        self.assertEqual(self.tick()['status'],'accepted')
++        self.assertFalse(self.tick()['result']['physical_confirmation'])
++        self.assertEqual(len(self.f.published),2)
++
++    def test_old_retained_or_reconnected_matching_snapshot_never_confirms(self):
++        self.write()
++        for variation in ('retained','old','generation'):
++            self.observe('scheduler/observation',{'entries':self.commands})
++            if variation=='retained':self.snap['topics']['scheduler/observation']['retain']=True
++            if variation=='old':self.snap['topics']['scheduler/observation']['json']['sampled_at']-=100
++            if variation=='generation':self.snap['connection_generation']=2
++            self.assertNotEqual(self.tick()['status'],'confirmed')
++        self.assertEqual(len(self.f.published),2)
++
++    def test_two_independent_workers_read_and_write_once(self):
++        self.f.parallel(lambda:self.tick(),lambda:self.tick(self.service()))
++        self.assertEqual(len(self.f.published),1)
++        self.observe('scheduler/observation',{'entries':[]})
++        self.f.parallel(lambda:self.tick(),lambda:self.tick(self.service()))
++        self.assertEqual(len(self.f.published),2)
++        self.assertEqual(self.f.counts(),[1,1,1,1])
++
++    def test_crash_after_committed_write_claim_does_not_repeat(self):
++        self.tick();self.observe('scheduler/observation',{'entries':[]})
++        calls=[]
++        def crash(*a):
++            calls.append(a)
++            raise fixtures.ProcessCrash('process died in MQTT')
++        with self.assertRaises(fixtures.ProcessCrash):self.tick(self.service(publish_mqtt=crash))
++        row=self.f.execution()
++        self.assertEqual(row['attempt'],1);self.assertEqual(row['status'],'unknown')
++        self.tick(self.service())
++        self.assertEqual(len(calls),1);self.assertEqual(len(self.f.published),1)
++
++    def test_lost_result_commit_leaves_claim_and_no_second_write(self):
++        self.tick();self.observe('scheduler/observation',{'entries':[]})
++        fault=self.service(audit_transaction=lambda:self.f.fault_transaction('set result=result',before=True))
++        with self.assertRaises(fixtures.ProcessCrash):self.tick(fault)
++        self.assertEqual(self.f.execution()['attempt'],1)
++        self.tick(self.service())
++        self.assertEqual(len(self.f.published),2)
++
++    def test_each_ledger_insert_failure_rolls_back_without_publish(self):
++        for table in ('scheduler_run','event','plan','execution'):
++            with self.subTest(table=table):
++                self.f.clear();self.f.admin.execute_sql("update hc.scheduler_config set mode='v2_execute_x10'")
++                fault=self.service(audit_transaction=lambda:self.f.fault_transaction('insert into hc.'+table))
++                with self.assertRaises(fixtures.ProcessCrash):self.tick(fault)
++                self.assertEqual(self.f.counts(),[0,0,0,0])
++                self.assertEqual(self.f.published,[])
++
++    def test_no_global_flag_no_mqtt_and_no_execution(self):
++        result=self.tick(self.service(v2_execution_enabled=False))
++        self.assertTrue(result['skipped']);self.assertEqual(self.f.published,[])
++        self.assertEqual(self.f.counts(),[0,0,0,0])
++
++    def test_disabled_domain_after_read_blocks_write(self):
++        self.tick();self.observe('scheduler/observation',{'entries':[]})
++        self.f.admin.execute_sql("update hc.scheduler_config set mode='v2_execute_climate'")
++        self.assertEqual(self.tick()['status'],'blocked')
++        self.assertEqual(len(self.f.published),1)
++
++    def test_fresh_matching_read_requires_no_schedule_write(self):
++        self.tick();self.observe('scheduler/observation',{'entries':self.commands})
++        self.assertEqual(self.tick()['status'],'confirmed')
++        self.assertEqual(len(self.f.published),1)
++
++    def test_active_robot_blocks_write_but_not_observation(self):
++        self.tick();self.observe('scheduler/observation',{'entries':[]})
++        self.s.x10_active_cleaning_state=lambda:{'active':True}
++        self.tick()
++        self.assertEqual(len(self.f.published),1)
++        self.s.x10_active_cleaning_state=lambda:{'active':False}
++        self.tick()
++        self.assertEqual(len(self.f.published),2)
++
++    def climate(self,**overrides):
++        self.f.admin.execute_sql("update hc.scheduler_config set mode='v2_execute_climate'")
++        service=self.service(**overrides)
++        row=SchedulerAudit(service).prepare(self.f.event())['execution']
++        SchedulerAudit(service).dispatch(row['id'])
++        return service
++
++    def test_climate_publish_only_sent_then_fresh_device_state_confirms(self):
++        s=self.climate()
++        self.assertEqual(self.f.execution()['status'],'sent')
++        command=self.f.execution()['command_payload']
++        self.observe('state',{'ok':True,**command})
++        SchedulerAudit(s).reconcile_climate()
++        self.assertEqual(self.f.execution()['status'],'confirmed')
++        self.assertTrue(self.f.execution()['result']['physical_confirmation'])
++        s.climate_scheduler_tick()
++        self.assertEqual(len(self.f.published),1)
++
++    def test_climate_late_response_after_timeout_stays_unknown(self):
++        s=self.climate();self.now+=121;self.mono+=121
++        self.observe('state',{'ok':True,**self.f.execution()['command_payload']})
++        SchedulerAudit(s).reconcile_climate()
++        self.assertEqual(self.f.execution()['status'],'unknown')
++        self.assertTrue(self.f.execution()['confirmation']['terminal'])
++        self.now+=1;SchedulerAudit(s).reconcile_climate();s.climate_scheduler_tick()
++        self.assertEqual(len(self.f.published),1)
++
++    def test_climate_retained_matching_sample_and_ack_only_cannot_confirm(self):
++        s=self.climate();command=self.f.execution()['command_payload']
++        self.observe('state',{'ok':True,**command})
++        self.snap['topics']['state']['retain']=True
++        SchedulerAudit(s).reconcile_climate();self.assertEqual(self.f.execution()['status'],'sent')
++        self.observe('command_result',{'reported_at':self.now+.8,'ok':True,'command':command})
++        SchedulerAudit(s).reconcile_climate()
++        self.assertEqual(self.f.execution()['status'],'accepted')
++        self.assertFalse(self.f.execution()['result']['physical_confirmation'])
++
++    def test_climate_restart_can_confirm_new_sample_without_republishing(self):
++        self.climate();command=self.f.execution()['command_payload']
++        self.observe('state',{'ok':True,**command})
++        self.snap['observation_epoch']='restarted';self.mono=3.
++        self.snap['topics']['state']['received_monotonic']=2.
++        SchedulerAudit(self.service()).reconcile_climate()
++        self.assertEqual(self.f.execution()['status'],'confirmed')
++        self.assertEqual(len(self.f.published),1)
++
++    def test_write_claim_commit_ack_lost_means_no_io_and_no_retry(self):
++        self.tick();self.observe('scheduler/observation',{'entries':[]})
++        fault=self.service(audit_transaction=lambda:self.f.fault_transaction('never match',after_commit=True))
++        with self.assertRaises(fixtures.ProcessCrash):self.tick(fault)
++        self.assertEqual(self.f.execution()['attempt'],1)
++        self.tick(self.service())
++        self.assertEqual(len(self.f.published),1)
++
++    def test_read_claim_commit_ack_lost_means_no_io_and_no_retry(self):
++        fault=self.service(audit_transaction=lambda:self.f.fault_transaction('never match',after_commit=True))
++        with self.assertRaises(fixtures.ProcessCrash):self.tick(fault)
++        self.assertEqual(self.f.counts(),[1,1,1,1])
++        self.tick(self.service())
++        self.assertEqual(self.f.published,[])
++
++    def test_bound_individual_audit_confirms_only_exact_matching_command(self):
++        matching=SchedulerAudit(self.s).prepare(self.f.event('xiaomi_x10',suffix='matching'))['execution']
++        mismatch=SchedulerAudit(self.s).prepare(self.f.event('xiaomi_x10',suffix='mismatch'))['execution']
++        self.f.admin.execute_one('update hc.execution set command_payload=%s::jsonb where id=%s returning *',
++            (self.s.json_dumps(self.commands[0]),matching['id']))
++        self.f.admin.execute_one('update hc.execution set command_payload=%s::jsonb where id=%s returning *',
++            (self.s.json_dumps({**self.commands[0],'water_level':2}),mismatch['id']))
++        self.write()
++        row=self.f.admin.fetch_one('select * from hc.execution where id=%s',(matching['id'],))
++        self.assertEqual(row['status'],'sent')
++        self.observe('scheduler/observation',{'entries':self.commands});self.tick()
++        row=self.f.admin.fetch_one('select * from hc.execution where id=%s',(matching['id'],))
++        self.assertEqual(row['status'],'confirmed')
++        row=self.f.admin.fetch_one('select * from hc.execution where id=%s',(mismatch['id'],))
++        self.assertEqual(row['status'],'shadow_ready')
++
++    def test_changed_desired_layout_creates_new_read_intent(self):
++        self.write()
++        changed={**SCHEDULE,'start_time':'10:00'}
++        X10ScheduleDelivery(self.service()).tick([changed])
++        self.assertEqual(len(self.f.published),3)
++        self.assertTrue(self.f.published[-1][0].endswith('/scheduler'))
++        self.assertEqual(self.f.counts(),[2,2,2,2])
++
++    def test_republication_after_write_with_pre_write_source_cannot_confirm(self):
++        self.write()
++        boundary=self.f.execution()['result']['feedback_fence']
++        self.observe('scheduler/observation',{'entries':self.commands})
++        self.snap['topics']['scheduler/observation']['json']['sampled_at']=boundary['wall']-.1
++        self.assertNotEqual(self.tick()['status'],'confirmed')
++
++    def test_service_tick_uses_durable_weekly_delivery(self):
++        self.s.x10_desired_weekly_schedules=lambda:[SCHEDULE]
++        result=self.s.x10_scheduler_tick()
++        self.assertEqual(result['status'],'unknown')
++        self.assertEqual(self.f.counts(),[1,1,1,1])
++        self.assertTrue(self.f.published[0][0].endswith('/scheduler'))
+--- /dev/null
++++ after/infra/backend/tests/test_scheduler_bridge_samples.py
+@@ -0,0 +1,98 @@
++"""Execute only selected bridge AST functions: no config loading or device/network imports."""
++import ast
++import asyncio
++import json
++from pathlib import Path
++from types import SimpleNamespace
++import unittest
++from typing import Any, Dict
++
++from scheduler_feedback import entry_matches, weekly_commands
++from tests import test_scheduler_service as fixtures
++from tests.test_scheduler_feedback import SCHEDULE
++
++ROOT=Path(__file__).resolve().parents[3]
++
++
++def functions(path,names,namespace):
++    tree=ast.parse((ROOT/path).read_text())
++    nodes=[]
++    for node in tree.body:
++        if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)) and node.name in names:nodes.append(node)
++        if isinstance(node,ast.ClassDef):
++            nodes += [child for child in node.body if isinstance(child,ast.FunctionDef) and child.name in names]
++    assert len(nodes)==len(names)
++    exec(compile(ast.Module(body=nodes,type_ignores=[]),str(path),'exec'),namespace)
++    return namespace
++
++
++class BridgeSampleTest(unittest.TestCase):
++    def test_gree_source_clock_is_taken_before_fresh_device_read(self):
++        calls=[]
++        async def connect():calls.append('device_read');return object()
++        ns=functions(Path('apps/gree-climate/gree_climate_bridge.py'),['read_state'],
++            {'Any':Any,'Dict':Dict,'time':SimpleNamespace(time=lambda:calls.append('clock') or 100.),
++             'connect_device':connect,'state_payload':lambda d:{'ok':True,'power':'on'}})
++        payload=asyncio.run(ns['read_state']())
++        self.assertEqual(calls,['clock','device_read']);self.assertEqual(payload['sampled_at'],100.)
++
++    def test_gree_correlated_reply_adds_report_time_without_changing_state_time(self):
++        calls=[]
++        ns=functions(Path('apps/gree-climate/gree_climate_bridge.py'),['publish_json'],
++            {'Any':Any,'Dict':Dict,'BASE_TOPIC':'test/gree','json':json,'time':SimpleNamespace(time=lambda:101.)})
++        bridge=SimpleNamespace(client=SimpleNamespace(publish=lambda *a,**kw:calls.append((a,kw))))
++        ns['publish_json'](bridge,'test/gree/command_result',{'command':{'hc_execution_id':'one'},'state':{'sampled_at':100.}})
++        data=json.loads(calls[0][0][1]);self.assertEqual(data['reported_at'],101.)
++        self.assertEqual(data['state']['sampled_at'],100.)
++        self.assertEqual(data['command']['hc_execution_id'],'one')
++
++    def test_x10_every_actual_read_publishes_unretained_forced_sample(self):
++        calls=[];order=[]
++        def read(*a):order.append('device_read');return 'same layout'
++        ns=functions(Path('apps/xiaomi-x10/xiaomi_x10_bridge.py'),['read_scheduler'],
++            {'time':SimpleNamespace(time=lambda:order.append('clock') or 100.),'get_property':read,
++             'parse_scheduler_entries_payload':lambda x:[SCHEDULE],
++             'publish':lambda *a,**kw:calls.append((a,kw))})
++        ns['read_scheduler']();ns['read_scheduler']()
++        samples=[c for c in calls if c[0][0]=='scheduler/observation']
++        self.assertEqual(len(samples),2);self.assertEqual(order[:2],['clock','device_read'])
++        for args,kwargs in samples:
++            self.assertEqual(kwargs,{'retain':False,'force':True})
++            self.assertEqual(args[1],{'sampled_at':100.,'entries':[SCHEDULE]})
++
++    def test_actual_x10_wire_parser_matches_canonical_zero_fields(self):
++        ns=functions(Path('apps/xiaomi-x10/xiaomi_x10_bridge.py'),
++            ['build_schedule_entry','parse_scheduler_entry'],{'CONFIG':{}})
++        command=weekly_commands(fixtures.SchedulerServiceTest().service(),[SCHEDULE])[0]
++        wire=ns['build_schedule_entry'](command['map_id'],command['segments'],command['start_time'],
++             enabled=command['enabled'],days=command['days'],task_id=command['task_id'],
++             clean_mode=command['mode'],suction=command['suction'],clean_param=command['water_level'])
++        parsed=ns['parse_scheduler_entry'](wire)
++        self.assertTrue(entry_matches(command,parsed),(command,parsed))
++
++    def test_gree_command_sample_is_read_after_push_not_before(self):
++        calls=[]
++        async def push():calls.append('push')
++        device=SimpleNamespace(push_state_update=push)
++        async def connect():calls.append('initial_read');return device
++        async def update(d):calls.append('post_write_read')
++        async def sleep(n):calls.append('settle')
++        ns=functions(Path('apps/gree-climate/gree_climate_bridge.py'),['apply_command'],
++            {'Any':Any,'Dict':Dict,'time':SimpleNamespace(time=lambda:calls.append('clock') or float(len(calls))),
++             'connect_device':connect,'state_payload':lambda d:{'ok':True,'power':'on'},
++             'COMMAND_TIMEOUT':1,'asyncio':SimpleNamespace(wait_for=asyncio.wait_for,sleep=sleep),
++             'update_state_and_wait':update})
++        result=asyncio.run(ns['apply_command']({'power':'on','hc_execution_id':'one'}))
++        self.assertEqual(calls,['clock','initial_read','push','settle','clock','post_write_read'])
++        self.assertEqual(result['sampled_at'],5.)
++
++    def test_x10_failed_or_malformed_read_cannot_publish_fresh_observation(self):
++        for raw in (None, 123, 'bad;wire'):
++            with self.subTest(raw=raw):
++                calls=[]
++                ns=functions(Path('apps/xiaomi-x10/xiaomi_x10_bridge.py'),['read_scheduler'],
++                    {'time':SimpleNamespace(time=lambda:100.),'get_property':lambda *a:raw,
++                     'parse_scheduler_entries_payload':lambda x:[],
++                     'publish':lambda *a,**kw:calls.append((a,kw))})
++                ns['read_scheduler']()
++                self.assertFalse(any(args[0]=='scheduler/observation' for args,kw in calls))
+--- /dev/null
++++ after/docs/hc-09-repair.md
+@@ -0,0 +1,122 @@
++# HC-09 — pontos küldési eredmény és friss eszköz-visszaigazolás
++
++2026-10-27. Helyileg javítva és izolált környezetben ellenőrizve; **nincs
++élesítve**. Az aktív kiadás továbbra is a korlátozott r6. Napló:
++AUDIT_REPAIR.md REPAIR-029. Áttekintve az eredeti audit HC-09 bizonyítéka,
++F2/F3 lépése és az F4/HC-08 tranzakciós előfeltétel.
++
++## Működés
++
++A közös MQTT-publisher sikerhez az `rc=SUCCESS` mellett a várakozás utáni
++`is_published() == True` értéket is megköveteli. Timeout vagy kivétel esetén
++bizonytalan/sikertelen transporteredményt ad; ez nem bizonyítja, hogy a parancs
++nem érkezett meg. A loop és kapcsolat lezárása egymástól független. A korábbi
++safety/stop próbálkozási korlátok változatlanok; nincs új generikus retry.
++
++| Állapot | Bizonyíték |
++|---|---|
++| sent | A transport publikálási művelete befejeződött. |
++| accepted | Az adott execution azonosítójával korrelált bridge-válasz sikeres. |
++| confirmed | Friss, a mentett szándék után olvasott eszközállapot egyezik a kéréssel. |
++| unknown | A kimenet bizonytalan vagy a visszaigazolás határideje lejárt; nincs automatikus újraküldés. |
++
++Klímánál a HC-08 commitolt küldési foglalása megmarad. A parancs
++`hc_execution_id` mezőt és tartós megfigyelési időhatárt kap. A Gree `state`
++vagy a korrelált `command_result.state` adhat fizikai állapottal alátámasztott
++visszaigazolást, minden kért mező szigorú összevetésével. Az önálló sikeres
++bridge-válasz csak `accepted`. A parancseredmény végleges mentése előtt
++megszakadt küldési foglalást nem játsszuk újra és nem minősítjük automatikusan.
++
++X10-nél a heti program szinkronja külön, tartós run/event/plan/execution
++láncot kap. Létrehozása atomi, a párhuzamos végrehajtókat közös tranzakciós
++lock sorosítja. Először egyszeri, **csak olvasó** `command/scheduler` kérés
++megy ki. Friss eltérés, engedélyezett domain/global flag és nem aktív takarítás
++mellett egyszeri heti programírás foglalható, commit után, DB-tranzakción kívül.
++Egyező friss olvasatnál nem kell programot írni. Publikálási hiba,
++eredménymentési hiba, elveszett commit-válasz vagy restart nem ad új írási jogot.
++
++Az X10 `confirmed` kizárólag a **roboton tárolt heti program egyezését**
++jelenti, nem a takarítás elindulását vagy befejeződését. Idő, napmaszk,
++engedélyezés, térkép, mód, szívóerő, víz és szobák mind számítanak; a nulla
++érték is tényleges érték. Duplikált elvárt slot vagy váratlan aktív heti slot
++kizárja az egyezést. Csak a pontosan illeszkedő, előzetesen összekötött egyedi
++auditok kaphatnak közös visszaigazolást, a saját létrehozásuk utáni mintából.
++Üres engedélyezett lista `skipped`, nem bizonyított siker.
++
++Azonos kívánt program bizonytalan szinkronját későbbi tick sem írja újra.
++Lezárt siker után új esedékes audit vagy újonnan megfigyelt eltérés indíthat
++új olvasási ciklust; megváltozott kívánt program új szándék. Lejárt, változatlan
++szándék operátori állapotegyeztetést igényel. Nincs új kézi recovery API vagy
++SQL-alapú automatikus bizonytalan→pending átírás.
++
++## Mintakor és bridge-szerződés
++
++A bridge-ek additív `sampled_at` Unix-időt adnak a tényleges eszközlekérdezés
++**kezdete előtt**. A Gree parancs utáni állapotnál ez az írás és a meglevő
++2 s várakozás utáni új olvasás kezdete. A `reported_at` csak a bridge-válasz
++ideje, önmagában nem frissíti a benne lévő állapotot.
++
++Az X10 régi retained, változásra deduplikált `scheduler/entries` listája
++megmarad. Új `scheduler/observation` tartalmazza a forrásidőt és a beolvasott
++listát: nem retained, minden sikeres, feldolgozható fizikai olvasáskor kimegy,
++azonos programnál is. Hibás/hiányzó/malformed válaszból nem készül friss
++megfigyelés. Nincs új idle polling; a meglévő olvasások és az egyszeri
++szinkronlekérdezés adnak mintát. A Gree meglévő pollperiódusa sem változott.
++
++A HC a forráskort és az MQTT-fogadás óta eltelt monoton időt együtt vizsgálja,
++a faliórával számolt korhatárt is megkövetelve. Tiltott a retained, korábbi
++kapcsolatból maradt, offline, hiányos, jövőbeli, nem véges vagy a szándék előtti
++minta. Folyamaton belül monoton időhatárt is ellenőriz; restart után új
++monitorazonosító, aktuális kapcsolat és a tartós faliórás forrásidő szükséges.
++Az újrapublikált régi forrásminta nem válik frissé. A bridge-ek ugyanazon HC
++host óráját használják; hibás időrend esetén a döntés elutasító.
++
++Kezdeti, konfigurálható limitek a backendben:
++
++- `HC_SCHEDULER_FEEDBACK_MAX_AGE_SECONDS=90`: eszközmegfigyelés maximális kora.
++- `HC_SCHEDULER_CONFIRMATION_TIMEOUT_SECONDS=120`: külön visszaigazolási határidő.
++
++Ezek pozitív, véges értékek lehetnek. A klíma/X10 limitek nem módosítják a
++Nano STATUS/TELE 70/25 s-os korhatárait vagy az 5/30 s parancs-várakozásokat.
++Éles késésmérés és felügyelt eszközpróba szükséges a véglegesítésükhöz.
++
++## Ellenőrzés és korlátok
++
++**330 kapcsolódó teszt: 0 hiba, 0 kihagyás.** Ebből 48 új HC-09 teszt:
++23 valódi PostgreSQL-tranzakciós eset, 6 bridge-függvénypróba és 19
++transport/frissességi eset. A PG-próbák hc_app szerepkörrel, két független
++kapcsolattal, minden lánc-insert megszakításával, commit-válaszvesztéssel,
++MQTT közbeni crash-sel, eredménymentési hibával és restarttal futottak.
++A régi HC-01–08 safety/stop/recovery, ablakvezérlés és AI-offline tesztek is
++részei a csomagnak. A tényleges Paho 2.1.0 izolált próbája megerősítette:
++wait-timeout után `rc=0`, miközben `is_published=False`.
++
++A futtatás rögzített r6 Python-függőségekkel, a módosított forrás olvasásra
++csatolásával történt. A tesztkonténerek saját network-none PG16 hálózati
++névteret használtak; nem kaptak LAN-t, hostportot vagy Docker socketet. A
++bridge-próbák csak a kijelölt AST-függvényeket futtatták hamis eszközökkel,
++konfiguráció-/titokbetöltés nélkül. A saját konténerek és tmpfs DB törölve.
++
++A 9 éles konténer ID/image/start/restart adata és a 37 aktív hostfájl hash-e
++változatlan. DB/MQTT health sikeres; az AI-offline profil és az éles
++nyitásérzékelős safety-kód megmaradt. Az eredeti audit változatlan. Éles
++eszközparancs, adatpótlás és migráció nem történt. A 330 teszt nem helyettesíti
++a felügyelt klíma-/robotpróbát vagy a külön hiányzó teljes VM-restore próbát.
++
++[Titokmentes bizonyítékok](audit-evidence/hc09-20261027/): teszteredmény,
++Paho-reprodukció, forrásdiff/-hash, éles változatlanság, labor törlése.
++
++## Függőségek és későbbi kiadás
++
++- **HC-08:** helyi előfeltétel; az új feedback-modulokkal és app-bekötéssel együtt kell kiadni. Új migráció nincs; a r6 alapsémája elegendő.
++- **Gree és X10 bridge:** az új forrásidő, olvasati topic és korreláció miatt összehangolt backend/bridge kiadás kell. A régi bridge adata nem ad új confirmationt; X10-nél hiányzó új olvasat esetén programírás sem indul.
++- **HC-12/13:** parancs-worker/határidő külön nyitott munka; nem változott. A késő eredmény `unknown` lehet, vak retry nélkül.
++- **HC-35/36:** ventilátor/binding külön munka; a klíma állapotának visszaigazolása nem bizonyít ventilátorműködést.
++- A HC-08-ban rögzített régi `physical_manual` session 125 operátori egyeztetése és a fizikai átvétel továbbra is kiadási feladat. Nem módosítottuk.
++- Az AI SSD-hibás rendszer és a HC-45 VM-próba nem része ennek a javításnak; a korlátozott profil megmarad.
++
++Rollbackhez a backend és a két bridge rögzített, egymáshoz illesztett image-e
++kell. Előbb a függő fizikai szándékokat egyeztetni kell; az auditadatokat és
++az új státuszokat meg kell őrizni. A történeti confirmed sorokat nem írtuk át.
++A forrás Compose két új env-bejegyzése nem érinti az aktív, fagyasztott r6-ot;
++most nincs új kiadási csomag vagy élesítési engedélykérés.

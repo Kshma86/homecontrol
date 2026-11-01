@@ -1,0 +1,13 @@
+{
+  "offline_archive_readable": true,
+  "all_blob_sha256_verified": true,
+  "docker_manifest_config_and_layer_references_present": true,
+  "requested_image_ids_present": true,
+  "image_count": 20,
+  "blob_count": 233,
+  "docker_load_production": false,
+  "format": "Docker save OCI index; engine image IDs are manifest digests",
+  "linux_amd64_manifest_closure_complete": true,
+  "other_platform_or_attestation_descriptors_not_exported": 50,
+  "ok": true
+}

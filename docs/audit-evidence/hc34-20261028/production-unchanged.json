@@ -1,0 +1,10 @@
+{
+  "checked_epoch": 1793221786.3310425,
+  "production_containers_unchanged": 9,
+  "protected_host_files_unchanged": 37,
+  "active_override": "/srv/docker/homecontrol/backups/releases/hc-read-models-20261028-r8/release.override.json",
+  "original_audit_and_safety_source_unchanged": true,
+  "laboratories_removed": true,
+  "production_deployed": false,
+  "migration_applied_to_production": false
+}

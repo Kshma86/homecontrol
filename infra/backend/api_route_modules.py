@@ -1,10 +1,30 @@
 import subprocess
+import threading
 import time
+import json
 from typing import Any, Callable, Iterable
 
 from context_payload_service import compact_context_payload
 from flask import jsonify, request
-from system_status_service import docker_socket_request
+from system_status_service import docker_socket_containers, docker_socket_request
+
+
+ADMIN_RESTART_CONTAINERS = {
+    "backend": "homecontrol-backend",
+    "frontend": "homecontrol-frontend",
+    "postgres": "homecontrol-postgres",
+    "pgbouncer": "homecontrol-pgbouncer",
+    "mqtt": "homecontrol-mqtt",
+    "zigbee2mqtt": "zigbee2mqtt",
+    "ingest": "homecontrol-ingest",
+    "tuya": "homecontrol-tuya-poller",
+    "x10": "homecontrol-xiaomi-x10",
+    "climate": "homecontrol-gree-climate",
+    "solar": "homecontrol-ha-growatt-poller",
+    "ai": "homecontrol-ai-server",
+    "proxy": "homecontrol-proxy",
+    "mdns": "homecontrol-mdns",
+}
 
 
 def register_context_routes(
@@ -57,6 +77,145 @@ def register_context_routes(
         return jsonify({"ok": True, "events": get_command_service().recent_events(limit)}), 200
 
 
+def register_mower_routes(
+    app,
+    *,
+    get_context_service: Callable[[], Any],
+    get_mower_service: Callable[[], Any],
+    get_admin_service: Callable[[], Any],
+    json_ready: Callable[[Any], Any],
+    get_mower_v3_service: Callable[[], Any] = None,
+) -> None:
+    @app.get("/api/mower/v3/snapshot")
+    def mower_v3_snapshot():
+        if get_mower_v3_service is None:
+            return jsonify({"ok": False, "error": "Mower v3 service unavailable"}), 503
+        started = time.monotonic()
+        response = jsonify(json_ready(get_mower_v3_service().snapshot()))
+        response.headers["Server-Timing"] = f"rover;dur={(time.monotonic()-started)*1000:.3f}"
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.get("/api/mower/state")
+    def mower_state():
+        return jsonify(json_ready(get_context_service().section("mower")))
+
+    @app.post("/api/mower/command")
+    def mower_command():
+        data = request.get_json(force=True, silent=True) or {}
+        payload, status = get_mower_service().command(data)
+        return jsonify(json_ready(payload)), status
+
+    @app.get("/api/mower/mission/status")
+    def mower_mission_status():
+        payload, status = get_mower_service().mission_status()
+        return jsonify(json_ready(payload)), status
+
+    @app.post("/api/mower/mission/deploy")
+    def mower_mission_deploy():
+        data = request.get_json(force=True, silent=True) or {}
+        payload, status = get_mower_service().mission_deploy(data)
+        if status >= 400 or payload.get("ok") is False:
+            app.logger.warning(
+                "mower mission deploy failed status=%s stage=%s code=%s payload=%s",
+                status,
+                payload.get("stage"),
+                payload.get("code"),
+                json.dumps(payload, ensure_ascii=False, default=str)[:4000],
+            )
+        return jsonify(json_ready(payload)), status
+
+    @app.post("/api/mower/mission/<action>")
+    def mower_mission_action(action):
+        payload, status = get_mower_service().mission_action(action)
+        return jsonify(json_ready(payload)), status
+
+    @app.get("/api/mower/firmware/status")
+    def mower_firmware_status():
+        payload, status = get_mower_service().firmware_status()
+        return jsonify(json_ready(payload)), status
+
+    @app.post("/api/mower/firmware/upload")
+    def mower_firmware_upload():
+        upload = request.files.get("firmware")
+        if upload is None:
+            return jsonify({"ok": False, "error": "missing firmware file"}), 400
+        payload, status = get_mower_service().firmware_upload(upload.filename or "firmware.bin", upload.read())
+        return jsonify(json_ready(payload)), status
+
+    @app.post("/api/mower/firmware/<action>")
+    def mower_firmware_action(action: str):
+        payload, status = get_mower_service().firmware_action(action)
+        return jsonify(json_ready(payload)), status
+
+    @app.get("/api/mower/route")
+    def mower_route_status():
+        payload, status = get_mower_service().route_status()
+        return jsonify(json_ready(payload)), status
+
+    @app.post("/api/mower/route/<action>")
+    def mower_route_action(action: str):
+        payload, status = get_mower_service().route_action(action)
+        return jsonify(json_ready(payload)), status
+
+    @app.get("/api/mower/notes")
+    def mower_notes_state():
+        return jsonify({"ok": True, **get_admin_service().fetch_notes("mower")})
+
+    @app.post("/api/mower/notes")
+    def mower_notes_create():
+        data = request.get_json(force=True, silent=True) or {}
+        data["scope"] = "mower"
+        try:
+            result = get_admin_service().create_note(data)
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        return jsonify(json_ready(result)), 201
+
+    @app.put("/api/mower/notes/<int:note_id>")
+    def mower_notes_update(note_id: int):
+        data = request.get_json(force=True, silent=True) or {}
+        try:
+            result = get_admin_service().update_note(note_id, data, "mower")
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        if not result:
+            return jsonify({"ok": False, "error": "mower note not found"}), 404
+        return jsonify(json_ready(result))
+
+    @app.delete("/api/mower/notes/<int:note_id>")
+    def mower_notes_delete(note_id: int):
+        result = get_admin_service().delete_note(note_id, "mower")
+        if not result:
+            return jsonify({"ok": False, "error": "mower note not found"}), 404
+        return jsonify(json_ready(result))
+
+
+def register_page_usage_routes(app, *, get_page_usage_service: Callable[[], Any]) -> None:
+    @app.post("/api/page-usage/event")
+    def page_usage_event():
+        body = request.get_json(force=True, silent=True) or {}
+        page_id = str(body.get("page_id") or "").strip()[:80]
+        client_id = str(body.get("client_id") or "").strip()[:80]
+        device_class = str(body.get("device_class") or "unknown").strip()[:20]
+        if not page_id or not client_id:
+            return jsonify({"ok": False, "error": "page_id and client_id are required"}), 400
+        get_page_usage_service().record({
+            "page_id": page_id,
+            "client_id": client_id,
+            "device_class": device_class,
+            "viewport_width": body.get("viewport_width"),
+            "viewport_height": body.get("viewport_height"),
+            "standalone": body.get("standalone") is True,
+            "user_agent": str(body.get("user_agent") or "")[:300],
+        })
+        return jsonify({"ok": True}), 201
+
+    @app.get("/api/page-usage/summary")
+    def page_usage_summary():
+        return jsonify(get_page_usage_service().summary(request.args.get("days", 30))), 200
+
+
 def register_ai_routes(
     app,
     *,
@@ -72,22 +231,14 @@ def register_ai_routes(
     def ai_restart():
         service = get_ai_proxy_service()
         service.clear_knowledge_cache()
+        service.clear_status_cache()
         try:
-            docker_socket_request("POST", "/containers/homecontrol-ai-server/restart?t=10", timeout=20)
+            response, _ = docker_socket_request("POST", "/containers/homecontrol-ai-server/restart?t=10", timeout=20)
         except RuntimeError as exc:
             return jsonify({"ok": False, "cache_cleared": True, "error": f"AI gateway restart failed: {exc}"}), 502
 
-        checks = []
-        for delay in (0.8, 1.5, 2.5, 4.0):
-            time.sleep(delay)
-            payload, status = service.status()
-            checks.append({"status": status, "ready": bool(payload.get("ready")), "ok": bool(payload.get("ok") or payload.get("gateway_ok"))})
-            if status < 400 and payload.get("ready"):
-                payload["ok"] = True
-                payload["cache_cleared"] = True
-                payload["restart_requested"] = True
-                return jsonify(payload), 200
-        return jsonify({"ok": True, "cache_cleared": True, "restart_requested": True, "ready": False, "checks": checks}), 202
+        receipt = json.loads(response)
+        return jsonify({"ok": True, "cache_cleared": True, "ready": False, **receipt}), 202
 
     @app.get("/api/ai/node/status")
     def ai_node_status():
@@ -96,16 +247,12 @@ def register_ai_routes(
     @app.post("/api/ai/node/wake")
     def ai_node_wake():
         service = get_ai_node_service()
-        power_result = service.set_power_plug(True, "homecontrol-ai-node-wake")
-        if not service.mac:
-            return jsonify({"ok": bool(power_result.get("ok")), "error": "AI_NODE_MAC is not configured", "power": power_result}), 400
+        body = request.get_json(silent=True) or {}
         try:
-            service.send_wake_on_lan()
-        except ValueError as exc:
-            return jsonify({"ok": False, "error": str(exc), "power": power_result}), 400
-        except OSError as exc:
-            return jsonify({"ok": False, "error": f"Wake-on-LAN failed: {exc}", "power": power_result}), 502
-        return jsonify({"ok": True, "message": "power on requested and wake packet sent", "power": power_result, "node": service.public_config()}), 202
+            payload, status = service.wake(body.get('backup_run_id'))
+        except (ValueError, OSError):
+            return jsonify({'ok': False, 'error': 'AI power guard is unavailable; wake was not dispatched'}), 503
+        return jsonify(payload), status
 
     @app.post("/api/ai/node/command")
     def ai_node_command():
@@ -113,39 +260,37 @@ def register_ai_routes(
         action = str(body.get("action") or "").strip()
         schedule_power_off_on_failure = bool(body.get("schedule_power_off_on_failure"))
         power_off_delay_sec = body.get("power_off_delay_sec")
-        defer_if_backup_running = body.get("defer_if_backup_running", True) is not False
         service = get_ai_node_service()
-        if action == "shutdown" and defer_if_backup_running and service.ai_backup_running():
-            return jsonify(service.request_deferred_shutdown(power_off_delay_sec)), 202
+        if action == 'shutdown':
+            # A caller cannot bypass the coordinated backup guard. Backup-held
+            # completion callbacks enqueue and execute only after lock release.
+            payload, status = service.shutdown_request(power_off_delay_sec, schedule_power_off_on_failure, body.get('backup_run_id'))
+            return jsonify(payload), status
         try:
             result = service.remote_command(action)
         except ValueError as exc:
             return jsonify({"ok": False, "error": str(exc)}), 400
         except subprocess.TimeoutExpired:
             result = {"ok": False, "error": f"AI node SSH command timed out after {service.ssh_timeout:g}s", "action": action}
-            if action == "shutdown" and schedule_power_off_on_failure:
-                result["power_off"] = service.schedule_power_off(power_off_delay_sec)
-                result["message"] = "AI node SSH timed out; delayed power off was scheduled anyway"
-                return jsonify(result), 202
             return jsonify(result), 504
         except OSError as exc:
             result = {"ok": False, "error": f"AI node SSH command failed: {exc}", "action": action}
-            if action == "shutdown" and schedule_power_off_on_failure:
-                result["power_off"] = service.schedule_power_off(power_off_delay_sec)
-                result["message"] = "AI node SSH failed; delayed power off was scheduled anyway"
-                return jsonify(result), 202
             return jsonify(result), 502
-        if action == "shutdown" and result.get("ok"):
-            result["power_off"] = service.schedule_power_off(power_off_delay_sec)
-        elif action == "shutdown" and schedule_power_off_on_failure:
-            result["power_off"] = service.schedule_power_off(power_off_delay_sec)
-            result["message"] = "AI node shutdown command failed; delayed power off was scheduled anyway"
-            return jsonify(result), 202
         return jsonify(result), 200 if result.get("ok") else 502
 
     @app.post("/api/ai/chat")
     def ai_chat():
-        body = request.get_json(force=True, silent=True) or {}
+        if request.content_length and request.content_length > 17 * 1024 * 1024:
+            return jsonify({"ok": False, "error": "A kérés legfeljebb 17 MiB lehet."}), 413
+        raw = request.stream.read(17 * 1024 * 1024 + 1)
+        if len(raw) > 17 * 1024 * 1024:
+            return jsonify({"ok": False, "error": "A kérés legfeljebb 17 MiB lehet."}), 413
+        try:
+            body = json.loads(raw or b"{}")
+        except (ValueError, UnicodeDecodeError):
+            return jsonify({"ok": False, "error": "Hibás JSON kérés."}), 400
+        if not isinstance(body, dict):
+            return jsonify({"ok": False, "error": "A kérés JSON objektum legyen."}), 400
         payload, status = get_ai_proxy_service().chat(body)
         return jsonify(payload), status
 
@@ -177,6 +322,40 @@ def register_ai_routes(
         return jsonify(payload), status
 
 
+def register_sql_lab_routes(
+    app,
+    *,
+    get_sql_lab_service: Callable[[], Any],
+    json_ready: Callable[[Any], Any],
+) -> None:
+    from sql_lab_database import SqlLabUnavailable
+
+    @app.get("/api/sql-lab/schema")
+    def sql_lab_schema():
+        try:
+            return jsonify(json_ready(get_sql_lab_service().schema())), 200
+        except SqlLabUnavailable as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 503
+
+    @app.post("/api/sql-lab/query")
+    def sql_lab_query():
+        body = request.get_json(force=True, silent=True) or {}
+        payload, status = get_sql_lab_service().run(body)
+        return jsonify(json_ready(payload)), status
+
+    @app.get("/api/sql-lab/preview")
+    def sql_lab_preview():
+        try:
+            payload, status = get_sql_lab_service().preview(
+                request.args.get("schema", ""),
+                request.args.get("table", ""),
+                request.args.get("limit", 25),
+            )
+            return jsonify(json_ready(payload)), status
+        except SqlLabUnavailable as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 503
+
+
 def register_backup_routes(
     app,
     *,
@@ -186,6 +365,14 @@ def register_backup_routes(
     context_command_meta: Callable[..., Any],
     json_ready: Callable[[Any], Any],
 ) -> None:
+    @app.post("/api/backup/restore/recover")
+    def api_backup_restore_recover():
+        try:
+            payload, status = get_backup_service().recover_restore_payload(request.get_json(silent=True) or {})
+            return jsonify(payload), status
+        except (ValueError, OSError) as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+
     @app.get("/api/backup")
     def backup_state():
         return jsonify(json_ready(get_context_service().section("backup")))
@@ -284,6 +471,16 @@ def register_climate_routes(
     def gree_climate_state():
         return jsonify(json_ready(get_context_service().section("climate")))
 
+    @app.post("/api/climate/gree/window-guard")
+    def climate_window_guard_config():
+        service = get_climate_service()
+        try:
+            result = service.window_guard().save_config(request.get_json(force=True, silent=True) or {})
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        service.invalidate_context("climate")
+        return jsonify(json_ready({"ok": True, "window_guard": result}))
+
     @app.get("/api/climate/gree/power-history")
     def gree_climate_power_history():
         return jsonify(json_ready(get_context_service().section("climate_power_history")))
@@ -303,7 +500,11 @@ def register_climate_routes(
 
     @app.get("/api/climate/gree/schedules")
     def gree_climate_schedules():
-        return jsonify({"ok": True, "schedules": fetch_climate_schedule_rules()})
+        try:
+            schedules = fetch_climate_schedule_rules(request.args.get("profile"))
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        return jsonify({"ok": True, "schedules": schedules})
 
     @app.post("/api/climate/gree/schedules")
     def gree_climate_schedule_create():
@@ -368,6 +569,36 @@ def register_scheduler_routes(
         except ValueError as exc:
             return jsonify({"ok": False, "error": str(exc)}), 400
 
+
+def register_combustion_safety_routes(app, *, get_combustion_safety_service: Callable[[], Any], json_ready: Callable[[Any], Any]) -> None:
+    @app.get("/api/combustion-safety/state")
+    def combustion_safety_state():
+        return jsonify(json_ready(get_combustion_safety_service().state_payload()))
+
+    @app.put("/api/combustion-safety/config")
+    def combustion_safety_config():
+        data = request.get_json(force=True, silent=True) or {}
+        try:
+            config = get_combustion_safety_service().update_config(data, data.get("updated_by") or "api")
+        except (TypeError, ValueError) as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        return jsonify({"ok": True, "config": json_ready(config), "state": json_ready(get_combustion_safety_service().state_payload())})
+
+    @app.post("/api/combustion-safety/acknowledge")
+    def combustion_safety_acknowledge():
+        try:
+            return jsonify(json_ready(get_combustion_safety_service().acknowledge()))
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 409
+
+    @app.post("/api/combustion-safety/preview-light")
+    def combustion_safety_preview_light():
+        data = request.get_json(force=True, silent=True) or {}
+        try:
+            result = get_combustion_safety_service().preview_indicator(str(data.get("pattern") or ""))
+        except (TypeError, ValueError) as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        return jsonify(result)
 
 def register_robot_routes(
     app,
@@ -476,6 +707,7 @@ def register_energy_routes(
                 entity_id,
                 always_on_marker=data.get("always_on") if has_always_on else None,
                 auto_climate_marker=data.get("auto_climate") if has_auto_climate else None,
+                delay_minutes=data.get("auto_climate_delay_minutes"),
             )
         except ValueError as exc:
             return jsonify({"ok": False, "error": str(exc)}), 400
@@ -554,11 +786,80 @@ def register_admin_routes(
     get_context_service: Callable[[], Any],
     get_admin_service: Callable[[], Any],
     get_process_binding_service: Callable[[], Any],
+    get_season_profile_service: Callable[[], Any],
     json_ready: Callable[[Any], Any],
 ) -> None:
     @app.get("/api/admin/bootstrap")
     def admin_bootstrap():
         return jsonify(get_admin_service().bootstrap_payload())
+
+    @app.get("/api/admin/season-profiles")
+    def admin_season_profiles():
+        return jsonify(json_ready(get_season_profile_service().payload()))
+
+    @app.put("/api/admin/season-profiles/<domain>/<profile>")
+    def admin_update_season_profile(domain: str, profile: str):
+        data = request.get_json(force=True, silent=True) or {}
+        try:
+            result = get_season_profile_service().update_profile(domain, profile, data)
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        return jsonify(json_ready(result))
+
+    @app.post("/api/admin/season-profiles/<domain>/activate")
+    def admin_activate_season_profile(domain: str):
+        data = request.get_json(force=True, silent=True) or {}
+        try:
+            result = get_season_profile_service().activate(domain, str(data.get("profile") or ""))
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        return jsonify(json_ready(result))
+
+    @app.get("/api/admin/parameters")
+    def admin_parameters():
+        return jsonify(json_ready(get_admin_service().parameters_payload()))
+
+    @app.get("/api/admin/containers")
+    def admin_containers():
+        try:
+            by_name = {item["name"]: item for item in (docker_socket_containers() or [])}
+        except RuntimeError as exc:
+            return jsonify({"ok": False, "error": str(exc), "containers": []}), 503
+        containers = []
+        for key, name in ADMIN_RESTART_CONTAINERS.items():
+            current = by_name.get(name) or {}
+            containers.append({
+                "key": key,
+                "name": name,
+                "state": current.get("state") or "not found",
+                "status": current.get("status") or "",
+            })
+        return jsonify({"ok": True, "containers": containers})
+
+    @app.post("/api/admin/containers/<container_key>/restart")
+    def admin_container_restart(container_key: str):
+        container_name = ADMIN_RESTART_CONTAINERS.get(container_key)
+        if not container_name:
+            return jsonify({"ok": False, "error": "container is not allowed"}), 404
+
+        try:
+            response, _ = docker_socket_request("POST", f"/containers/{container_name}/restart?t=10", timeout=20)
+            receipt = json.loads(response)
+        except (RuntimeError, TimeoutError) as exc:
+            return jsonify({"ok": False, "error": str(exc), "container": container_name}), 502
+        return jsonify({"ok": True, "container": container_name, **receipt}), 202
+
+
+    @app.get("/api/admin/host-jobs/<job_id>")
+    def host_operation_job(job_id):
+        from host_operations_client import HostOperationsClient
+        try:
+            job = HostOperationsClient().call('job', job_id=job_id, timeout=3)
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 404
+        except RuntimeError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 503
+        return jsonify({"ok": True, "job": job})
 
     @app.get("/api/process-bindings")
     def process_bindings():
@@ -657,10 +958,27 @@ def register_irrigation_routes(
         payload, status = get_irrigation_service().nano_config(data)
         return jsonify(payload), status
 
+    @app.put("/api/irrigation/solar-pump/config")
+    def update_irrigation_solar_pump_config():
+        data = request.get_json(force=True, silent=True) or {}
+        payload, status = get_irrigation_service().update_solar_pump_config(data)
+        return jsonify(payload), status
+
     @app.put("/api/irrigation/schedules/<int:schedule_id>")
     def update_irrigation_schedule(schedule_id: int):
         data = request.get_json(force=True, silent=True) or {}
         payload, status = get_irrigation_service().update_schedule(schedule_id, data)
+        return jsonify(payload), status
+
+    @app.post("/api/irrigation/schedules")
+    def create_irrigation_schedule():
+        data = request.get_json(force=True, silent=True) or {}
+        payload, status = get_irrigation_service().create_schedule(data)
+        return jsonify(payload), status
+
+    @app.delete("/api/irrigation/schedules/<int:schedule_id>")
+    def delete_irrigation_schedule(schedule_id: int):
+        payload, status = get_irrigation_service().delete_schedule(schedule_id)
         return jsonify(payload), status
 
     @app.post("/api/irrigation/manual/stop")
@@ -695,6 +1013,10 @@ def register_irrigation_routes(
 
     @app.get("/api/irrigation/statistics")
     def irrigation_statistics():
+        range_key = request.args.get("range", "24h")
+        hours = request.args.get("hours")
+        if hours not in (None, "") or range_key not in (None, "", "24h"):
+            return jsonify(json_ready(get_irrigation_service().statistics_payload(range_key, hours)))
         return jsonify(json_ready(get_context_service().section("irrigation_statistics")))
 
 
@@ -702,12 +1024,15 @@ def register_system_routes(
     app,
     *,
     get_context_service: Callable[[], Any],
+    get_admin_service: Callable[[], Any],
     get_system_status_service: Callable[[], Any],
     json_ready: Callable[[Any], Any],
 ) -> None:
     @app.get("/api/homecontrol/statistics")
     def homecontrol_statistics():
-        return jsonify(json_ready(get_context_service().section("home_statistics")))
+        range_key = request.args.get("range", "24h")
+        payload = get_admin_service().homecontrol_statistics_payload(range_key, request.args.get("hours"))
+        return jsonify(json_ready(payload))
 
     @app.get("/api/performance")
     def performance_state():
@@ -720,3 +1045,16 @@ def register_system_routes(
     @app.get("/api/documentation")
     def documentation_state():
         return jsonify(json_ready(get_system_status_service().documentation_snapshot()))
+
+    @app.get("/api/debug/logs")
+    def debug_log_sources():
+        return jsonify(json_ready(get_system_status_service().debug_log_sources()))
+
+    @app.get("/api/debug/logs/<path:container_ref>")
+    def debug_container_log(container_ref):
+        try:
+            tail = int(request.args.get("tail", "300"))
+        except (TypeError, ValueError):
+            tail = 300
+        payload = get_system_status_service().debug_container_log(container_ref, tail=tail)
+        return jsonify(json_ready(payload)), 200 if payload.get("ok") else 404

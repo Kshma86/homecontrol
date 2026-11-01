@@ -1,0 +1,20 @@
+{
+  "observed_utc": "2026-10-28T12:53:57.640880+00:00",
+  "received_timestamp": 1793191680.713607,
+  "age_sec": 347,
+  "data": {
+    "nano_online": false,
+    "nano_serial_healthy": false,
+    "nano_code": 106,
+    "nano_code_text": "SUPPLY_LOW",
+    "nano_health": "FAULT",
+    "nano_cmd_timeout_count": 61861,
+    "nano_cmd_fail_count": 61863,
+    "nano_cmd_retry_count": 62166,
+    "nano_last_err_cmd": "PING`��@51790",
+    "nano_last_err_reason": "UNKNOWN_CMD",
+    "pump_metrics_last_tele_sec_ago": 300125,
+    "uptime_sec": 889439,
+    "wifi_rssi": -76
+  }
+}

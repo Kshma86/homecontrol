@@ -10,6 +10,8 @@ RESTIC_CHECK_UNIT_SRC="$BASE/scripts/systemd/homecontrol-restic-check.service"
 RESTIC_CHECK_TIMER_SRC="$BASE/scripts/systemd/homecontrol-restic-check.timer"
 FULL_AI_REQUEST_UNIT_SRC="$BASE/scripts/systemd/homecontrol-full-ai-backup-request.service"
 FULL_AI_REQUEST_PATH_SRC="$BASE/scripts/systemd/homecontrol-full-ai-backup-request.path"
+POST_BOOT_HEALTH_UNIT_SRC="$BASE/scripts/systemd/homecontrol-post-boot-health.service"
+POST_BOOT_HEALTH_TIMER_SRC="$BASE/scripts/systemd/homecontrol-post-boot-health.timer"
 UNIT_DST="/etc/systemd/system/homecontrol-backup.service"
 TIMER_DST="/etc/systemd/system/homecontrol-backup.timer"
 AI_WEEKLY_UNIT_DST="/etc/systemd/system/homecontrol-ai-weekly-backup.service"
@@ -18,6 +20,8 @@ RESTIC_CHECK_UNIT_DST="/etc/systemd/system/homecontrol-restic-check.service"
 RESTIC_CHECK_TIMER_DST="/etc/systemd/system/homecontrol-restic-check.timer"
 FULL_AI_REQUEST_UNIT_DST="/etc/systemd/system/homecontrol-full-ai-backup-request.service"
 FULL_AI_REQUEST_PATH_DST="/etc/systemd/system/homecontrol-full-ai-backup-request.path"
+POST_BOOT_HEALTH_UNIT_DST="/etc/systemd/system/homecontrol-post-boot-health.service"
+POST_BOOT_HEALTH_TIMER_DST="/etc/systemd/system/homecontrol-post-boot-health.timer"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Run as root: sudo $0" >&2
@@ -32,13 +36,17 @@ install -m 0644 "$RESTIC_CHECK_UNIT_SRC" "$RESTIC_CHECK_UNIT_DST"
 install -m 0644 "$RESTIC_CHECK_TIMER_SRC" "$RESTIC_CHECK_TIMER_DST"
 install -m 0644 "$FULL_AI_REQUEST_UNIT_SRC" "$FULL_AI_REQUEST_UNIT_DST"
 install -m 0644 "$FULL_AI_REQUEST_PATH_SRC" "$FULL_AI_REQUEST_PATH_DST"
+install -m 0644 "$POST_BOOT_HEALTH_UNIT_SRC" "$POST_BOOT_HEALTH_UNIT_DST"
+install -m 0644 "$POST_BOOT_HEALTH_TIMER_SRC" "$POST_BOOT_HEALTH_TIMER_DST"
 
 systemctl daemon-reload
 systemctl enable --now homecontrol-backup.timer
 systemctl enable --now homecontrol-ai-weekly-backup.timer
 systemctl enable --now homecontrol-restic-check.timer
 systemctl enable --now homecontrol-full-ai-backup-request.path
+systemctl enable --now homecontrol-post-boot-health.timer
 systemctl restart homecontrol-backup.timer
 systemctl restart homecontrol-ai-weekly-backup.timer
 systemctl restart homecontrol-restic-check.timer
 systemctl restart homecontrol-full-ai-backup-request.path
+systemctl restart homecontrol-post-boot-health.timer

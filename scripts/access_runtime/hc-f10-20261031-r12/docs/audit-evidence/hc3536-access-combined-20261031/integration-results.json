@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "production_used": false,
+  "published_ports": false,
+  "network": "none; shared isolated namespace",
+  "broker_uid_1883_private_0600_config": true,
+  "real_postgresql": true,
+  "real_pgbouncer": true,
+  "authenticated_mqtt": true,
+  "candidate_ingest_mqtt_and_db_ready": true,
+  "nonroot_candidate_backend_ready": true,
+  "host_executor_uid": 0,
+  "host_executor_docker": "strict fake CLI fixture; no daemon socket",
+  "wrong_peer_uid_denied": true,
+  "uid": 10001,
+  "socket_root_10001_0660": true,
+  "root_rpc_allowed": true,
+  "backup_queued": true,
+  "ai_state_shared": true,
+  "no_docker_socket": true,
+  "protected_writes_denied": true
+}

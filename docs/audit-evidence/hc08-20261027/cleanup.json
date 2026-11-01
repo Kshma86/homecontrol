@@ -1,0 +1,6 @@
+{
+  "own_test_containers_removed": true,
+  "pg_data_was_tmpfs": true,
+  "persistent_lab_volumes_created": false,
+  "production_containers_touched": false
+}

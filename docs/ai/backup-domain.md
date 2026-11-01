@@ -1,5 +1,26 @@
 # Backup Domain Context
 
+## F6 implementation status, 2026-10-23
+
+HC-19/25/30/42 are locally repaired and verified, **not deployed**. Live r2 and
+its original host scripts/timers still use the legacy flow described below.
+The prepared replacement uses `scripts/backup_runner.py`,
+`infra/backend/backup_protocol.py`, fixed-mode request JSON, 202 responses and
+job IDs; both web requests and system timers share the host executor/lock.
+A local archive becomes verified only after streaming checksum validation and
+an atomic `.complete.json` receipt. Legacy archives remain inspectable with an
+unverified label; settings/log/lock/request files can never be latest success.
+Per-destination state retains independent attempts, failures and last success.
+Git origin failure cannot suppress offsite/local/required weekly restic attempts.
+Logs and JSON reads are bounded; reading a missing lock creates nothing.
+
+Separate host installation uses `scripts/install_backup_f6.py` (plan by default)
+and `scripts/systemd/f6/`, retiring duplicate user timers. No host units were
+installed during this repair. F1 export policy HC-17/18 remains a deployment
+dependency, HC-31 and restore findings remain open. For current source contracts,
+content coverage, verification limits and rollback see
+[HC F6 backups](../hc-f6-backups.md) and AUDIT_REPAIR REPAIR-012.
+
 ## Scope
 
 The backup module creates, lists, inspects, compares, configures, and restores
@@ -118,7 +139,8 @@ Defaults:
   start, waits for SSH, refreshes the encrypted secrets bundle when the age
   layer is ready, pushes the filtered Gitea config snapshot, runs
   `scripts/backup_hc.sh` with `RESTIC_REQUIRED=true`, then requests AI-server
-  shutdown only if the backup had to wake the AI server.
+  shutdown only if `ai_weekly_shutdown_after` is enabled and the backup had to
+  wake the AI server.
 - While waiting for SSH, the weekly/full backup logs progress every 30 seconds
   and repeats the wake/Wake-on-LAN request every 60 seconds until the 15-minute
   timeout expires.

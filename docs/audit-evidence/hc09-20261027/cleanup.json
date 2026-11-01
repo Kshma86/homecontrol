@@ -1,0 +1,6 @@
+{
+  "own_test_database_removed": true,
+  "own_test_runners_removed": true,
+  "database_storage": "tmpfs, removed with lab container",
+  "production_containers_removed": 0
+}

@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "phases": [
+    {
+      "phase": "release",
+      "image": "sha256:47b7aad02fe45cc5fd40a0f3a34b90b8bc7883ddb0ef5f8052d281b0cb5d8503",
+      "value": 1,
+      "health": true
+    },
+    {
+      "phase": "rollback",
+      "image": "sha256:06038dad570de6e23ef64848627d071866982cbe0a7b23a4777359d22229a2f2",
+      "value": 2,
+      "health": true
+    },
+    {
+      "phase": "release",
+      "image": "sha256:47b7aad02fe45cc5fd40a0f3a34b90b8bc7883ddb0ef5f8052d281b0cb5d8503",
+      "value": 3,
+      "health": true
+    }
+  ],
+  "new_legacy_new_identity": [
+    true,
+    false,
+    true
+  ],
+  "real_transaction_pgbouncer": true,
+  "tuya_current_state_and_per_metric": true,
+  "existing_configuration_and_safety_unchanged": true,
+  "network": "none",
+  "database_restored_during_switch": false,
+  "device_commands": false
+}

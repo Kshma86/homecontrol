@@ -1,0 +1,42 @@
+{
+  "finding": "HC-10",
+  "date": "2026-10-28",
+  "new_cache_tests": 24,
+  "regression": {
+    "tests": 290,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "failed_ids": [],
+    "modules": [
+      "read_model_cache",
+      "context_service_contract",
+      "command_service",
+      "api_route_modules",
+      "robot_service",
+      "scheduler_feedback",
+      "scheduler_bridge_samples",
+      "scheduler_service",
+      "startup_service",
+      "admin_bootstrap",
+      "schema_service",
+      "irrigation_service",
+      "irrigation_admission",
+      "irrigation_recovery",
+      "irrigation_stop_priority",
+      "climate_window_guard",
+      "power_wall_service",
+      "mqtt_monitor_service",
+      "deployment_policy",
+      "combustion_safety_service",
+      "combustion_safety_state",
+      "combustion_safety_delivery",
+      "combustion_opening_events"
+    ]
+  },
+  "payload_cases": 10,
+  "sql_call_asts_unchanged": 152,
+  "race_paths_reproduced_and_fixed": 5,
+  "production_changed": false,
+  "new_database_migrations": []
+}

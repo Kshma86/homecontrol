@@ -152,6 +152,7 @@ class RobotService:
                 state = last_known_telemetry["state"]
                 telemetry_source = "capture"
         map_png = self.monitor.value("map/current_png")
+        live_map_png = self.monitor.value("robot/live_png")
         robot_state = self.first_value(self.monitor.value("robot_state"), state.get("state"))
         robot_state_text = self.first_value(self.monitor.value("robot_state_text"), state.get("state_text"))
         battery = self.first_value(self.monitor.value("battery"), state.get("battery"))
@@ -206,6 +207,8 @@ class RobotService:
             },
             "robot_position": self.monitor.value("robot/position"),
             "robot_position_px": self.monitor.value("robot/position_px"),
+            "robot_live_map": self.monitor.value("robot/live_map"),
+            "robot_live_png_url": self.map_url(live_map_png),
             "dock_position": self.monitor.value("dock/position"),
             "dock_position_px": self.monitor.value("dock/position_px"),
             "room_clean_status": self.monitor.value("room_clean/status"),

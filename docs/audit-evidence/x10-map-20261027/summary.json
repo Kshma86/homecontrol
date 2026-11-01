@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-27",
+  "scope": "X10 MIIO serialization, watchdog and map retry",
+  "production_deployed": false,
+  "new_tests": 31,
+  "related_regressions": 52,
+  "total_tests": 83,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "real_robot_probes": 0,
+  "actual_miio_process_timeout_test": true,
+  "actual_map_process_group_cleanup_test": true,
+  "actual_watchdog_process_exit": 75,
+  "full_bridge_and_map_import": true,
+  "test_container_network": "none",
+  "runtime_image": "sha256:e8bcc6eb5d2d4dd4ea63b8348df2c5ccb9e6a7969cb54d02db8680e6946012fa",
+  "defaults": {
+    "miio_command_seconds": 20,
+    "miio_lock_wait_seconds": 30,
+    "watchdog_seconds": 300,
+    "watchdog_check_seconds": 5
+  },
+  "source_files_changed": [
+    "apps/xiaomi-x10/xiaomi_x10_bridge.py",
+    "apps/xiaomi-x10/xiaomi_x10_map.py",
+    "apps/xiaomi-x10/config.py",
+    "infra/docker-compose.yml",
+    "AUDIT_REPAIR.md",
+    "DEPLOYMENT_PREP.md",
+    "apps/xiaomi-x10/x10_runtime.py",
+    "apps/xiaomi-x10/tests/test_x10_runtime.py",
+    "docs/x10-map-repair.md"
+  ],
+  "audit_statuses_unchanged": true,
+  "dependencies": [
+    "HC-09 local bridge changes",
+    "supervised X10 rollout"
+  ],
+  "limitations": [
+    "no real robot/cloud test",
+    "HC-12/13 full scope still open",
+    "no python-miio dependency upgrade"
+  ]
+}

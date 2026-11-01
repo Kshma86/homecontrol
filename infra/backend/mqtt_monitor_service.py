@@ -1,9 +1,12 @@
 import json
 import threading
 import time
+import uuid
 from typing import Any, Callable, Dict, Iterable, Optional
 
 import paho.mqtt.client as mqtt
+from mqtt_credentials import configure_mqtt_auth
+from deployment_policy import command_blocked, MESSAGE as RESTRICTION_MESSAGE
 
 
 def compact_payload(payload: str):
@@ -37,13 +40,48 @@ class TopicMonitorState:
         self.observe_topic = observe_topic
         self.lock = threading.RLock()
         self.connected = False
+        self.connection_generation = 0
+        self.observation_epoch = uuid.uuid4().hex
         self.last_error = ""
         self.topic_state = {}
         self.raw_messages = []
+        self._stop = threading.Event()
+        self._thread = None
+        self._client = None
+        self._last_loop = None
 
     def start(self):
-        thread = threading.Thread(target=self._loop, name=self.thread_name, daemon=True)
-        thread.start()
+        with self.lock:
+            if self._stop.is_set():
+                raise RuntimeError('MQTT monitor is stopping')
+            if self._thread is None:
+                self._last_loop = time.monotonic()
+                self._thread = threading.Thread(target=self._loop, name=self.thread_name, daemon=True)
+                self._thread.start()
+            return self._thread
+
+    def stop(self, timeout=3):
+        self._stop.set()
+        with self.lock:
+            client, thread = self._client, self._thread
+        if client is not None:
+            try:
+                client.disconnect()
+            except Exception as exc:
+                with self.lock:
+                    self.last_error = str(exc)
+        if thread is not None:
+            thread.join(max(0, timeout))
+        return not (thread and thread.is_alive())
+
+    def worker_status(self):
+        with self.lock:
+            age = None if self._last_loop is None else max(0, time.monotonic()-self._last_loop)
+            running = bool(self._thread and self._thread.is_alive())
+            return {'name': self.thread_name, 'key': self.thread_name, 'enabled': self._thread is not None,
+                    'running': running, 'stalled': bool(running and age is not None and age > 10),
+                    'last_cycle_age_sec': age, 'connected': self.connected,
+                    'error': self.last_error, 'stopping': self._stop.is_set()}
 
     def subscriptions(self):
         result = []
@@ -53,23 +91,44 @@ class TopicMonitorState:
         return result
 
     def _loop(self):
-        while True:
+        while not self._stop.is_set():
+            client = None
             try:
                 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id=self.client_id)
+                configure_mqtt_auth(client)
                 client.on_connect = self._on_connect
                 client.on_disconnect = self._on_disconnect
                 client.on_message = self._on_message
+                with self.lock:
+                    self._client = client
                 client.connect(self.mqtt_host, self.mqtt_port, keepalive=60)
-                client.loop_forever()
+                while not self._stop.is_set():
+                    rc = client.loop(timeout=.5)
+                    with self.lock:
+                        self._last_loop = time.monotonic()
+                    if rc != mqtt.MQTT_ERR_SUCCESS:
+                        raise ConnectionError('MQTT network loop disconnected')
             except Exception as exc:
                 with self.lock:
                     self.connected = False
                     self.last_error = str(exc)
-                time.sleep(5)
+            finally:
+                if client is not None:
+                    try:
+                        client.disconnect()
+                    except Exception:
+                        pass
+                with self.lock:
+                    self._client = None
+                    self.connected = False
+                    self._last_loop = time.monotonic()
+            self._stop.wait(5)
 
     def _on_connect(self, client, userdata, flags, rc, properties=None):
         with self.lock:
             self.connected = rc == 0
+            if self.connected:
+                self.connection_generation += 1
             self.last_error = "" if rc == 0 else f"MQTT connect rc={rc}"
         if rc == 0:
             for topic in self.subscriptions():
@@ -81,6 +140,8 @@ class TopicMonitorState:
             self.last_error = "" if rc == 0 else f"MQTT disconnected rc={rc}"
 
     def _on_message(self, client, userdata, msg):
+        received_monotonic = time.monotonic()
+        received_at = time.time()
         payload = msg.payload.decode("utf-8", errors="replace")
         rel_topic = self.relative_topic(msg.topic) if self.relative_topic else msg.topic
         item = {
@@ -89,9 +150,12 @@ class TopicMonitorState:
             "payload": payload,
             "json": compact_payload(payload),
             "retain": bool(msg.retain),
-            "timestamp": time.time(),
+            "timestamp": received_at,
         }
         with self.lock:
+            # Local receipt metadata, not an assertion about device sampling time.
+            item["received_monotonic"] = received_monotonic
+            item["connection_generation"] = self.connection_generation
             self.topic_state[rel_topic] = item
             self.raw_messages.insert(0, item)
             self.raw_messages = self.raw_messages[: self.max_raw_messages]
@@ -112,6 +176,8 @@ class TopicMonitorState:
             "json": item["json"],
             "retain": item["retain"],
             "timestamp": item["timestamp"],
+            "received_monotonic": item["received_monotonic"],
+            "connection_generation": item["connection_generation"],
             "age_sec": max(0, int(time.time() - item["timestamp"])),
         }
 
@@ -126,6 +192,8 @@ class TopicMonitorState:
             topics = {name: self.latest(name) for name in self.topic_state}
             return {
                 "mqtt_connected": self.connected,
+                "connection_generation": self.connection_generation,
+                "observation_epoch": self.observation_epoch,
                 "last_error": self.last_error,
                 "broker": self.broker_meta,
                 "subscriptions": self.subscriptions(),
@@ -185,9 +253,11 @@ class IrrigationMqttMonitorState(TopicMonitorState):
         return self.latest(topic)
 
     def snapshot(self):
-        base = super().snapshot()
-        base["topics"] = {name: self.latest_for_topic(topic) for name, topic in self.named_topics.items()}
-        return base
+        # Connection identity and named observations must describe the same instant.
+        with self.lock:
+            base = super().snapshot()
+            base["topics"] = {name: self.latest_for_topic(topic) for name, topic in self.named_topics.items()}
+            return base
 
 
 class BaseTopicMonitorState(TopicMonitorState):
@@ -234,6 +304,7 @@ class MqttClientService:
             client.disconnect()
 
         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+        configure_mqtt_auth(client)
         client.on_connect = on_connect
         client.connect(self.mqtt_host, self.mqtt_port, keepalive=10)
         client.loop_start()
@@ -246,9 +317,12 @@ class MqttClientService:
         return ok["connected"]
 
     def publish(self, topic: str, payload: Any, qos: int = 0, retain: bool = False):
+        if command_blocked(topic, payload):
+            return False, RESTRICTION_MESSAGE
         if not topic:
             return False, "missing topic"
         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+        configure_mqtt_auth(client)
         try:
             client.connect(self.mqtt_host, self.mqtt_port, keepalive=10)
             client.loop_start()
@@ -257,16 +331,20 @@ class MqttClientService:
             else:
                 payload_text = str(payload)
             result = client.publish(topic, payload_text, qos=qos, retain=retain)
-            result.wait_for_publish(timeout=3)
-            client.loop_stop()
-            client.disconnect()
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
                 return False, f"publish failed rc={result.rc}"
+            result.wait_for_publish(timeout=3)
+            if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                return False, f"publish failed rc={result.rc}"
+            if result.is_published() is not True:
+                return False, "publish outcome uncertain: acknowledgement timeout"
             return True, "published"
         except Exception as exc:
-            try:
-                client.loop_stop()
-                client.disconnect()
-            except Exception:
-                pass
             return False, str(exc)
+        finally:
+            # Each cleanup is independent, including connect/wait failures.
+            for cleanup in (client.loop_stop, client.disconnect):
+                try:
+                    cleanup()
+                except Exception:
+                    pass

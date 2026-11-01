@@ -1,0 +1,9 @@
+{
+  "path": "private/images-release-and-rollback.tar",
+  "bytes": 54450176,
+  "sha256": "c0b301aa3bf7fc83ce5edf14e80dcd8a5d51728a584dc4ae8660221e88026fe2",
+  "image_ids": [
+    "sha256:47b7aad02fe45cc5fd40a0f3a34b90b8bc7883ddb0ef5f8052d281b0cb5d8503",
+    "sha256:06038dad570de6e23ef64848627d071866982cbe0a7b23a4777359d22229a2f2"
+  ]
+}

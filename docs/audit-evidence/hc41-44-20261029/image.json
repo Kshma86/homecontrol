@@ -1,0 +1,6 @@
+{
+  "image": "sha256:d01df758726c1449776ebde96c18e0ef4615b526463d5993bd4e41311337bf7f",
+  "base": "sha256:75501094a45921cb9724b9f2082981e451d33be9f2ffc82706a33b61b137668c",
+  "user": "10001:10001",
+  "dependency_updates": false
+}

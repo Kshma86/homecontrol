@@ -1,0 +1,16 @@
+{
+  "name": "HC – megfigyelés (SSH)",
+  "protocol": "mqtt",
+  "host": "127.0.0.1",
+  "port": 21884,
+  "username": "hc_explorer",
+  "suggested_mqtt_version": "5.0",
+  "subscriptions": [
+    "homecontrol/#",
+    "zigbee/#",
+    "$SYS/broker/#"
+  ],
+  "permissions": "read_only",
+  "active": false,
+  "format": "manual_connection_field_reference"
+}

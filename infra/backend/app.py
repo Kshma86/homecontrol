@@ -1,15 +1,14 @@
+from worker_runtime import RequestCapacity
 import json
-import math
-import os
 import threading
 import time
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple
 from urllib.parse import urlencode
 
 from flask import Flask, g, jsonify, request, send_from_directory
+from flask_sock import Sock
 from psycopg.rows import dict_row
 
 from admin_service import AdminService
@@ -18,116 +17,151 @@ from api_route_modules import (
     register_ai_routes,
     register_backup_routes,
     register_climate_routes,
+    register_combustion_safety_routes,
     register_context_routes,
     register_energy_routes,
     register_irrigation_routes,
+    register_mower_routes,
+    register_page_usage_routes,
     register_robot_routes,
     register_scheduler_routes,
+    register_sql_lab_routes,
     register_system_routes,
 )
+from ai_chat_audit_service import AiChatAuditService
 from ai_node_service import AiNodeService
+from scoped_ai_power_coordination import ScopedAiPowerCoordinator as AiPowerCoordinator
+from deployment_policy import install_routes as install_deployment_policy
 from ai_proxy_service import AiProxyService
-from backup_service import BackupService
+from host_operations_client import HostBackupService, HostOperationsUnavailable
 from climate_service import ClimateService
+from climate_window_guard import ClimateWindowGuard
+from combustion_safety_service import CombustionSafetyService
 from command_service import CommandService
 from context_service import ContextService
-from database_service import DatabaseService
+from db_runtime import DatabaseRuntime
+from sql_lab_database import SqlLabDatabase
 from energy_device_service import EnergyDeviceService
 from irrigation_service import IrrigationService
+from irrigation_admission import IrrigationSessionAdmission
 from mqtt_monitor_service import BaseTopicMonitorState, IrrigationMqttMonitorState, MqttClientService
+from mower_service import MowerService
+from mower_v3_service import MowerV3Service
+from mower_service_read import MowerServiceRead, register_mower_service_read
+from mower_bringup_read import MowerBringupRead, register_mower_bringup_read
+from mower_operator_auth import MowerOperatorAuth
+from mower_manual_service import ManualRelay
+from mower_v3_routes import register_mower_v3_controls
+from mower_parameters_service import MowerParametersService
+from mower_parameters_store import MowerParametersStore
+from mower_parameters_routes import register_mower_parameter_routes
+from mower_firmware_routes import register_mower_firmware_routes
+from mower_firmware_service import MowerFirmwareService
+from mower_firmware_store import MowerFirmwareStore
+from mower_firmware_staging import MowerFirmwareStaging
+from mower_firmware_sessions_store import MowerFirmwareSessionsStore
+from mower_firmware_operations_store import MowerFirmwareOperationsStore
+from mower_firmware_updates import MowerFirmwareUpdates
+from page_usage_service import PageUsageService
 from power_wall_service import PowerWallService
 from process_binding_service import ProcessBindingService
-from repository_service import RepositoryRegistry
+from climate_fan_coordination import ClimateFanCoordinator
 from robot_service import RobotService
 from scheduler_service import SchedulerService
+from scheduler_audit import scheduler_audit_transaction
+from season_profile_service import SeasonProfileService
 from schema_service import HcSchemaService
-from startup_service import BootstrapService, StartupService
+from sql_lab_service import SqlLabService
+from settings import DEFAULT_CONTEXT_REFRESH_SECTIONS, DEFAULT_CONTEXT_SECTIONS, SCHEDULER_MODES, SETTINGS
+from startup_service import BootstrapService, StartupService, run_guarded_callbacks
 from system_status_service import SystemStatusService, docker_exec_capture, docker_socket_request
+from runtime_utils import (
+    ApiCache,
+    ApiPerformanceLog,
+    absolute_humidity_g_m3,
+    current_db_query_count,
+    json_dumps,
+    json_ready,
+    json_time,
+    normalize_text,
+    to_float,
+    to_int,
+    unix_to_iso,
+)
+from topic_contract import (
+    X10_DAY_MASK_INDEX_BY_HC_DAY,
+    climate_command_topic,
+    irrigation_command_topics,
+    irrigation_topics,
+    x10_schedule_clean_topic,
+    x10_weekly_schedule_topic,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
 app = Flask(__name__)
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-MQTT_HOST = os.environ.get("MQTT_HOST", "localhost")
-MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
-X10_BASE_TOPIC = os.environ.get("X10_BASE_TOPIC", "homecontrol/xiaomi_x10").rstrip("/")
-X10_MAP_DIR = Path(os.environ.get("X10_MAP_DIR", "/srv/docker/homecontrol/apps/xiaomi-x10/x10_maps"))
-CLIMATE_BASE_TOPIC = os.environ.get("CLIMATE_BASE_TOPIC", "homecontrol/gree_climate").rstrip("/")
-GREE_CLIMATE_IP = os.environ.get("GREE_CLIMATE_IP", "192.168.1.72")
-GREE_CLIMATE_PORT = int(os.environ.get("GREE_CLIMATE_PORT", "7000"))
-GREE_CLIMATE_MAC = os.environ.get("GREE_CLIMATE_MAC", "9424b8ba43f7")
-GREE_CLIMATE_NAME = os.environ.get("GREE_CLIMATE_NAME", "Gree klíma")
-AI_SERVER_URL = os.environ.get("AI_SERVER_URL", "http://ai-server:8088").rstrip("/")
-AI_SERVER_TIMEOUT = float(os.environ.get("AI_SERVER_TIMEOUT", "360"))
-CLIMATE_POWER_METER_EXT_ID = os.environ.get("CLIMATE_POWER_METER_EXT_ID", "bf7bda0d19d3934720scjs")
-CLIMATE_POWER_METER_POWER_DIVISOR = float(os.environ.get("CLIMATE_POWER_METER_POWER_DIVISOR", "10"))
-AI_NODE_POWER_ENTITY_ID = os.environ.get("AI_NODE_POWER_ENTITY_ID", "").strip()
-HC_V2_EXECUTION_ENABLED = os.environ.get("HC_V2_EXECUTION_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
-HC_V2_EXECUTION_ALLOW_IRRIGATION = os.environ.get("HC_V2_EXECUTION_ALLOW_IRRIGATION", "0").strip().lower() in {"1", "true", "yes", "on"}
-HC_V2_EXECUTION_ALLOW_X10 = os.environ.get("HC_V2_EXECUTION_ALLOW_X10", "0").strip().lower() in {"1", "true", "yes", "on"}
-HC_V2_EXECUTION_ALLOW_CLIMATE = os.environ.get("HC_V2_EXECUTION_ALLOW_CLIMATE", "0").strip().lower() in {"1", "true", "yes", "on"}
-SCHEDULER_MODES = {
-    "v2_execute_irrigation",
-    "v2_execute_x10",
-    "v2_execute_climate",
-    "v2_execute_x10_climate",
-    "v2_execute_all",
-}
+@app.errorhandler(HostOperationsUnavailable)
+def host_operation_unavailable(error):
+    return jsonify({"ok": False, "error": str(error), "code": "host_executor_unavailable"}), 503
 
-IRRIGATION_DEVICE_ID = os.environ.get("IRRIGATION_DEVICE_ID", "esp-irrigation-1")
-IRRIGATION_CMD_BASE = f"homecontrol/cmd/irrigation/{IRRIGATION_DEVICE_ID}"
-MANUAL_MAX_MINUTES = int(os.environ.get("IRRIGATION_MANUAL_MAX_MINUTES", "180"))
-IRRIGATION_SNAPSHOT_CACHE_TTL = float(os.environ.get("IRRIGATION_SNAPSHOT_CACHE_TTL", "10"))
-IRRIGATION_PILOT_CACHE_TTL = float(os.environ.get("IRRIGATION_PILOT_CACHE_TTL", "300"))
-IRRIGATION_WEATHER_SUMMARY_CACHE_TTL = float(os.environ.get("IRRIGATION_WEATHER_SUMMARY_CACHE_TTL", "300"))
-API_CACHE: Dict[str, Dict[str, Any]] = {}
-API_CACHE_LOCK = threading.Lock()
-API_PERF_LOG_WINDOW_SEC = float(os.environ.get("API_PERF_LOG_WINDOW_SEC", str(6 * 3600)))
-API_PERF_LOG_MAX_SAMPLES = int(os.environ.get("API_PERF_LOG_MAX_SAMPLES", "20000"))
-API_PERF_LOG = []
-API_PERF_LOG_LOCK = threading.Lock()
-IRRIGATION_DAILY_SUMMARY_DAYS = int(os.environ.get("IRRIGATION_DAILY_SUMMARY_DAYS", "200"))
-IRRIGATION_DAILY_SUMMARY_REFRESH_SEC = float(os.environ.get("IRRIGATION_DAILY_SUMMARY_REFRESH_SEC", "300"))
-SAFETY_WORKER_ENABLED = os.environ.get("HC_ENABLE_SAFETY_WORKER", "1") != "0"
-SCHEDULER_POLL_SECONDS = int(os.environ.get("IRRIGATION_SCHEDULER_POLL_SECONDS", "5"))
-STOP_CONFIRM_ATTEMPTS = int(os.environ.get("IRRIGATION_STOP_CONFIRM_ATTEMPTS", "3"))
-STOP_REACTION_DELAY_SECONDS = int(os.environ.get("IRRIGATION_STOP_REACTION_DELAY_SECONDS", "5"))
-STOP_CLOSED_DELAY_SECONDS = int(os.environ.get("IRRIGATION_STOP_CLOSED_DELAY_SECONDS", "30"))
-OPEN_CONFIRM_ATTEMPTS = int(os.environ.get("IRRIGATION_OPEN_CONFIRM_ATTEMPTS", "3"))
-OPEN_REACTION_DELAY_SECONDS = int(os.environ.get("IRRIGATION_OPEN_REACTION_DELAY_SECONDS", "5"))
-OPEN_READY_DELAY_SECONDS = int(os.environ.get("IRRIGATION_OPEN_READY_DELAY_SECONDS", "30"))
-OPENWEATHER_API_KEY = os.environ.get("OPENWEATHER_API_KEY", "")
-OPENWEATHER_LAT = os.environ.get("OPENWEATHER_LAT", "")
-OPENWEATHER_LON = os.environ.get("OPENWEATHER_LON", "")
-OPENWEATHER_UNITS = os.environ.get("OPENWEATHER_UNITS", "metric")
-OPENWEATHER_LANG = os.environ.get("OPENWEATHER_LANG", "hu")
-WEATHER_POLL_SECONDS = int(os.environ.get("OPENWEATHER_POLL_SECONDS", "3600"))
-POWER_WALL_GUARD_SECONDS = int(os.environ.get("POWER_WALL_GUARD_SECONDS", "10"))
-POWER_WALL_GUARD_REPEAT_SECONDS = int(os.environ.get("POWER_WALL_GUARD_REPEAT_SECONDS", "30"))
-HC_CONTEXT_REALTIME_TTL = float(os.environ.get("HC_CONTEXT_REALTIME_TTL", "5"))
-HC_CONTEXT_STATISTICS_TTL = float(os.environ.get("HC_CONTEXT_STATISTICS_TTL", "60"))
-HC_CONTEXT_REFRESH_SECONDS = int(os.environ.get("HC_CONTEXT_REFRESH_SECONDS", "4"))
-HC_CONTEXT_REFRESH_ENABLED = os.environ.get("HC_CONTEXT_REFRESH_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
-DEFAULT_CONTEXT_SECTIONS = (
-    "weather",
-    "irrigation",
-    "climate",
-    "robot",
-    "power_wall",
-    "solar",
-    "tuya",
-    "backup",
-    "notes",
-)
-DEFAULT_CONTEXT_REFRESH_SECTIONS = tuple(
-    item.strip()
-    for item in os.environ.get(
-        "HC_CONTEXT_REFRESH_SECTIONS",
-        ",".join(DEFAULT_CONTEXT_SECTIONS + ("scheduler", "scheduler_ai", "performance")),
-    ).split(",")
-    if item.strip()
+install_deployment_policy(app)
+sock = Sock(app)
+
+DATABASE_URL = SETTINGS.database_url
+MQTT_HOST = SETTINGS.mqtt_host
+MQTT_PORT = SETTINGS.mqtt_port
+X10_BASE_TOPIC = SETTINGS.x10_base_topic
+X10_MAP_DIR = SETTINGS.x10_map_dir
+CLIMATE_BASE_TOPIC = SETTINGS.climate_base_topic
+MOWER_BASE_TOPIC = SETTINGS.mower_base_topic
+MOWER_REMOTE_URL = SETTINGS.mower_remote_url
+GREE_CLIMATE_IP = SETTINGS.gree_climate_ip
+GREE_CLIMATE_PORT = SETTINGS.gree_climate_port
+GREE_CLIMATE_MAC = SETTINGS.gree_climate_mac
+GREE_CLIMATE_NAME = SETTINGS.gree_climate_name
+AI_SERVER_URL = SETTINGS.ai_server_url
+AI_SERVER_TIMEOUT = SETTINGS.ai_server_timeout
+CLIMATE_POWER_METER_EXT_ID = SETTINGS.climate_power_meter_ext_id
+CLIMATE_POWER_METER_POWER_DIVISOR = SETTINGS.climate_power_meter_power_divisor
+AI_NODE_POWER_ENTITY_ID = SETTINGS.ai_node_power_entity_id
+HC_V2_EXECUTION_ENABLED = SETTINGS.hc_v2_execution_enabled
+HC_V2_EXECUTION_ALLOW_IRRIGATION = SETTINGS.hc_v2_execution_allow_irrigation
+HC_V2_EXECUTION_ALLOW_X10 = SETTINGS.hc_v2_execution_allow_x10
+HC_V2_EXECUTION_ALLOW_CLIMATE = SETTINGS.hc_v2_execution_allow_climate
+IRRIGATION_DEVICE_ID = SETTINGS.irrigation_device_id
+IRRIGATION_CMD_BASE = SETTINGS.irrigation_cmd_base
+MANUAL_MAX_MINUTES = SETTINGS.manual_max_minutes
+IRRIGATION_SNAPSHOT_CACHE_TTL = SETTINGS.irrigation_snapshot_cache_ttl
+IRRIGATION_PILOT_CACHE_TTL = SETTINGS.irrigation_pilot_cache_ttl
+IRRIGATION_WEATHER_SUMMARY_CACHE_TTL = SETTINGS.irrigation_weather_summary_cache_ttl
+IRRIGATION_DAILY_SUMMARY_DAYS = SETTINGS.irrigation_daily_summary_days
+IRRIGATION_DAILY_SUMMARY_REFRESH_SEC = SETTINGS.irrigation_daily_summary_refresh_sec
+SAFETY_WORKER_ENABLED = SETTINGS.safety_worker_enabled
+SCHEDULER_POLL_SECONDS = SETTINGS.scheduler_poll_seconds
+STOP_CONFIRM_ATTEMPTS = SETTINGS.stop_confirm_attempts
+STOP_REACTION_DELAY_SECONDS = SETTINGS.stop_reaction_delay_seconds
+STOP_CLOSED_DELAY_SECONDS = SETTINGS.stop_closed_delay_seconds
+OPEN_CONFIRM_ATTEMPTS = SETTINGS.open_confirm_attempts
+OPEN_REACTION_DELAY_SECONDS = SETTINGS.open_reaction_delay_seconds
+OPEN_READY_DELAY_SECONDS = SETTINGS.open_ready_delay_seconds
+OPENWEATHER_API_KEY = SETTINGS.openweather_api_key
+OPENWEATHER_LAT = SETTINGS.openweather_lat
+OPENWEATHER_LON = SETTINGS.openweather_lon
+OPENWEATHER_UNITS = SETTINGS.openweather_units
+OPENWEATHER_LANG = SETTINGS.openweather_lang
+WEATHER_POLL_SECONDS = SETTINGS.weather_poll_seconds
+POWER_WALL_GUARD_SECONDS = SETTINGS.power_wall_guard_seconds
+POWER_WALL_GUARD_REPEAT_SECONDS = SETTINGS.power_wall_guard_repeat_seconds
+HC_CONTEXT_REALTIME_TTL = SETTINGS.hc_context_realtime_ttl
+HC_CONTEXT_STATISTICS_TTL = SETTINGS.hc_context_statistics_ttl
+HC_CONTEXT_REFRESH_SECONDS = SETTINGS.hc_context_refresh_seconds
+HC_CONTEXT_REFRESH_ENABLED = SETTINGS.hc_context_refresh_enabled
+API_CACHE = ApiCache()
+API_PERF_LOG = ApiPerformanceLog(
+    window_sec=SETTINGS.api_perf_log_window_sec,
+    max_samples=SETTINGS.api_perf_log_max_samples,
 )
 
 _context_service = None
@@ -140,12 +174,26 @@ _irrigation_service = None
 _irrigation_service_lock = threading.Lock()
 _power_wall_service = None
 _power_wall_service_lock = threading.Lock()
+_climate_fan_coordinator = ClimateFanCoordinator(lambda: db_conn(dict_row))
 _process_binding_service = None
 _process_binding_service_lock = threading.Lock()
 _scheduler_service = None
 _scheduler_service_lock = threading.Lock()
 _climate_service = None
 _climate_service_lock = threading.Lock()
+_mower_service = None
+_mower_service_lock = threading.Lock()
+_mower_v3_service = MowerV3Service(
+    origin=SETTINGS.mower_v3_remote_url,
+    token=SETTINGS.rover_api_token,
+    read_only=SETTINGS.mower_v3_read_only,
+    motor_test_enabled=SETTINGS.mower_v3_motor_test_enabled,
+    simple_control=True,
+)
+_mower_operator_auth = MowerOperatorAuth(superuser=True)
+_mower_manual_relay = ManualRelay(_mower_v3_service)
+_combustion_safety_service = None
+_combustion_safety_service_lock = threading.Lock()
 _robot_service = None
 _robot_service_lock = threading.Lock()
 _energy_device_service = None
@@ -160,27 +208,17 @@ _startup_service = None
 _startup_service_lock = threading.Lock()
 _schema_service = None
 _schema_service_lock = threading.Lock()
-_database_service = None
-_database_service_lock = threading.Lock()
-_repository_registry = None
-_repository_registry_lock = threading.Lock()
-_ai_chat_audit_schema_ready = False
-_ai_chat_audit_schema_lock = threading.Lock()
+_ai_chat_audit_service = None
+_ai_chat_audit_service_lock = threading.Lock()
+_page_usage_service = None
+_page_usage_service_lock = threading.Lock()
+_sql_lab_service = None
+_sql_lab_service_lock = threading.Lock()
 
 
-IRRIGATION_TOPICS = {
-    "esp_nano_status": f"homecontrol/tele/irrigation/{IRRIGATION_DEVICE_ID}/nano_status",
-    "esp_diag": f"homecontrol/tele/irrigation/{IRRIGATION_DEVICE_ID}/diag",
-    "esp_availability": f"homecontrol/stat/irrigation/{IRRIGATION_DEVICE_ID}/availability",
-    "nano_config": f"homecontrol/tele/irrigation/{IRRIGATION_DEVICE_ID}/nano_cfg",
-    "cmd_ack": f"homecontrol/stat/irrigation/{IRRIGATION_DEVICE_ID}/cmd_ack",
-    "solar": f"homecontrol/tele/irrigation/{IRRIGATION_DEVICE_ID}/solar",
-    "nano_event": f"homecontrol/tele/irrigation/{IRRIGATION_DEVICE_ID}/nano_event",
-    "pump_metrics": f"homecontrol/tele/irrigation/{IRRIGATION_DEVICE_ID}/pump_metrics",
-    "tank_level": "zigbee/0xa4c13880b130079c",
-    "moisture_sensor_02": "zigbee/0xa4c13844a0908898",
-    "moisture_sensor_03": "zigbee/0xa4c1387594b09c83",
-}
+IRRIGATION_TOPICS = irrigation_topics(IRRIGATION_DEVICE_ID)
+DB_RUNTIME = DatabaseRuntime(DATABASE_URL)
+SQL_LAB_DATABASE = SqlLabDatabase(SETTINGS.sql_lab_database_url)
 
 
 mqtt_monitor = IrrigationMqttMonitorState(
@@ -208,349 +246,121 @@ climate_monitor = BaseTopicMonitorState(
     max_raw_messages=120,
     observe_topic=lambda topic: get_command_service().observe_mqtt_topic(topic),
 )
+mower_monitor = BaseTopicMonitorState(
+    MQTT_HOST,
+    MQTT_PORT,
+    MOWER_BASE_TOPIC,
+    client_id="hc-admin-mower",
+    thread_name="mower-mqtt-monitor",
+    max_raw_messages=180,
+    observe_topic=lambda topic: get_command_service().observe_mqtt_topic(topic),
+)
 
 
 def get_database_service():
-    global _database_service
-    with _database_service_lock:
-        if _database_service is None:
-            _database_service = DatabaseService(DATABASE_URL)
-        return _database_service
+    return DB_RUNTIME.database
 
 
 def db_conn(row_factory=None):
-    return get_repository_registry().shared.conn(row_factory)
+    return DB_RUNTIME.conn(row_factory)
 
 
 def get_repository_registry():
-    global _repository_registry
-    with _repository_registry_lock:
-        if _repository_registry is None:
-            _repository_registry = RepositoryRegistry(get_database_service())
-        return _repository_registry
+    return DB_RUNTIME.repositories
 
 
 def fetch_all(sql: str, params: Iterable[Any] = ()):
-    record_db_query()
-    return get_repository_registry().shared.fetch_all(sql, params)
+    return DB_RUNTIME.fetch_all(sql, params)
 
 
 def fetch_one(sql: str, params: Iterable[Any] = ()):
-    record_db_query()
-    return get_repository_registry().shared.fetch_one(sql, params)
+    return DB_RUNTIME.fetch_one(sql, params)
 
 
 def execute_one(sql: str, params: Iterable[Any] = ()):
-    record_db_query()
-    return get_repository_registry().shared.execute_one(sql, params)
+    return DB_RUNTIME.execute_one(sql, params)
 
 
 def execute_sql(sql: str, params: Optional[Iterable[Any]] = None):
-    record_db_query()
-    return get_repository_registry().shared.execute_sql(sql, params)
+    return DB_RUNTIME.execute_sql(sql, params)
 
 
-def record_db_query() -> None:
-    try:
-        g.db_query_count = int(getattr(g, "db_query_count", 0) or 0) + 1
-    except RuntimeError:
-        return
+def get_sql_lab_service():
+    global _sql_lab_service
+    with _sql_lab_service_lock:
+        if _sql_lab_service is None:
+            _sql_lab_service = SqlLabService(
+                db_conn=SQL_LAB_DATABASE.conn,
+                fetch_all=SQL_LAB_DATABASE.fetch_all,
+                fetch_one=SQL_LAB_DATABASE.fetch_one,
+            )
+        return _sql_lab_service
 
 
-def current_db_query_count() -> Optional[int]:
-    try:
-        return int(getattr(g, "db_query_count", 0) or 0)
-    except RuntimeError:
-        return None
+def get_ai_chat_audit_service():
+    global _ai_chat_audit_service
+    with _ai_chat_audit_service_lock:
+        if _ai_chat_audit_service is None:
+            _ai_chat_audit_service = AiChatAuditService(
+                fetch_all=fetch_all,
+                execute_one=execute_one,
+                execute_sql=execute_sql,
+            )
+        return _ai_chat_audit_service
 
 
 def ensure_ai_chat_audit_schema() -> None:
-    global _ai_chat_audit_schema_ready
-    if _ai_chat_audit_schema_ready:
-        return
-    with _ai_chat_audit_schema_lock:
-        if _ai_chat_audit_schema_ready:
-            return
-        execute_sql(
-            """
-            create table if not exists hc.ai_chat_audit (
-                id bigserial primary key,
-                created_at timestamptz not null default now(),
-                started_at timestamptz,
-                question text not null,
-                answer text,
-                provider text,
-                model text,
-                status_code integer,
-                ok boolean,
-                error text,
-                source text,
-                total_ms numeric,
-                context_ms numeric,
-                knowledge_ms numeric,
-                model_ms numeric,
-                db_query_count integer,
-                skills jsonb not null default '[]'::jsonb,
-                data_sources jsonb not null default '[]'::jsonb,
-                skill_timings jsonb not null default '[]'::jsonb,
-                context_timings jsonb not null default '[]'::jsonb,
-                upstream jsonb not null default '{}'::jsonb,
-                request_meta jsonb not null default '{}'::jsonb
-            );
-            create index if not exists ix_ai_chat_audit_created_at on hc.ai_chat_audit (created_at desc);
-            create index if not exists ix_ai_chat_audit_skills on hc.ai_chat_audit using gin (skills);
-            create index if not exists ix_ai_chat_audit_data_sources on hc.ai_chat_audit using gin (data_sources);
-            """
-        )
-        _ai_chat_audit_schema_ready = True
+    return get_ai_chat_audit_service().ensure_schema()
 
 
 def insert_ai_chat_audit(row: Dict[str, Any]) -> None:
-    ensure_ai_chat_audit_schema()
-    execute_one(
-        """
-        insert into hc.ai_chat_audit (
-            started_at,
-            question,
-            answer,
-            provider,
-            model,
-            status_code,
-            ok,
-            error,
-            source,
-            total_ms,
-            context_ms,
-            knowledge_ms,
-            model_ms,
-            db_query_count,
-            skills,
-            data_sources,
-            skill_timings,
-            context_timings,
-            upstream,
-            request_meta
-        )
-        values (
-            %s::timestamptz,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s::jsonb,
-            %s::jsonb,
-            %s::jsonb,
-            %s::jsonb,
-            %s::jsonb,
-            %s::jsonb
-        )
-        returning id
-        """,
-        (
-            row.get("started_at"),
-            row.get("question") or "",
-            row.get("answer"),
-            row.get("provider"),
-            row.get("model"),
-            row.get("status_code"),
-            row.get("ok"),
-            row.get("error"),
-            row.get("source"),
-            row.get("total_ms"),
-            row.get("context_ms"),
-            row.get("knowledge_ms"),
-            row.get("model_ms"),
-            row.get("db_query_count"),
-            json.dumps(row.get("skills") or [], ensure_ascii=False),
-            json.dumps(row.get("data_sources") or [], ensure_ascii=False),
-            json.dumps(row.get("skill_timings") or [], ensure_ascii=False),
-            json.dumps(row.get("context_timings") or [], ensure_ascii=False),
-            json.dumps(row.get("upstream") or {}, ensure_ascii=False),
-            json.dumps(row.get("request_meta") or {}, ensure_ascii=False),
-        ),
-    )
+    return get_ai_chat_audit_service().insert(row)
 
 
 def ai_chat_audit_summary_payload(limit: int = 80) -> Dict[str, Any]:
-    ensure_ai_chat_audit_schema()
-    rows = fetch_all(
-        """
-        select
-            id,
-            created_at,
-            question,
-            provider,
-            model,
-            status_code,
-            ok,
-            error,
-            source,
-            total_ms,
-            context_ms,
-            knowledge_ms,
-            model_ms,
-            db_query_count,
-            skills,
-            data_sources,
-            skill_timings,
-            context_timings
-        from hc.ai_chat_audit
-        order by id desc
-        limit %s
-        """,
-        (max(1, min(int(limit or 80), 200)),),
-    )
-    total = len(rows)
-    ok_count = len([row for row in rows if row.get("ok")])
-    total_times = [_float(row.get("total_ms")) for row in rows if _float(row.get("total_ms")) is not None]
-    db_counts = [_float(row.get("db_query_count")) for row in rows if _float(row.get("db_query_count")) is not None]
-    skill_counts: Dict[str, int] = defaultdict(int)
-    source_counts: Dict[str, int] = defaultdict(int)
-    context_durations: Dict[str, list] = defaultdict(list)
-    skill_durations: Dict[str, list] = defaultdict(list)
-
-    for row in rows:
-        for skill in _json_list(row.get("skills")):
-            skill_counts[str(skill)] += 1
-        for source in _json_list(row.get("data_sources")):
-            if not isinstance(source, dict):
-                continue
-            source_type = source.get("type") or "unknown"
-            name = source.get("name") or "-"
-            source_counts[f"{source_type}:{name}"] += 1
-        for item in _json_list(row.get("context_timings")):
-            if not isinstance(item, dict):
-                continue
-            section = item.get("section")
-            duration = _float(item.get("duration_ms"))
-            if section and duration is not None:
-                context_durations[str(section)].append(duration)
-        for item in _json_list(row.get("skill_timings")):
-            if not isinstance(item, dict):
-                continue
-            skill = item.get("skill")
-            duration = _float(item.get("duration_ms"))
-            if skill and duration is not None:
-                skill_durations[str(skill)].append(duration)
-
-    return {
-        "ok": True,
-        "sample_size": total,
-        "window": {"latest_rows": total, "limit": max(1, min(int(limit or 80), 200))},
-        "success": {
-            "ok_count": ok_count,
-            "error_count": total - ok_count,
-            "ok_rate_percent": _round((ok_count / total) * 100 if total else None, 1),
-        },
-        "latency": {
-            "avg_total_ms": _average(total_times, 1),
-            "max_total_ms": _round(max(total_times), 1) if total_times else None,
-            "avg_db_query_count": _average(db_counts, 1),
-            "max_db_query_count": int(max(db_counts)) if db_counts else None,
-        },
-        "top_skills": _top_counts(skill_counts, 10),
-        "top_data_sources": _top_counts(source_counts, 12),
-        "slow_context_sections": _top_average(context_durations, 10),
-        "slow_skills": _top_average(skill_durations, 10),
-        "recent_questions": [
-            {
-                "created_at": row.get("created_at"),
-                "question": row.get("question"),
-                "provider": row.get("provider"),
-                "source": row.get("source"),
-                "ok": row.get("ok"),
-                "status_code": row.get("status_code"),
-                "total_ms": _float(row.get("total_ms")),
-                "db_query_count": row.get("db_query_count"),
-                "skills": _json_list(row.get("skills")),
-                "error": row.get("error"),
-            }
-            for row in rows[:20]
-        ],
-    }
+    return get_ai_chat_audit_service().summary_payload(limit)
 
 
-def _json_list(value: Any) -> list:
-    if isinstance(value, list):
-        return value
-    if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-            return parsed if isinstance(parsed, list) else []
-        except json.JSONDecodeError:
-            return []
-    return []
-
-
-def _float(value: Any) -> Optional[float]:
-    try:
-        if value is None:
-            return None
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _round(value: Any, digits: int = 1):
-    numeric = _float(value)
-    return round(numeric, digits) if numeric is not None else None
-
-
-def _average(values: Iterable[Any], digits: int = 1):
-    clean = [_float(value) for value in values]
-    clean = [value for value in clean if value is not None]
-    if not clean:
-        return None
-    return round(sum(clean) / len(clean), digits)
-
-
-def _top_counts(counter: Dict[str, int], limit: int) -> list:
-    return [
-        {"name": name, "count": count}
-        for name, count in sorted(counter.items(), key=lambda item: (-item[1], item[0]))[:limit]
-    ]
-
-
-def _top_average(groups: Dict[str, list], limit: int) -> list:
-    rows = [
-        {"name": name, "avg_ms": _average(values, 1), "max_ms": _round(max(values), 1), "samples": len(values)}
-        for name, values in groups.items()
-        if values
-    ]
-    return sorted(rows, key=lambda item: (-(item.get("avg_ms") or 0), item["name"]))[:limit]
+def get_page_usage_service():
+    global _page_usage_service
+    with _page_usage_service_lock:
+        if _page_usage_service is None:
+            _page_usage_service = PageUsageService(fetch_all=fetch_all, execute_one=execute_one, execute_sql=execute_sql)
+        return _page_usage_service
 
 
 def api_cache_get(key: str):
-    now = time.monotonic()
-    with API_CACHE_LOCK:
-        item = API_CACHE.get(key)
-        if item and item["expires_at"] > now:
-            return item["data"]
-        if item:
-            API_CACHE.pop(key, None)
-    return None
+    return API_CACHE.get(key)
 
 
 def api_cache_set(key: str, data: Any, ttl_seconds: float):
-    with API_CACHE_LOCK:
-        API_CACHE[key] = {"expires_at": time.monotonic() + ttl_seconds, "data": data}
-    return data
+    return API_CACHE.set(key, data, ttl_seconds)
 
 
 def api_cache_delete_prefix(prefix: str):
-    with API_CACHE_LOCK:
-        for key in list(API_CACHE):
-            if key.startswith(prefix):
-                API_CACHE.pop(key, None)
+    context = globals().get("_context_service")
+    sections = api_cache_context_sections(prefix)
+    if context is not None and sections:
+        for section in sections:
+            context.invalidate(section)
+    return API_CACHE.delete_prefix(prefix)
+
+
+def api_cache_context_sections(prefix: str):
+    owners = {
+        "irrigation_statistics": ("irrigation_statistics",),
+        "homecontrol_statistics": ("home_statistics",),
+        "power_wall_": ("power_wall",),
+        "marten_motion": ("power_wall",),
+        "tuya_state": ("tuya",),
+        "solar_state": ("solar",),
+        "climate_power_history": ("climate_power_history",),
+        "climate_history": ("climate_history",),
+        "performance_server_power": ("server_power", "performance"),
+    }
+    return list(dict.fromkeys(section for owner, sections in owners.items()
+                             if owner.startswith(prefix) or prefix.startswith(owner)
+                             for section in sections))
 
 
 def get_command_service():
@@ -580,150 +390,50 @@ def context_command_meta(*sections: str):
 
 
 def cached_api_payload(key: str, ttl_seconds: float, builder):
-    cached = api_cache_get(key)
-    if cached is not None:
-        return cached
-    return api_cache_set(key, builder(), ttl_seconds)
-
-
-def json_default(value: Any):
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    return str(value)
-
-
-def json_dumps(value: Any, **kwargs):
-    return json.dumps(value, default=json_default, **kwargs)
-
-
-def percentile(values, pct: float):
-    if not values:
-        return None
-    ordered = sorted(values)
-    index = max(0, min(len(ordered) - 1, math.ceil((pct / 100) * len(ordered)) - 1))
-    return ordered[index]
-
-
-def api_perf_route_label():
-    rule = getattr(request, "url_rule", None)
-    if rule is not None and getattr(rule, "rule", None):
-        return rule.rule
-    return request.path or "-"
+    return API_CACHE.cached_payload(key, ttl_seconds, builder)
 
 
 def record_api_request(response):
-    started = getattr(g, "api_perf_started_at", None)
-    if started is None:
-        return
-    path = request.path or ""
-    if not path.startswith("/api/"):
-        return
-
-    now_epoch = time.time()
-    sample = {
-        "ts": now_epoch,
-        "iso": datetime.fromtimestamp(now_epoch).isoformat(timespec="seconds"),
-        "method": request.method,
-        "path": path,
-        "route": api_perf_route_label(),
-        "endpoint": request.endpoint or "",
-        "status": getattr(response, "status_code", None),
-        "duration_ms": round((time.perf_counter() - started) * 1000, 2),
-    }
-    cutoff = now_epoch - API_PERF_LOG_WINDOW_SEC
-    with API_PERF_LOG_LOCK:
-        API_PERF_LOG.append(sample)
-        if len(API_PERF_LOG) > API_PERF_LOG_MAX_SAMPLES or (API_PERF_LOG and API_PERF_LOG[0]["ts"] < cutoff):
-            API_PERF_LOG[:] = [
-                item for item in API_PERF_LOG[-API_PERF_LOG_MAX_SAMPLES:]
-                if item["ts"] >= cutoff
-            ]
+    return API_PERF_LOG.record_request(response)
 
 
 def api_performance_log(limit: int = 60):
-    now_epoch = time.time()
-    cutoff = now_epoch - API_PERF_LOG_WINDOW_SEC
-    with API_PERF_LOG_LOCK:
-        samples = [item.copy() for item in API_PERF_LOG if item["ts"] >= cutoff]
-
-    groups = defaultdict(list)
-    for sample in samples:
-        groups[(sample["method"], sample["route"])].append(sample)
-
-    endpoints = []
-    for (method, route), rows in groups.items():
-        durations = [row["duration_ms"] for row in rows if isinstance(row.get("duration_ms"), (int, float))]
-        statuses = [int(row.get("status") or 0) for row in rows]
-        error_count = sum(1 for status in statuses if status >= 500)
-        warn_count = sum(1 for status in statuses if 400 <= status < 500)
-        last = max(rows, key=lambda row: row["ts"])
-        endpoints.append({
-            "method": method,
-            "route": route,
-            "count": len(rows),
-            "avg_ms": round(sum(durations) / len(durations), 1) if durations else None,
-            "p95_ms": round(percentile(durations, 95), 1) if durations else None,
-            "max_ms": round(max(durations), 1) if durations else None,
-            "min_ms": round(min(durations), 1) if durations else None,
-            "last_ms": round(last.get("duration_ms"), 1) if isinstance(last.get("duration_ms"), (int, float)) else None,
-            "last_status": last.get("status"),
-            "last_seen": last.get("iso"),
-            "error_count": error_count,
-            "warn_count": warn_count,
-        })
-
-    endpoints.sort(key=lambda item: (item["p95_ms"] or 0, item["count"]), reverse=True)
-    slow = endpoints[:limit]
-    frequent = sorted(endpoints, key=lambda item: (item["count"], item["avg_ms"] or 0), reverse=True)[:limit]
-    durations = [sample["duration_ms"] for sample in samples if isinstance(sample.get("duration_ms"), (int, float))]
-    return {
-        "window_sec": API_PERF_LOG_WINDOW_SEC,
-        "sample_count": len(samples),
-        "endpoint_count": len(endpoints),
-        "started_at": datetime.fromtimestamp(min((sample["ts"] for sample in samples), default=now_epoch)).isoformat(timespec="seconds") if samples else None,
-        "last_seen": datetime.fromtimestamp(max((sample["ts"] for sample in samples), default=now_epoch)).isoformat(timespec="seconds") if samples else None,
-        "avg_ms": round(sum(durations) / len(durations), 1) if durations else None,
-        "p95_ms": round(percentile(durations, 95), 1) if durations else None,
-        "max_ms": round(max(durations), 1) if durations else None,
-        "slow_endpoints": slow,
-        "frequent_endpoints": frequent,
-    }
-
-
-def json_ready(value: Any):
-    return json.loads(json_dumps(value))
+    return API_PERF_LOG.payload(limit)
 
 
 def get_schema_service():
     global _schema_service
     with _schema_service_lock:
         if _schema_service is None:
-            _schema_service = HcSchemaService(execute_sql)
+            _schema_service = HcSchemaService(execute_sql, fetch_one)
         return _schema_service
 
 
 def invalidate_irrigation_snapshot_cache():
+    context = globals().get("_context_service")
+    if context is not None:
+        return context.invalidate("irrigation")
     service = globals().get("_irrigation_service")
     if service is not None:
         service.invalidate_snapshot_cache()
-    service = globals().get("_context_service")
-    if service is not None:
-        service.invalidate("irrigation")
 
 
 def invalidate_irrigation_pilot_cache():
+    context = globals().get("_context_service")
+    if context is not None:
+        return context.invalidate("irrigation_pilot")
     service = globals().get("_irrigation_service")
     if service is not None:
         service.invalidate_pilot_cache()
 
 
 def invalidate_irrigation_weather_summary_cache():
+    context = globals().get("_context_service")
+    if context is not None:
+        return context.invalidate("weather")
     service = globals().get("_irrigation_service")
     if service is not None:
         service.invalidate_weather_summary_cache()
-    service = globals().get("_context_service")
-    if service is not None:
-        service.invalidate("weather")
 
 
 def cached_irrigation_weather_summary(force: bool = False):
@@ -762,19 +472,27 @@ def fetch_notes():
     return get_admin_service().fetch_notes()
 
 
-def fetch_climate_schedule_rules():
+def fetch_climate_schedule_rules(profile=None):
+    get_season_profile_service().ensure_schema()
     ensure_scheduler_schema()
+    profile = normalize_text(profile) or None
+    if profile not in (None, "summer", "winter"):
+        raise ValueError("profile must be summer or winter")
     return fetch_all(
         """
         with schedule_state as (
           select
-            *,
+            r.*,
+            a.profile as active_profile,
             day_of_week = extract(isodow from now())::int - 1 as is_today,
             is_enabled
+              and r.season_profile = a.profile
               and day_of_week = extract(isodow from now())::int - 1
               and to_char(localtime, 'HH24:MI') = to_char(start_time, 'HH24:MI')
               as should_run_now
-          from hc.climate_schedule_rule
+          from hc.climate_schedule_rule r
+          join hc.domain_season_active a on a.domain = 'climate'
+          where r.season_profile = coalesce(%s, a.profile)
         )
         select
           id,
@@ -782,6 +500,9 @@ def fetch_climate_schedule_rules():
           day_of_week,
           to_char(start_time, 'HH24:MI') as start_time,
           is_enabled,
+          season_profile,
+          active_profile,
+          season_profile = active_profile as is_active_profile,
           is_today,
           should_run_now,
           case
@@ -795,51 +516,18 @@ def fetch_climate_schedule_rules():
           target_temperature,
           fan_speed,
           light,
+          coalesce(extra_fan, 'keep') as extra_fan,
           rule_engine,
           updated_at
         from schedule_state
         order by day_of_week, start_time, id
-        """
+        """,
+        (profile,),
     )
 
 
 def record_scheduler_shadow_audit():
-    scheduler = get_scheduler_service()
-    inserted = 0
-
-    for event in scheduler.shadow_audit_events():
-        domain = event["domain"]
-        source = event["source"]
-        source_ref = event["source_ref"]
-        action = event["action"]
-        status = event["status"]
-        event_payload = dict(event["payload"])
-        key = event["key"]
-        row = scheduler.insert_run_once(
-            key,
-            domain,
-            action,
-            status,
-            payload=event_payload,
-        )
-        if row:
-            event_payload["scheduler_run_id"] = row.get("id")
-            event_row = scheduler.insert_v2_event_once(
-                f"v2:{key}",
-                domain,
-                action,
-                status,
-                event_payload,
-            )
-            plan_row = scheduler.insert_v2_irrigation_plan_once(event_row, action, event_payload)
-            scheduler.insert_v2_irrigation_execution_once(plan_row, action, event_payload)
-            x10_plan_row = scheduler.insert_v2_x10_plan_once(event_row, action, event_payload)
-            scheduler.insert_v2_x10_execution_once(x10_plan_row, event_payload)
-            climate_plan_row = scheduler.insert_v2_climate_plan_once(event_row, action, event_payload)
-            scheduler.insert_v2_climate_execution_once(climate_plan_row, event_payload)
-            inserted += 1
-            print(f"[SCHEDULER] {status} domain={domain} source={source} ref={source_ref}", flush=True)
-    return inserted
+    return get_scheduler_service().record_shadow_audit()
 
 
 def check_db():
@@ -851,17 +539,39 @@ def check_mqtt(timeout_s: float = 2.0) -> bool:
 
 
 def publish_mqtt(topic: str, payload: Any, qos: int = 0, retain: bool = False) -> Tuple[bool, str]:
+    if topic == f"{CLIMATE_BASE_TOPIC}/command" and isinstance(payload, dict):
+        return get_climate_window_guard().command(topic, payload, qos=qos, retain=retain)
     return get_mqtt_client_service().publish(topic, payload, qos=qos, retain=retain)
 
 
+_climate_window_guard = None
+_climate_window_guard_lock = threading.Lock()
+
+
+def get_climate_window_guard():
+    global _climate_window_guard
+    with _climate_window_guard_lock:
+        if _climate_window_guard is None:
+            _climate_window_guard = ClimateWindowGuard(
+                fetch_all, fetch_one, execute_one,
+                lambda topic, payload, **kwargs: get_mqtt_client_service().publish(topic, payload, **kwargs),
+                lambda: climate_monitor.value("state") or get_climate_service().latest_parameter_state(),
+                lambda: get_combustion_safety_service().last_snapshot,
+                lambda ext_id: get_admin_service().zigbee_radio_status(ext_id),
+                sync_auto_climate_power_wall,
+            )
+    return _climate_window_guard
+
+
+def climate_and_combustion_tick():
+    run_guarded_callbacks("CLIMATE_SAFETY", (
+        ("combustion", lambda: get_combustion_safety_service().tick()),
+        ("window guard", lambda: get_climate_window_guard().tick(f"{CLIMATE_BASE_TOPIC}/command")),
+    ))
+
+
 def command_topics():
-    return {
-        "mode": f"{IRRIGATION_CMD_BASE}/mode",
-        "pump": f"{IRRIGATION_CMD_BASE}/pump",
-        "valve": f"{IRRIGATION_CMD_BASE}/valve",
-        "config": f"{IRRIGATION_CMD_BASE}/config",
-        "system": f"{IRRIGATION_CMD_BASE}/system",
-    }
+    return irrigation_command_topics(IRRIGATION_CMD_BASE)
 
 
 def irrigation_stop_payload(reason: str) -> Dict[str, Any]:
@@ -872,67 +582,32 @@ def validate_schedule_time(value: Any, field: str) -> str:
     return get_irrigation_service().validate_schedule_time(value, field)
 
 
-def to_float(value: Any, default: Optional[float] = None) -> Optional[float]:
-    if value is None or value == "":
-        value = default
-    if value is None or value == "":
-        return None
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return default
-    return number if math.isfinite(number) else default
-
-
-def to_int(value: Any, default: int = 0) -> int:
-    number = to_float(value)
-    return default if number is None else int(round(number))
-
-
-def unix_to_iso(value: Any):
-    number = to_int(value, 0)
-    if not number:
-        return None
-    return datetime.fromtimestamp(number).isoformat()
-
-
-def json_time(value: Any):
-    return value.isoformat() if hasattr(value, "isoformat") else value
-
-
 def fetch_pilot_config():
     return get_irrigation_service().fetch_pilot_config()
 
 
-def normalize_text(value: Any, default: str = "") -> str:
-    text = str(value or "").strip()
-    return text or default
-
-
-def absolute_humidity_g_m3(temperature_c: Any, relative_humidity: Any):
-    if temperature_c is None or relative_humidity is None:
-        return None
-    try:
-        temp = float(temperature_c)
-        humidity = float(relative_humidity)
-    except (TypeError, ValueError):
-        return None
-    saturation_hpa = 6.112 * math.exp((17.62 * temp) / (243.12 + temp))
-    vapor_pressure_hpa = (humidity / 100.0) * saturation_hpa
-    return round((216.7 * vapor_pressure_hpa) / (273.15 + temp), 2)
-
-
 _backup_service = None
 _system_status_service = None
+_season_profile_service = None
+
+
+def get_season_profile_service():
+    global _season_profile_service
+    if _season_profile_service is None:
+        _season_profile_service = SeasonProfileService(
+            fetch_all=fetch_all,
+            fetch_one=fetch_one,
+            execute_one=execute_one,
+            execute_sql=execute_sql,
+            invalidate_context=invalidate_context_sections,
+        )
+    return _season_profile_service
 
 
 def get_backup_service():
     global _backup_service
     if _backup_service is None:
-        _backup_service = BackupService(
-            docker_socket_request=docker_socket_request,
-            docker_exec_capture=docker_exec_capture,
-        )
+        _backup_service = HostBackupService()
     return _backup_service
 
 
@@ -952,6 +627,7 @@ def get_system_status_service():
             server_power_history_payload=lambda: get_energy_device_service().server_power_history_payload(),
             latest_backup_info=latest_backup_info,
             safety_worker_enabled=SAFETY_WORKER_ENABLED,
+            worker_status=backend_worker_status,
         )
     return _system_status_service
 
@@ -966,6 +642,7 @@ def get_irrigation_service():
                     fetch_one=fetch_one,
                     execute_one=execute_one,
                     execute_sql=execute_sql,
+                    reserve_session=IrrigationSessionAdmission(lambda: db_conn(dict_row)).reserve,
                     publish_mqtt=publish_mqtt,
                     normalize_text=normalize_text,
                     command_topics=command_topics,
@@ -978,8 +655,10 @@ def get_irrigation_service():
                     to_float=to_float,
                     to_int=to_int,
                     manual_max_minutes=MANUAL_MAX_MINUTES,
+                    cached_api_payload=cached_api_payload,
                     api_cache_get=api_cache_get,
                     api_cache_set=api_cache_set,
+                    api_cache_delete_prefix=api_cache_delete_prefix,
                     mqtt_snapshot=mqtt_monitor.snapshot,
                     scheduler_config=lambda: get_scheduler_service().config(),
                     v2_execution_engine_state=lambda config: get_scheduler_service().engine_state(config),
@@ -990,6 +669,12 @@ def get_irrigation_service():
                     open_confirm_attempts=OPEN_CONFIRM_ATTEMPTS,
                     open_reaction_delay_seconds=OPEN_REACTION_DELAY_SECONDS,
                     open_ready_delay_seconds=OPEN_READY_DELAY_SECONDS,
+                    valve_tele_max_age_seconds=SETTINGS.irrigation_valve_tele_max_age_seconds,
+                    valve_status_max_age_seconds=SETTINGS.irrigation_valve_status_max_age_seconds,
+                    nano_online_max_age_seconds=SETTINGS.irrigation_nano_online_max_age_seconds,
+                    start_recovery_grace_seconds=SETTINGS.irrigation_start_recovery_grace_seconds,
+                    recovery_retry_seconds=SETTINGS.irrigation_recovery_retry_seconds,
+                    recovery_max_attempts=SETTINGS.irrigation_recovery_max_attempts,
                     openweather_api_key=OPENWEATHER_API_KEY,
                     openweather_lat=OPENWEATHER_LAT,
                     openweather_lon=OPENWEATHER_LON,
@@ -1004,6 +689,8 @@ def get_irrigation_service():
                     daily_summary_days=IRRIGATION_DAILY_SUMMARY_DAYS,
                     daily_summary_refresh_sec=IRRIGATION_DAILY_SUMMARY_REFRESH_SEC,
                     snapshot_ttl=IRRIGATION_SNAPSHOT_CACHE_TTL,
+                    capability_allowed=lambda capability: get_season_profile_service().capability_allowed("irrigation", capability),
+                    active_season_profile=lambda: get_season_profile_service().active("irrigation"),
                 )
     return _irrigation_service
 
@@ -1029,6 +716,11 @@ def get_scheduler_service():
         with _scheduler_service_lock:
             if _scheduler_service is None:
                 _scheduler_service = SchedulerService(
+                    audit_transaction=lambda: scheduler_audit_transaction(lambda: db_conn(dict_row)),
+                    climate_monitor_snapshot=climate_monitor.snapshot,
+                    x10_monitor_snapshot=x10_monitor.snapshot,
+                    feedback_max_age_seconds=SETTINGS.scheduler_feedback_max_age_seconds,
+                    confirmation_timeout_seconds=SETTINGS.scheduler_confirmation_timeout_seconds,
                     fetch_all=fetch_all,
                     fetch_one=fetch_one,
                     execute_one=execute_one,
@@ -1040,7 +732,7 @@ def get_scheduler_service():
                     fetch_irrigation_schedules=lambda: get_irrigation_service().fetch_schedules(),
                     fetch_climate_schedule_rules=fetch_climate_schedule_rules,
                     x10_scheduler_entries=lambda: x10_monitor.value("scheduler/entries") or [],
-                    x10_day_mask_index_by_hc_day=lambda: [1, 2, 3, 4, 5, 6, 0],
+                    x10_day_mask_index_by_hc_day=lambda: X10_DAY_MASK_INDEX_BY_HC_DAY,
                     x10_monitor_value=x10_monitor.value,
                     scheduler_modes=SCHEDULER_MODES,
                     v2_execution_enabled=HC_V2_EXECUTION_ENABLED,
@@ -1050,9 +742,9 @@ def get_scheduler_service():
                     evaluate_irrigation_pilot=lambda **kwargs: get_irrigation_service().evaluate_pilot(**kwargs),
                     fetch_irrigation_v2_session=fetch_irrigation_v2_session,
                     irrigation_command_topic=lambda: command_topics()["valve"],
-                    x10_schedule_clean_topic=f"{X10_BASE_TOPIC}/command/schedule_clean",
-                    x10_weekly_schedule_topic=f"{X10_BASE_TOPIC}/command/schedule_clean_week",
-                    climate_command_topic=f"{CLIMATE_BASE_TOPIC}/command",
+                    x10_schedule_clean_topic=x10_schedule_clean_topic(X10_BASE_TOPIC),
+                    x10_weekly_schedule_topic=x10_weekly_schedule_topic(X10_BASE_TOPIC),
+                    climate_command_topic=climate_command_topic(CLIMATE_BASE_TOPIC),
                     climate_state_payload=lambda: get_climate_service().state_payload(),
                     publish_mqtt=publish_mqtt,
                     sync_auto_climate_power_wall=sync_auto_climate_power_wall,
@@ -1079,6 +771,7 @@ def get_climate_service():
                     invalidate_context=invalidate_context_sections,
                     context_meta=context_command_meta,
                     monitor=climate_monitor,
+                    window_guard=get_climate_window_guard,
                     base_topic=CLIMATE_BASE_TOPIC,
                     name=GREE_CLIMATE_NAME,
                     ip=GREE_CLIMATE_IP,
@@ -1091,6 +784,27 @@ def get_climate_service():
                     process_binding_entity_id=lambda key: get_process_binding_service().selected_entity_id(key),
                 )
     return _climate_service
+
+
+def get_combustion_safety_service():
+    global _combustion_safety_service
+    if _combustion_safety_service is None:
+        with _combustion_safety_service_lock:
+            if _combustion_safety_service is None:
+                _combustion_safety_service = CombustionSafetyService(
+                    fetch_all=fetch_all,
+                    fetch_one=fetch_one,
+                    execute_one=execute_one,
+                    publish_mqtt=publish_mqtt,
+                    binding_entity_id=lambda key: get_process_binding_service().selected_entity_id(key),
+                    zigbee_radio_status=get_admin_service().zigbee_radio_status,
+                    command_retry_seconds=SETTINGS.combustion_command_retry_seconds,
+                    command_max_attempts=SETTINGS.combustion_command_max_attempts,
+                    observation_max_age_seconds=SETTINGS.combustion_observation_max_age_seconds,
+                    input_max_age_seconds=SETTINGS.combustion_input_max_age_seconds,
+                    snapshot_max_age_seconds=SETTINGS.combustion_snapshot_max_age_seconds,
+                )
+    return _combustion_safety_service
 
 
 def get_robot_service():
@@ -1119,6 +833,7 @@ def get_energy_device_service():
                 _energy_device_service = EnergyDeviceService(
                     fetch_all=fetch_all,
                     fetch_one=fetch_one,
+                    cached_api_payload=cached_api_payload,
                     api_cache_get=api_cache_get,
                     api_cache_set=api_cache_set,
                     json_ready=json_ready,
@@ -1142,6 +857,7 @@ def get_admin_service():
                     execute_sql=execute_sql,
                     normalize_text=normalize_text,
                     json_ready=json_ready,
+                    cached_api_payload=cached_api_payload,
                     api_cache_get=api_cache_get,
                     api_cache_set=api_cache_set,
                     api_cache_delete_prefix=api_cache_delete_prefix,
@@ -1173,6 +889,8 @@ def get_process_binding_service():
                         "climate_power_meter_ext_id": CLIMATE_POWER_METER_EXT_ID,
                         "ai_node_power_entity_id": AI_NODE_POWER_ENTITY_ID,
                     },
+                    ai_power_coordinator=AiPowerCoordinator(get_backup_service().backup_root),
+                    climate_fan_coordinator=_climate_fan_coordinator,
                 )
     return _process_binding_service
 
@@ -1184,10 +902,12 @@ def get_power_wall_service():
             if _power_wall_service is None:
                 _power_wall_service = PowerWallService(
                     fetch_all=fetch_all,
+                    climate_fan_coordinator=_climate_fan_coordinator,
                     fetch_one=fetch_one,
                     execute_one=execute_one,
                     publish_mqtt=publish_mqtt,
                     ensure_schema=ensure_power_wall_schema,
+                    cached_api_payload=cached_api_payload,
                     api_cache_get=api_cache_get,
                     api_cache_set=api_cache_set,
                     api_cache_delete_prefix=api_cache_delete_prefix,
@@ -1199,6 +919,20 @@ def get_power_wall_service():
     return _power_wall_service
 
 
+def get_mower_service():
+    global _mower_service
+    if _mower_service is None:
+        with _mower_service_lock:
+            if _mower_service is None:
+                _mower_service = MowerService(
+                    monitor=mower_monitor,
+                    publish_mqtt=publish_mqtt,
+                    base_topic=MOWER_BASE_TOPIC,
+                    remote_url=MOWER_REMOTE_URL,
+                )
+    return _mower_service
+
+
 def context_builders():
     return {
         "weather": lambda: {
@@ -1207,25 +941,59 @@ def context_builders():
                 get_process_binding_service().selected_topic_base("irrigation_soil_moisture")
             ),
         },
-        "irrigation": lambda: get_irrigation_service().snapshot(),
+        "irrigation": lambda: get_irrigation_service().build_snapshot(),
         "irrigation_pilot": lambda: get_irrigation_service().pilot_payload(),
         "irrigation_statistics": lambda: get_irrigation_service().statistics_payload(),
         "climate": lambda: get_climate_service().state_payload(),
-        "climate_power_history": lambda: cached_api_payload("climate_power_history", 60, get_climate_service().power_history_payload),
-        "climate_history": lambda: cached_api_payload("climate_history", 60, get_climate_service().parameter_history_payload),
+        "mower": lambda: get_mower_service().state_payload(),
+        "combustion_safety": lambda: get_combustion_safety_service().state_payload(),
+        "climate_power_history": lambda: get_climate_service().power_history_payload(),
+        "climate_history": lambda: get_climate_service().parameter_history_payload(),
         "climate_schedules": lambda: {"ok": True, "schedules": fetch_climate_schedule_rules()},
         "robot": lambda: get_robot_service().state_payload(),
         "power_wall": lambda: get_power_wall_service().state_payload(),
-        "solar": lambda: cached_api_payload("solar_state", 8, solar_state_payload),
+        "solar": solar_state_payload,
         "tuya": tuya_state_payload,
         "scheduler": lambda: get_scheduler_service().state_payload(),
         "scheduler_ai": lambda: get_scheduler_service().ai_summary_payload(),
         "notes": lambda: {"ok": True, **get_admin_service().fetch_notes()},
         "performance": lambda: get_system_status_service().performance_snapshot(),
-        "server_power": lambda: cached_api_payload("performance_server_power", 60, get_energy_device_service().server_power_history_payload),
+        "server_power": lambda: get_energy_device_service().server_power_history_payload(),
         "home_statistics": lambda: get_admin_service().homecontrol_statistics_payload(),
         "ai_chat_audit": lambda: ai_chat_audit_summary_payload(),
         "backup": lambda: get_backup_service().payload(),
+    }
+
+
+def context_invalidators():
+    # Call only already-instantiated services; no DB, publish or construction
+    # under the context cache lock. These callbacks only invalidate memory.
+    def domain(method):
+        def invalidate():
+            service = globals().get("_irrigation_service")
+            if service is not None:
+                getattr(service, method)()
+        return invalidate
+
+    def prefixes(*names):
+        def invalidate():
+            for name in names:
+                API_CACHE.delete_prefix(name)
+        return invalidate
+
+    return {
+        "irrigation": domain("invalidate_snapshot_cache"),
+        "irrigation_pilot": domain("invalidate_pilot_inputs"),
+        "weather": domain("invalidate_weather_summary_cache"),
+        "irrigation_statistics": prefixes("irrigation_statistics"),
+        "home_statistics": prefixes("homecontrol_statistics"),
+        "power_wall": prefixes("power_wall_", "marten_motion"),
+        "tuya": prefixes("tuya_state"),
+        "solar": prefixes("solar_state"),
+        "climate_power_history": prefixes("climate_power_history"),
+        "climate_history": prefixes("climate_history"),
+        "server_power": prefixes("performance_server_power"),
+        "performance": prefixes("performance_server_power"),
     }
 
 
@@ -1237,6 +1005,8 @@ def get_context_service():
                 context_builders(),
                 realtime_ttl=HC_CONTEXT_REALTIME_TTL,
                 statistics_ttl=HC_CONTEXT_STATISTICS_TTL,
+                invalidators=context_invalidators(),
+                section_ttls={"irrigation": IRRIGATION_SNAPSHOT_CACHE_TTL},
             )
         return _context_service
 
@@ -1248,7 +1018,7 @@ def get_ai_proxy_service():
             _ai_proxy_service = AiProxyService(
                 AI_SERVER_URL,
                 AI_SERVER_TIMEOUT,
-                context_summary=lambda trace=None: get_context_service().ai_summary(trace=trace),
+                context_summary=lambda trace=None, sections=None: get_context_service().ai_summary(trace=trace, sections=sections),
                 json_ready=json_ready,
                 audit_logger=insert_ai_chat_audit,
                 db_query_count=current_db_query_count,
@@ -1267,6 +1037,7 @@ def get_ai_node_service():
                 invalidate_context_sections=invalidate_context_sections,
                 process_binding_payload=lambda key: get_process_binding_service().binding(key, include_candidates=True),
                 process_binding_entity_id=lambda key: get_process_binding_service().selected_entity_id(key),
+                coordinator=AiPowerCoordinator(get_backup_service().backup_root),
             )
         return _ai_node_service
 
@@ -1279,10 +1050,12 @@ def get_startup_service():
                 [
                     ensure_pilot_schema,
                     ensure_scheduler_schema,
+                    get_season_profile_service().ensure_schema,
                     ensure_power_wall_schema,
                     ensure_process_binding_schema,
                     ensure_irrigation_summary_schema,
                     ensure_notes_schema,
+                    lambda: get_ai_node_service().start_power_guard(),
                 ]
             )
             _startup_service = StartupService(
@@ -1292,7 +1065,10 @@ def get_startup_service():
                 power_wall_guard_seconds=POWER_WALL_GUARD_SECONDS,
                 safety_worker_enabled=SAFETY_WORKER_ENABLED,
                 record_scheduler_shadow_audit=record_scheduler_shadow_audit,
+                climate_scheduler_tick=lambda: get_scheduler_service().climate_scheduler_tick(),
                 irrigation_scheduler_tick=lambda: get_irrigation_service().scheduler_tick(),
+                irrigation_scheduler_stop_tick=lambda: get_irrigation_service().scheduler_stop_tick(),
+                irrigation_recovery_tick=lambda: get_irrigation_service().session_recovery.tick(),
                 x10_scheduler_tick=lambda: get_scheduler_service().x10_scheduler_tick(),
                 stop_overdue_sessions=lambda: get_irrigation_service().stop_overdue_sessions(),
                 fail_sessions_without_physical_watering=lambda: get_irrigation_service().fail_sessions_without_physical_watering(),
@@ -1303,11 +1079,66 @@ def get_startup_service():
                 mqtt_monitor_start=mqtt_monitor.start,
                 x10_monitor_start=x10_monitor.start,
                 climate_monitor_start=climate_monitor.start,
+                mower_monitor_start=mower_monitor.start,
+                combustion_safety_tick=climate_and_combustion_tick,
+                combustion_safety_poll_seconds=1,
                 context_refresh=lambda: get_context_service().warmup(DEFAULT_CONTEXT_REFRESH_SECTIONS),
                 context_refresh_seconds=HC_CONTEXT_REFRESH_SECONDS,
                 context_refresh_enabled=HC_CONTEXT_REFRESH_ENABLED,
+                summary_refresh=lambda: get_irrigation_service().refresh_daily_summaries(),
+                owner_path="/tmp/homecontrol-backend-workers.lock",
+                shutdown_resources=shutdown_backend_resources,
             )
         return _startup_service
+
+
+def backend_worker_status():
+    status = get_startup_service().status()
+    node = globals().get('_ai_node_service')
+    if node is not None:
+        status['workers'].append(node.worker_status())
+    proxy = globals().get('_ai_proxy_service')
+    if proxy is not None and hasattr(proxy, 'worker_status'):
+        status['jobs'] = [proxy.worker_status()]
+    return status
+
+
+def shutdown_backend_resources(timeout=0):
+    deadline = time.monotonic() + max(0, timeout)
+    stopped = True
+    for name, method in (('_ai_proxy_service', 'stop_worker'), ('_ai_node_service', 'stop_worker')):
+        service = globals().get(name)
+        if service is not None and hasattr(service, method):
+            stopped = getattr(service, method)(max(0, deadline-time.monotonic())) and stopped
+    from system_status_service import DOCKER_REQUEST_JOBS, DOCKER_STATS_JOBS
+    stopped = DOCKER_REQUEST_JOBS.stop(max(0, deadline-time.monotonic())) and stopped
+    stopped = DOCKER_STATS_JOBS.stop(max(0, deadline-time.monotonic())) and stopped
+    return stopped
+
+
+def shutdown_backend(timeout=8):
+    service = globals().get('_startup_service')
+    return service.stop(timeout) if service is not None else True
+
+
+_REQUEST_CAPACITY = RequestCapacity()
+
+
+@app.before_request
+def admit_long_request():
+    category = _REQUEST_CAPACITY.category(request.path, request.headers.get('Upgrade', ''))
+    if category:
+        if not _REQUEST_CAPACITY.acquire(category):
+            return jsonify({'ok': False, 'code': 'capacity_exhausted',
+                            'error': 'Long request capacity exhausted; retry later.'}), 503, {'Retry-After': '2'}
+        g.hc_capacity_category = category
+
+
+@app.teardown_request
+def release_long_request(error=None):
+    category = g.pop('hc_capacity_category', None)
+    if category:
+        _REQUEST_CAPACITY.release(category)
 
 
 def parse_context_sections(value: str):
@@ -1318,6 +1149,9 @@ def parse_context_sections(value: str):
 
 @app.before_request
 def _start_worker_once():
+    from health_routes import PROBE_PATHS
+    if request.path in PROBE_PATHS:
+        return
     g.api_perf_started_at = time.perf_counter()
     g.db_query_count = 0
     get_startup_service().ensure_started()
@@ -1325,6 +1159,9 @@ def _start_worker_once():
 
 @app.after_request
 def _record_api_request(response):
+    from health_routes import PROBE_PATHS
+    if request.path in PROBE_PATHS:
+        return response
     record_api_request(response)
     return response
 
@@ -1337,10 +1174,16 @@ register_context_routes(
     json_ready=json_ready,
     default_context_sections=DEFAULT_CONTEXT_SECTIONS,
 )
+register_page_usage_routes(app, get_page_usage_service=get_page_usage_service)
 register_ai_routes(
     app,
     get_ai_proxy_service=get_ai_proxy_service,
     get_ai_node_service=get_ai_node_service,
+)
+register_sql_lab_routes(
+    app,
+    get_sql_lab_service=get_sql_lab_service,
+    json_ready=json_ready,
 )
 register_backup_routes(
     app,
@@ -1355,6 +1198,49 @@ register_climate_routes(
     get_context_service=get_context_service,
     get_climate_service=get_climate_service,
     fetch_climate_schedule_rules=fetch_climate_schedule_rules,
+    json_ready=json_ready,
+)
+register_mower_routes(
+    app,
+    get_context_service=get_context_service,
+    get_mower_service=get_mower_service,
+    get_mower_v3_service=lambda: _mower_v3_service,
+    get_admin_service=get_admin_service,
+    json_ready=json_ready,
+)
+register_mower_v3_controls(app, rover=_mower_v3_service, auth=_mower_operator_auth, relay=_mower_manual_relay)
+_mower_service_read = MowerServiceRead(
+    origin=SETTINGS.mower_v3_remote_url, token=SETTINGS.rover_api_token,
+    activity_lock=_mower_v3_service.activity_lock,
+    guard=lambda: _mower_v3_service.maintenance_guard(),
+)
+register_mower_service_read(app, service=_mower_service_read)
+_mower_bringup_read = MowerBringupRead(
+    origin=SETTINGS.mower_v3_remote_url, token=SETTINGS.rover_api_token,
+    activity_lock=_mower_v3_service.activity_lock,
+    guard=lambda: _mower_v3_service.maintenance_guard(),
+)
+register_mower_bringup_read(app, service=_mower_bringup_read)
+_mower_parameters_service = MowerParametersService(MowerParametersStore(db_conn, execute_sql))
+register_mower_parameter_routes(app, service=_mower_parameters_service, auth=_mower_operator_auth)
+from mower_motor_test import MotorTestService
+from mower_motor_test_routes import register_motor_test_routes
+_mower_motor_test = MotorTestService(_mower_v3_service, _mower_manual_relay,
+    config_path="/srv/docker/homecontrol/infra/private/rover-config.json")
+register_motor_test_routes(app, service=_mower_motor_test, auth=_mower_operator_auth)
+
+_mower_firmware_service = MowerFirmwareService(STATIC_DIR / "mower-approved-releases.json")
+_mower_firmware_store = MowerFirmwareStore(db_conn, execute_sql)
+_mower_firmware_staging = MowerFirmwareStaging(_mower_firmware_service, _mower_firmware_store)
+_mower_firmware_sessions = MowerFirmwareSessionsStore(db_conn, execute_sql, _mower_firmware_store)
+_mower_firmware_updates = MowerFirmwareUpdates(rover=_mower_v3_service, preflight=_mower_firmware_service,
+    staging=_mower_firmware_staging, sessions=_mower_firmware_sessions, manual=_mower_manual_relay,
+    operations=MowerFirmwareOperationsStore(db_conn, execute_sql, _mower_firmware_sessions))
+register_mower_firmware_routes(app, service=_mower_firmware_service,
+                              staging=_mower_firmware_staging, auth=_mower_operator_auth, updates=_mower_firmware_updates)
+register_combustion_safety_routes(
+    app,
+    get_combustion_safety_service=get_combustion_safety_service,
     json_ready=json_ready,
 )
 register_scheduler_routes(
@@ -1389,6 +1275,7 @@ register_admin_routes(
     get_context_service=get_context_service,
     get_admin_service=get_admin_service,
     get_process_binding_service=get_process_binding_service,
+    get_season_profile_service=get_season_profile_service,
     json_ready=json_ready,
 )
 register_irrigation_routes(
@@ -1400,9 +1287,64 @@ register_irrigation_routes(
 register_system_routes(
     app,
     get_context_service=get_context_service,
+    get_admin_service=get_admin_service,
     get_system_status_service=get_system_status_service,
     json_ready=json_ready,
 )
+
+
+@sock.route("/api/xiaomi-x10/live")
+def xiaomi_x10_live_socket(ws):
+    last_signature = None
+    last_send = 0.0
+    while not get_startup_service()._stop.is_set():
+        try:
+            ws.receive(timeout=.05)
+            live_map = x10_monitor.value("robot/live_map")
+            position = x10_monitor.value("robot/position")
+            position_px = x10_monitor.value("robot/position_px")
+            dock_position = x10_monitor.value("dock/position")
+            dock_position_px = x10_monitor.value("dock/position_px")
+            live_png = x10_monitor.value("robot/live_png")
+            signature = json.dumps(
+                [live_map, position, position_px, live_png],
+                ensure_ascii=False,
+                sort_keys=True,
+                default=str,
+            )
+            now = time.time()
+            if signature != last_signature or now - last_send >= 15:
+                ws.send(json.dumps({
+                    "type": "x10_live_map",
+                    "robot_live_map": live_map,
+                    "robot_position": position,
+                    "robot_position_px": position_px,
+                    "robot_live_png_url": get_robot_service().map_url(live_png),
+                    "dock_position": dock_position,
+                    "dock_position_px": dock_position_px,
+                    "server_ts": now,
+                }, ensure_ascii=False))
+                last_signature = signature
+                last_send = now
+            get_startup_service()._stop.wait(.1)
+        except Exception:
+            break
+
+
+@sock.route("/api/irrigation/pump-current/live")
+def irrigation_pump_current_live_socket(ws):
+    last_source_received_at = None
+    while not get_startup_service()._stop.is_set():
+        try:
+            ws.receive(timeout=.05)
+            payload = get_irrigation_service().pump_current_live_snapshot()
+            source_received_at = payload.get("source_received_at_epoch")
+            if source_received_at is not None and source_received_at != last_source_received_at:
+                ws.send(json.dumps(payload, ensure_ascii=False, default=str))
+                last_source_received_at = source_received_at
+            get_startup_service()._stop.wait(.25)
+        except Exception:
+            break
 
 
 @app.get("/health")
@@ -1423,6 +1365,10 @@ def health():
 
     status = 200 if (db_ok and mqtt_ok) else 503
     return jsonify({"ok": db_ok and mqtt_ok, "db_ok": db_ok, "mqtt_ok": mqtt_ok, "error": err}), status
+
+
+from health_routes import register_health_routes
+register_health_routes(app, lambda: globals().get('_startup_service'))
 
 
 @app.get("/")

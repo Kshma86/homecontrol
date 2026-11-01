@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="0.1"
+VERSION="0.2"
 TARGET_BASE="${TARGET_BASE:-/srv/docker/homecontrol}"
 WORK_ROOT="${WORK_ROOT:-/tmp/homecontrol-restore-v0.1}"
 REPO_URL="${REPO_URL:-https://github.com/Kshma86/homecontrol.git}"
@@ -9,6 +9,7 @@ REPO_REF="${REPO_REF:-main}"
 RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-sftp:a@192.168.1.2:/mnt/hc-backup/restic/homecontrol}"
 RESTIC_SNAPSHOT="${RESTIC_SNAPSHOT:-latest}"
 AGE_KEY_FILE="${AGE_KEY_FILE:-}"
+ROUTER_SETTINGS=""
 
 INSTALL_PACKAGES=false
 APPLY=false
@@ -40,6 +41,7 @@ Options:
   --target DIR                Live HomeControl target. Default: ${TARGET_BASE}
   --work-dir DIR              Restore work/staging dir. Default: ${WORK_ROOT}
   --restic-repo REPO          Restic repository. Default: ${RESTIC_REPOSITORY}
+  --router-settings FILE      Router settings JSON; credentials come from the decrypted bundle.
   --snapshot SNAPSHOT         Restic snapshot id/ref. Default: ${RESTIC_SNAPSHOT}
   --install-packages          Install Ubuntu packages with apt-get.
   --skip-restic               Skip restic restore.
@@ -81,6 +83,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --restic-repo)
       RESTIC_REPOSITORY="${2:-}"
+      shift 2
+      ;;
+    --router-settings)
+      ROUTER_SETTINGS="${2:-}"
       shift 2
       ;;
     --snapshot)
@@ -125,6 +131,11 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+# This is a full canonical-host restore, not a relocatable sandbox.
+if [ "$APPLY" = true ] || [ "$RESTORE_DB" = true ] || [ "$START_STACK" = true ]; then
+  [ "$TARGET_BASE" = /srv/docker/homecontrol ] || fail "Full/apply restore only supports /srv/docker/homecontrol; no changes made"
+fi
+if [ "$RESTORE_DB" = true ] && [ "$APPLY" != true ]; then fail "--restore-db requires --apply"; fi
 [ -n "$AGE_KEY_FILE" ] || fail "--age-key kotelezo. Add meg a kulon lementett age identity private key fajlt."
 [ -s "$AGE_KEY_FILE" ] || fail "Age identity private key nem talalhato vagy ures: $AGE_KEY_FILE"
 [ -n "$REPO_URL" ] || fail "Repo URL ures"
@@ -133,6 +144,8 @@ done
 if [ "$RESTORE_DB" = "true" ] && [ "$CONFIRM_DB_REPLACE" != "true" ]; then
   fail "--restore-db csak --confirm-db-replace mellett engedett"
 fi
+
+if [ "$START_STACK" = true ] && [ "$RESTORE_DB" != true ]; then fail "Full --start requires the selected --restore-db path"; fi
 
 if [ "$START_STACK" = "true" ] && [ "$APPLY" != "true" ]; then
   fail "--start csak --apply mellett ertelmes"
@@ -150,6 +163,8 @@ if [ "$APPLY" = "true" ] && [ "$(id -u)" -ne 0 ]; then
   fail "--apply modhoz root kell. Futtasd sudo-val."
 fi
 
+mkdir -p "$WORK_ROOT"
+chmod 700 "$WORK_ROOT"
 PROJECT_DIR="$WORK_ROOT/project"
 SECRETS_ROOT="$WORK_ROOT/secrets/rootfs"
 RESTIC_TARGET="$WORK_ROOT/restic"
@@ -164,6 +179,8 @@ install_packages() {
     curl \
     git \
     openssh-client \
+    nftables \
+    python3 \
     restic \
     rsync \
     tar
@@ -236,9 +253,14 @@ verify_bundle() {
 decrypt_secrets_to_staging() {
   local bundle="$PROJECT_DIR/secrets/homecontrol-secrets-latest.tar.gz.age"
   log "Secrets decrypt stagingbe: $SECRETS_ROOT"
-  mkdir -p "$SECRETS_ROOT"
-  age -d -i "$AGE_KEY_FILE" "$bundle" | tar -C "$SECRETS_ROOT" -xzf -
-  [ -f "$SECRETS_ROOT/SECRETS_BUNDLE_CONTENTS.txt" ] || fail "Secrets tartalomlista hianyzik a stagingben"
+  mkdir -p "$WORK_ROOT/secrets"
+  chmod 700 "$WORK_ROOT/secrets"
+  SECRET_ARCHIVE="$(mktemp "$WORK_ROOT/secrets/decrypted.XXXXXX.tar.gz")"
+  chmod 600 "$SECRET_ARCHIVE"
+  age -d -i "$AGE_KEY_FILE" "$bundle" > "$SECRET_ARCHIVE"
+  SECRETS_ROOT="$(mktemp -d "$WORK_ROOT/secrets/rootfs.XXXXXX")"
+  python3 "$PROJECT_DIR/scripts/restore_archive.py" secrets "$SECRET_ARCHIVE" "$SECRETS_ROOT"
+
 }
 
 apply_project() {
@@ -280,12 +302,9 @@ stop_existing_stacks_for_apply() {
 }
 
 apply_secrets() {
-  local bundle="$PROJECT_DIR/secrets/homecontrol-secrets-latest.tar.gz.age"
-  log "Secrets apply: encrypted bundle -> /"
-  age -d -i "$AGE_KEY_FILE" "$bundle" | tar -C / -xzf -
-  chmod 600 "$TARGET_BASE/infra/ssh/"*_key 2>/dev/null || true
-  chmod 600 "$TARGET_BASE/infra/ssh/"*-key.txt 2>/dev/null || true
-  chmod 600 /etc/homecontrol/restic-password 2>/dev/null || true
+  log "Validated secrets apply to canonical paths"
+  python3 "$PROJECT_DIR/scripts/restore_archive.py" secrets "$SECRET_ARCHIVE" / --apply
+
 }
 
 restore_restic_to_staging() {
@@ -294,6 +313,22 @@ restore_restic_to_staging() {
     return 0
   fi
 
+  if [ -n "$ROUTER_SETTINGS" ]; then
+    [ -f "$ROUTER_SETTINGS" ] || fail "Router settings file missing"
+    if [ -e "$RESTIC_TARGET" ]; then
+      mv "$RESTIC_TARGET" "${RESTIC_TARGET}.previous-$(date +%s)-$$"
+    fi
+    mkdir -p "$RESTIC_TARGET"
+    python3 "$PROJECT_DIR/scripts/router_restic.py" restore --settings "$ROUTER_SETTINGS" \
+      --secrets-root "$SECRETS_ROOT" --root "$WORK_ROOT/router-locks" \
+      --snapshot "$RESTIC_SNAPSHOT" --staging "$RESTIC_TARGET" > "$WORK_ROOT/router-restore.json"
+    RESTIC_SNAPSHOT="$(python3 - "$WORK_ROOT/router-restore.json" <<'PYJSON'
+import json,sys
+print(json.load(open(sys.argv[1]))['snapshot_id'])
+PYJSON
+)"
+    return 0
+  fi
   local restic_password="$SECRETS_ROOT/etc/homecontrol/restic-password"
   local ai_key="$SECRETS_ROOT/srv/docker/homecontrol/infra/ssh/ai_node_key"
   local sftp_target=""
@@ -313,7 +348,8 @@ restore_restic_to_staging() {
   )
 
   log "Restic snapshots ellenorzes: $RESTIC_REPOSITORY"
-  restic "${RESTIC_ARGS[@]}" snapshots --tag homecontrol >/dev/null
+  restic "${RESTIC_ARGS[@]}" snapshots --json --tag homecontrol > "$WORK_ROOT/snapshots.json"
+  RESTIC_SNAPSHOT="$(python3 "$PROJECT_DIR/scripts/restore_archive.py" snapshot "$WORK_ROOT/snapshots.json" --requested "$RESTIC_SNAPSHOT")"
 
   log "Restic restore stagingbe: snapshot=$RESTIC_SNAPSHOT target=$RESTIC_TARGET"
   if [ -e "$RESTIC_TARGET" ]; then
@@ -325,30 +361,34 @@ restore_restic_to_staging() {
   restic "${RESTIC_ARGS[@]}" restore "$RESTIC_SNAPSHOT" --target "$RESTIC_TARGET" --tag homecontrol
 }
 
-latest_archive_from_restic() {
-  find "$RESTIC_TARGET/$TARGET_BASE/backups" -maxdepth 1 -type f -name 'homecontrol_*.tar.gz' 2>/dev/null | sort | tail -n 1
-}
-
-extract_latest_archive() {
-  local archive
-  archive="$(latest_archive_from_restic)"
-  [ -n "$archive" ] || fail "Nem talalhato homecontrol_*.tar.gz archívum a restic stagingben"
-  log "Legfrissebb HC archive kibontas stagingbe: $archive"
-  mkdir -p "$ARCHIVE_STAGE"
-  tar -xzf "$archive" -C "$ARCHIVE_STAGE"
-}
-
-latest_db_dump() {
-  find "$ARCHIVE_STAGE" -type f -path '*/postgres/*.dump' | sort | tail -n 1
+prepare_selected_archive() {
+  [ "$RESTORE_RESTIC" = true ] || return 0
+  SELECTED_ARCHIVE="$(python3 "$PROJECT_DIR/scripts/restore_archive.py" latest "$RESTIC_TARGET/srv/docker/homecontrol/backups")"
+  python3 "$PROJECT_DIR/scripts/restore_archive.py" verify "$SELECTED_ARCHIVE" > "$WORK_ROOT/archive-verification.json"
+  if [ "$RESTORE_DB" = true ]; then
+    SELECTION_FILE="$WORK_ROOT/db-selection.json"
+    rm -f "$SELECTION_FILE"
+    python3 "$PROJECT_DIR/scripts/restore_archive.py" database "$SELECTED_ARCHIVE" "$WORK_ROOT/archive" "$SELECTION_FILE"
+    SELECTED_DUMP="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["dump"])' "$SELECTION_FILE")"
+    # Validate the selected dump format before stopping stacks or touching DBs.
+    RESTORE_ASSETS="$(python3 "$PROJECT_DIR/scripts/access_release/restore_assets.py" stage --archive "$SELECTED_ARCHIVE" --work "$WORK_ROOT")"
+    PG_RESTORE_IMAGE="$(python3 "$PROJECT_DIR/scripts/access_release/restore_assets.py" load --manifest "$RESTORE_ASSETS")"
+    docker run --rm --pull never --network none -i "$PG_RESTORE_IMAGE" pg_restore --list < "$SELECTED_DUMP" > "$WORK_ROOT/dump-toc.txt"
+  fi
 }
 
 restore_database() {
   [ "$RESTORE_DB" = "true" ] || return 0
   [ "$APPLY" = "true" ] || fail "--restore-db csak --apply mellett futtathato"
 
-  extract_latest_archive
   local dump
-  dump="$(latest_db_dump)"
+  dump="$SELECTED_DUMP"
+  python3 - "$SELECTION_FILE" <<'PY_VERIFY'
+import hashlib,json,sys
+from pathlib import Path
+s=json.loads(Path(sys.argv[1]).read_text())
+if hashlib.sha256(Path(s["dump"]).read_bytes()).hexdigest()!=s["dump_sha256"]: raise SystemExit("Selected dump changed; refusing DB replacement")
+PY_VERIFY
   [ -s "$dump" ] || fail "Nem talalhato PostgreSQL dump a kibontott archive-ban"
 
   local db_user db_name
@@ -356,7 +396,7 @@ restore_database() {
   db_name="$(env_value POSTGRES_DB homecontrol)"
 
   log "PostgreSQL kontener inditasa DB restore-hoz"
-  (cd "$TARGET_BASE/infra" && docker compose up -d postgres pgbouncer)
+  (cd "$TARGET_BASE/infra" && docker compose up -d postgres)
 
   log "PostgreSQL health varakozas"
   for _ in $(seq 1 60); do
@@ -368,14 +408,17 @@ restore_database() {
   docker exec homecontrol-postgres pg_isready -U "$db_user" -d postgres >/dev/null 2>&1 \
     || fail "PostgreSQL nem lett elerheto"
 
+  [[ "$db_user" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] && [[ "$db_name" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || fail "Unsupported DB identifier"
+  python3 "$TARGET_BASE/scripts/restore_runtime.py" roles
   log "DB csere indul: $db_name"
   docker cp "$dump" homecontrol-postgres:/tmp/homecontrol_restore.dump
   docker exec homecontrol-postgres psql -U "$db_user" -d postgres -v ON_ERROR_STOP=1 \
     -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${db_name}' AND pid <> pg_backend_pid();"
   docker exec homecontrol-postgres dropdb -U "$db_user" --if-exists "$db_name"
   docker exec homecontrol-postgres createdb -U "$db_user" "$db_name"
-  docker exec homecontrol-postgres pg_restore -U "$db_user" -d "$db_name" /tmp/homecontrol_restore.dump
+  docker exec homecontrol-postgres pg_restore --exit-on-error -U "$db_user" -d "$db_name" /tmp/homecontrol_restore.dump
   docker exec homecontrol-postgres rm -f /tmp/homecontrol_restore.dump
+  python3 "$TARGET_BASE/scripts/restore_runtime.py" migrate
   log "DB restore kesz: $db_name"
 }
 
@@ -385,10 +428,10 @@ start_stacks() {
   local ha_growatt_token
   ha_growatt_token="$(env_value HA_GROWATT_TOKEN "")"
   log "Docker compose stack inditas: infra"
-  (cd "$TARGET_BASE/infra" && docker compose up -d --build)
+  (cd "$TARGET_BASE/infra" && docker compose up -d --no-build --pull never)
   if [ -n "$ha_growatt_token" ]; then
     log "Docker compose profil inditas: ha-growatt"
-    (cd "$TARGET_BASE/infra" && docker compose --profile ha-growatt up -d --build homecontrol-ha-growatt-poller)
+    (cd "$TARGET_BASE/infra" && docker compose --profile ha-growatt up -d --no-build --pull never homecontrol-ha-growatt-poller)
   fi
   if [ -f "$TARGET_BASE/homeassistant/docker-compose.yml" ]; then
     log "Docker compose stack inditas: homeassistant"
@@ -422,13 +465,14 @@ main() {
     install_packages
   fi
 
+  need_command python3
   need_command git
   need_command age
   need_command tar
   need_command rsync
   if [ "$RESTORE_RESTIC" = "true" ]; then
     need_command restic
-    need_command ssh
+    if [ -n "$ROUTER_SETTINGS" ]; then need_command rclone; else need_command ssh; fi
   fi
   if [ "$APPLY" = "true" ] || [ "$START_STACK" = "true" ] || [ "$RESTORE_DB" = "true" ]; then
     need_command docker
@@ -439,20 +483,38 @@ main() {
   decrypt_secrets_to_staging
 
   restore_restic_to_staging
+  if [ "$RESTORE_DB" = true ] && [ "$RESTORE_RESTIC" != true ]; then fail "DB restore requires a selected restic archive"; fi
+  prepare_selected_archive
 
   if [ "$APPLY" = "true" ]; then
     stop_existing_stacks_for_apply
+    if [ -n "${RESTORE_ASSETS:-}" ]; then
+      python3 "$PROJECT_DIR/scripts/access_release/restore_assets.py" quiesce --manifest "$RESTORE_ASSETS"
+    fi
     apply_restic_files
     apply_project
     apply_secrets
+    if [ -n "${RESTORE_ASSETS:-}" ]; then
+      python3 "$PROJECT_DIR/scripts/access_release/restore_assets.py" apply --manifest "$RESTORE_ASSETS"
+    fi
+    python3 "$TARGET_BASE/scripts/restore_runtime.py" environment
   fi
 
+  if [ "$APPLY" = true ] && [ "$START_STACK" = true ]; then
+    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r14/scripts/access_release/install.py" restore-prepare
+  fi
   if [ "$RESTORE_DB" = "true" ]; then
     restore_database
-  elif [ "$RESTORE_RESTIC" = "true" ]; then
-    extract_latest_archive || log "Archive kibontas kihagyva: nincs restic archive stagingben"
+
+  fi
+  if [ "$START_STACK" = true ]; then
+    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r14/scripts/access_release/install.py" start-runtime
   fi
   start_stacks
+  if [ "$START_STACK" = true ]; then
+    python3 "$TARGET_BASE/scripts/install_restore_host.py" --apply
+  fi
+  rm -f "${SECRET_ARCHIVE:-}"
   summary
 }
 

@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python@sha256:6c4dd321d176d61ea848dc8c73a4f7dbae8f70e0ee48bb411ea2f045b599fa8e
 
 WORKDIR /app
 
@@ -6,34 +6,20 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git openssh-client rsync \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY requirements.lock /app/requirements.lock
+RUN pip install --no-cache-dir -r /app/requirements.lock
 
-COPY app.py /app/app.py
-COPY admin_service.py /app/admin_service.py
-COPY api_route_modules.py /app/api_route_modules.py
-COPY ai_proxy_service.py /app/ai_proxy_service.py
-COPY ai_node_service.py /app/ai_node_service.py
-COPY backup_service.py /app/backup_service.py
-COPY climate_service.py /app/climate_service.py
-COPY command_service.py /app/command_service.py
-COPY context_service.py /app/context_service.py
-COPY context_payload_service.py /app/context_payload_service.py
-COPY database_service.py /app/database_service.py
-COPY energy_device_service.py /app/energy_device_service.py
-COPY irrigation_service.py /app/irrigation_service.py
-COPY mqtt_monitor_service.py /app/mqtt_monitor_service.py
-COPY power_wall_service.py /app/power_wall_service.py
-COPY process_binding_service.py /app/process_binding_service.py
-COPY repository_service.py /app/repository_service.py
-COPY robot_service.py /app/robot_service.py
-COPY scheduler_service.py /app/scheduler_service.py
-COPY schema_service.py /app/schema_service.py
-COPY startup_service.py /app/startup_service.py
-COPY system_status_service.py /app/system_status_service.py
+COPY *.py /app/
 COPY static /app/static
 
+RUN groupadd --gid 10001 homecontrol \
+    && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /tmp homecontrol
+
+USER 10001:10001
+ENV PYTHONDONTWRITEBYTECODE=1 HOME=/tmp
+
 EXPOSE 5000
+HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=3 CMD ["python", "backend_healthcheck.py", "--mode", "workers"]
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--config", "gunicorn_conf.py", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "8", "--timeout", "600", "--access-logfile", "-", "--error-logfile", "-", "wsgi:app"]

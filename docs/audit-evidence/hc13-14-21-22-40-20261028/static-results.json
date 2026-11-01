@@ -1,0 +1,12 @@
+{
+  "unchanged_irrigation_methods": [
+    "start_solar_pump_batch",
+    "stop_solar_pump_batch",
+    "solar_pump_scheduler_tick",
+    "log_pilot_decision"
+  ],
+  "decision_formula_unchanged_except_removed_update": true,
+  "unchanged_migration_files": 64,
+  "audit_unchanged": true,
+  "python_ast": true
+}

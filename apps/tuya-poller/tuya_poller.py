@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from mqtt_credentials import configure_mqtt_auth
 # -*- coding: utf-8 -*-
 
 """
@@ -20,11 +21,13 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import date
-from queue import Empty, Queue
-from threading import Lock, Thread
+from threading import Lock
 from typing import Optional, Tuple, Any, List
 
 import tinytuya
+from command_dispatcher import CommandDispatcher, CommandRejected
+from telemetry_publish import ChangedPublisher
+from worker_health import WorkerHealth
 
 # MQTT (opcionális)
 try:
@@ -74,8 +77,8 @@ KIND_LOCK_AFTER_SUCCESSES = int(cfg.get("kind_lock_after_successes", 2))
 
 # ------------------ MQTT config ------------------
 MQTT_CFG = (cfg.get("mqtt", {}) or {})
-MQTT_HOST = str(MQTT_CFG.get("host", "127.0.0.1"))
-MQTT_PORT = int(MQTT_CFG.get("port", 1883))
+MQTT_HOST = os.getenv("MQTT_HOST", str(MQTT_CFG.get("host", "127.0.0.1")))
+MQTT_PORT = int(os.getenv("MQTT_PORT", str(MQTT_CFG.get("port", 1883))))
 MQTT_USER = MQTT_CFG.get("username")
 MQTT_PASS = MQTT_CFG.get("password")
 MQTT_CLIENT_ID = str(MQTT_CFG.get("client_id", f"hc-tuya-poller-{socket.gethostname()}"))
@@ -85,7 +88,11 @@ MQTT_RETAIN_STATE = bool(MQTT_CFG.get("retain_state", False))
 MQTT_RETAIN_METRICS = bool(MQTT_CFG.get("retain_metrics", False))
 MQTT_KEEPALIVE = int(MQTT_CFG.get("keepalive", 30))
 MQTT_PUBLISH_ERRORS = bool(MQTT_CFG.get("publish_errors", True))
+MQTT_PUBLISH_HEARTBEAT_SEC = max(10.0, float(MQTT_CFG.get("publish_heartbeat_sec", 60)))
 MQTT_COMMAND_TOPIC = str(MQTT_CFG.get("command_topic", "homecontrol/cmd/tuya")).rstrip("/")
+telemetry_publisher = ChangedPublisher(heartbeat=MQTT_PUBLISH_HEARTBEAT_SEC,
+    rate=float(os.getenv('TUYA_MQTT_PUBLISH_RATE', '100')),
+    burst=float(os.getenv('TUYA_MQTT_PUBLISH_BURST', '100')))
 
 
 # ------------------ helpers ------------------
@@ -361,7 +368,7 @@ def parse_partial(dr: DevRuntime, dps: dict, recv_ts: int, src_ts: Optional[int]
 mqtt_client: Optional["mqtt.Client"] = None
 mqtt_connected: bool = False
 mqtt_last_conn_err: Optional[str] = None
-command_queue: "Queue[tuple[str, dict]]" = Queue()
+command_dispatcher = None
 
 
 def _mqtt_topic_join(*parts: str) -> str:
@@ -379,13 +386,20 @@ def mqtt_on_connect(client, userdata, flags, rc, properties=None):
     global mqtt_connected, mqtt_last_conn_err
     mqtt_connected = (rc == 0)
     mqtt_last_conn_err = None if mqtt_connected else f"connect_rc={rc}"
+    telemetry_publisher.connection(mqtt_connected)
+    if command_dispatcher is not None:
+        command_dispatcher.set_online(mqtt_connected)
     if mqtt_connected:
         client.subscribe(_mqtt_topic_join(MQTT_COMMAND_TOPIC, "+", "switch"), qos=MQTT_QOS)
+        publish_poller_info()
 
 
 def mqtt_on_disconnect(client, userdata, rc, properties=None):
     global mqtt_connected
     mqtt_connected = False
+    telemetry_publisher.connection(False)
+    if command_dispatcher is not None:
+        command_dispatcher.set_online(False)
 
 
 def mqtt_on_message(client, userdata, msg):
@@ -395,6 +409,15 @@ def mqtt_on_message(client, userdata, msg):
     if len(parts) != len(prefix_parts) + 2 or parts[:len(prefix_parts)] != prefix_parts or parts[-1] != "switch":
         return
     device_name = parts[-2]
+    if msg.retain:
+        publish_command_result(device_name, False, "command rejected", {"code": "retained"}, transient=True)
+        return
+    if command_dispatcher is None:
+        publish_command_result(device_name, False, "command rejected", {"code": "offline"}, transient=True)
+        return
+    if len(msg.payload) > command_dispatcher.max_payload:
+        publish_command_result(device_name, False, "command rejected", {"code": "payload_too_large"}, transient=True)
+        return
     raw_payload = msg.payload.decode("utf-8", errors="replace").strip()
     try:
         payload = json.loads(raw_payload) if raw_payload else {}
@@ -402,7 +425,13 @@ def mqtt_on_message(client, userdata, msg):
         payload = {"value": raw_payload}
     if not isinstance(payload, dict):
         payload = {"value": payload}
-    command_queue.put((device_name, payload))
+    target = next((dr for dr in runtimes if dr.name == device_name or dr.device_id == device_name), None)
+    value = command_bool(payload.get("value", payload.get("state", payload.get("switch"))))
+    if target is None or value is None:
+        publish_command_result(device_name, False, "unknown device" if target is None else "invalid switch value", transient=True)
+        return
+    # Resolve name/id aliases before applying the per-device OFF barrier.
+    command_dispatcher.submit(target.name, payload, size=len(msg.payload), priority=value is False)
 
 
 def init_mqtt():
@@ -413,50 +442,43 @@ def init_mqtt():
         raise SystemExit("SINK_MQTT=true, de a paho-mqtt nincs telepítve (pip install paho-mqtt)")
 
     c = mqtt.Client(client_id=MQTT_CLIENT_ID, clean_session=True)
+    c.max_queued_messages_set(256)
+    c.max_inflight_messages_set(20)
     c.on_connect = mqtt_on_connect
     c.on_disconnect = mqtt_on_disconnect
     c.on_message = mqtt_on_message
 
-    if MQTT_USER:
-        c.username_pw_set(MQTT_USER, MQTT_PASS)
+    configure_mqtt_auth(c, fallback=(MQTT_USER, MQTT_PASS))
 
     c.will_set(_mqtt_topic_join(MQTT_BASE_TOPIC, "poller", "availability"),
                payload="offline", qos=1, retain=True)
 
-    try:
-        c.connect(MQTT_HOST, MQTT_PORT, keepalive=MQTT_KEEPALIVE)
-        c.loop_start()
-        mqtt_client = c
-    except Exception as e:
-        mqtt_last_conn_err = repr(e)
-        mqtt_client = c
-        try:
-            c.loop_start()
-        except Exception:
-            pass
+    mqtt_client = c
+    c.connect_async(MQTT_HOST, MQTT_PORT, keepalive=MQTT_KEEPALIVE)
+    c.loop_start()
 
 
 def mqtt_publish(topic: str, payload: Any, qos: int = MQTT_QOS, retain: bool = False):
-    if not SINK_MQTT or mqtt_client is None:
-        return
-
-    global mqtt_connected, mqtt_last_conn_err
-
-    if not mqtt_connected:
-        try:
-            mqtt_client.reconnect()
-            mqtt_connected = True
-            mqtt_last_conn_err = None
-        except Exception as e:
-            mqtt_last_conn_err = repr(e)
-            return
+    """True means local paho admission only, for either QoS; never PUBACK."""
+    if not SINK_MQTT or mqtt_client is None or not mqtt_connected:
+        return False
 
     if isinstance(payload, (dict, list)):
         data = json.dumps(payload, ensure_ascii=False)
     else:
         data = str(payload)
 
-    mqtt_client.publish(topic, data, qos=qos, retain=retain)
+    try:
+        info = mqtt_client.publish(topic, data, qos=qos, retain=retain)
+        return info.rc == mqtt.MQTT_ERR_SUCCESS
+    except Exception:
+        return False
+
+
+def mqtt_publish_changed(topic: str, payload: Any, qos: int = MQTT_QOS, retain: bool = False, fingerprint: Any = None):
+    return telemetry_publisher.publish(topic, payload,
+        lambda name, value: mqtt_publish(name, value, qos=qos, retain=retain),
+        fingerprint=fingerprint)
 
 
 def mqtt_publish_device(dr: DevRuntime, st: dict, err: Optional[str]):
@@ -474,12 +496,13 @@ def mqtt_publish_device(dr: DevRuntime, st: dict, err: Optional[str]):
         if last_age is not None and 0 <= last_age <= dr.availability_grace_sec:
             availability = "online"
 
-    mqtt_publish(_mqtt_topic_join(base, "availability"),
+    mqtt_publish_changed(_mqtt_topic_join(base, "availability"),
                  availability, qos=1, retain=True)
-    mqtt_publish(_mqtt_topic_join(base, "error"),
+    mqtt_publish_changed(_mqtt_topic_join(base, "error"),
                  "" if not err else err, qos=1, retain=True)
 
-    mqtt_publish(_mqtt_topic_join(base, "state"), st, qos=MQTT_QOS, retain=MQTT_RETAIN_STATE)
+    state_fingerprint = {key: value for key, value in st.items() if key not in {"ts", "recv_ts", "src_ts", "lag_sec"}}
+    mqtt_publish_changed(_mqtt_topic_join(base, "state"), st, qos=MQTT_QOS, retain=MQTT_RETAIN_STATE, fingerprint=state_fingerprint)
 
     metrics = {
         "switch": st.get("switch"),
@@ -496,7 +519,7 @@ def mqtt_publish_device(dr: DevRuntime, st: dict, err: Optional[str]):
     for k, v in metrics.items():
         if v is None:
             continue
-        mqtt_publish(_mqtt_topic_join(base, "m", k), v, qos=MQTT_QOS, retain=MQTT_RETAIN_METRICS)
+        mqtt_publish_changed(_mqtt_topic_join(base, "m", k), v, qos=MQTT_QOS, retain=MQTT_RETAIN_METRICS)
 
 
 def command_bool(value: Any) -> Optional[bool]:
@@ -512,7 +535,7 @@ def command_bool(value: Any) -> Optional[bool]:
     return None
 
 
-def publish_command_result(device_name: str, ok: bool, message: str, extra: Optional[dict] = None):
+def publish_command_result(device_name: str, ok: bool, message: str, extra: Optional[dict] = None, *, transient=False):
     payload = {
         "ok": bool(ok),
         "device_name": device_name,
@@ -521,10 +544,17 @@ def publish_command_result(device_name: str, ok: bool, message: str, extra: Opti
     }
     if extra:
         payload.update(extra)
-    mqtt_publish(_mqtt_topic_join(MQTT_BASE_TOPIC, device_name, "command_result"), payload, qos=1, retain=False)
+    result_topic = _mqtt_topic_join(MQTT_BASE_TOPIC, device_name, "command_result")
+    if transient:
+        # Queue/disconnect callbacks are best effort, without replay.
+        # QoS0 is best effort; offline outcomes remain in the dispatcher's counters.
+        if SINK_MQTT and mqtt_client is not None and mqtt_connected:
+            mqtt_client.publish(result_topic, json.dumps(payload, ensure_ascii=False), qos=0, retain=False)
+    else:
+        mqtt_publish(result_topic, payload, qos=1, retain=False)
 
 
-def handle_switch_command(device_name: str, payload: dict) -> bool:
+def handle_switch_command(device_name: str, payload: dict, command_context=None) -> bool:
     target = next((dr for dr in runtimes if dr.name == device_name or dr.device_id == device_name), None)
     value = command_bool(payload.get("value", payload.get("state", payload.get("switch"))))
     if target is None:
@@ -537,9 +567,13 @@ def handle_switch_command(device_name: str, payload: dict) -> bool:
     switch_dp = int(target.dp_map.get("switch", 1) or 1)
     try:
         with target.lock:
+            if command_context is not None:
+                command_context.check()
             if target.dev is None:
                 target.build_device(kind=target.dev_kind, timeout=SLOW_TIMEOUT)
             target.dev.set_socketTimeout(SLOW_TIMEOUT)
+            if command_context is not None:
+                command_context.check()
             result = target.dev.set_status(value, switch_dp)
         target.next_poll_ts = 0
         target.last_error = None
@@ -555,6 +589,8 @@ def handle_switch_command(device_name: str, payload: dict) -> bool:
         })
         publish_command_result(target.name, True, "switch command sent", {"value": value, "dp": switch_dp, "result": result})
         return True
+    except CommandRejected:
+        raise
     except Exception as exc:
         target.last_error = repr(exc)
         target.next_poll_ts = int(time.time()) + cooldown_for(target.last_error)
@@ -562,24 +598,12 @@ def handle_switch_command(device_name: str, payload: dict) -> bool:
         return False
 
 
-def drain_commands(max_items: int = 20):
-    handled = 0
-    while handled < max_items:
-        try:
-            device_name, payload = command_queue.get_nowait()
-        except Empty:
-            return
-        handle_switch_command(device_name, payload)
-        handled += 1
+def execute_queued_command(item):
+    handle_switch_command(item.target, item.payload, command_context=item)
 
 
-def command_worker():
-    while True:
-        try:
-            device_name, payload = command_queue.get(timeout=1.0)
-        except Empty:
-            continue
-        handle_switch_command(device_name, payload)
+def reject_queued_command(item, code):
+    publish_command_result(item.target, False, "command rejected", {"code": code}, transient=True)
 
 
 # ------------------ polling with fast/slow retry + fallback ------------------
@@ -752,17 +776,25 @@ for dc in DEVICES_CFG:
     runtimes.append(dr)
 
 # ------------------ startup ------------------
-if SINK_MQTT:
-    init_mqtt()
-    Thread(target=command_worker, name="tuya-command-worker", daemon=True).start()
+bridge_health = WorkerHealth(maximum=max(120, POLL_SECONDS * 3,
+    ((len(runtimes) + MAX_WORKERS - 1) // MAX_WORKERS) * (FAST_TIMEOUT + SLOW_TIMEOUT * 3 + 2) * 3))
+
+
+def publish_poller_info():
     mqtt_publish(_mqtt_topic_join(MQTT_BASE_TOPIC, "poller", "availability"), "online", qos=1, retain=True)
     mqtt_publish(_mqtt_topic_join(MQTT_BASE_TOPIC, "poller", "info"), {
-        "client_id": MQTT_CLIENT_ID,
-        "host": MQTT_HOST,
-        "port": MQTT_PORT,
-        "ts": int(time.time()),
-        "devices": len(runtimes),
+        "client_id": MQTT_CLIENT_ID, "host": MQTT_HOST, "port": MQTT_PORT,
+        "ts": int(time.time()), "devices": len(runtimes),
     }, qos=1, retain=True)
+
+
+if SINK_MQTT:
+    command_dispatcher = CommandDispatcher.configured(execute_queued_command,
+        reject_queued_command, name="tuya-command-worker", prefix="TUYA")
+    command_dispatcher.start()
+    init_mqtt()
+bridge_health.start(lambda: {'connected': mqtt_connected if SINK_MQTT else True,
+    'commands': command_dispatcher.snapshot() if command_dispatcher else None})
 
 print("Tuya multi-connector poller starting...")
 print(f"Config: {CFG_PATH}")
@@ -782,7 +814,6 @@ executor = ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(runtimes)))
 
 try:
     while True:
-        drain_commands()
         polls += 1
         states_out: List[dict] = []
         err_out: dict = {}
@@ -803,7 +834,8 @@ try:
                 err_out[dr.name] = err
 
                 if dr.consec_fail >= REBUILD_AFTER_FAILS:
-                    dr.build_device(kind=dr.dev_kind, timeout=SLOW_TIMEOUT)
+                    with dr.lock:
+                        dr.build_device(kind=dr.dev_kind, timeout=SLOW_TIMEOUT)
                     dr.consec_fail = 0
             else:
                 ok += 1
@@ -826,7 +858,10 @@ try:
         states_out.sort(key=lambda x: x.get("device_name", ""))
 
         if SINK_MQTT:
-            for st in states_out:
+            # Rotate the first device so a reconnect/rate limit cannot starve
+            # devices at the end of the stable display ordering.
+            offset = (polls - 1) % len(states_out) if states_out else 0
+            for st in states_out[offset:] + states_out[:offset]:
                 dev_name = st.get("device_name", "")
                 dr = next((x for x in runtimes if x.name == dev_name), None)
                 if dr is None:
@@ -838,14 +873,15 @@ try:
 
                 mqtt_publish_device(dr, st, err)
 
-            mqtt_publish(_mqtt_topic_join(MQTT_BASE_TOPIC, "poller", "stats"), {
+            mqtt_publish_changed(_mqtt_topic_join(MQTT_BASE_TOPIC, "poller", "stats"), {
                 "ts": int(time.time()),
                 "polls": polls,
                 "ok": ok,
                 "errors": errors,
                 "mqtt_connected": bool(mqtt_connected),
                 "mqtt_last_error": mqtt_last_conn_err,
-            }, qos=1, retain=True)
+                "mqtt_publish": telemetry_publisher.snapshot(),
+            }, qos=1, retain=True, fingerprint={"mqtt_connected": bool(mqtt_connected), "mqtt_last_error": mqtt_last_conn_err})
 
         if SINK_CONSOLE:
             os.system("clear")
@@ -855,9 +891,13 @@ try:
             print(f"polls={polls} ok={ok} errors={errors} last_error={last_err} mqtt_connected={mqtt_connected}")
 
         sink_file_snapshot(states_out, err_out)
+        bridge_health.progress(success=any(value is None for value in err_out.values()))
         time.sleep(POLL_SECONDS)
 
 finally:
+    bridge_health.close()
+    if command_dispatcher is not None:
+        command_dispatcher.close()
     try:
         if SINK_MQTT and mqtt_client is not None:
             mqtt_publish(_mqtt_topic_join(MQTT_BASE_TOPIC, "poller", "availability"), "offline", qos=1, retain=True)

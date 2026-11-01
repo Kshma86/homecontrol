@@ -1,0 +1,56 @@
+{
+  "outage": {
+    "running": true,
+    "connect_attempts": 11,
+    "last_error": "OperationalError",
+    "db_failed_messages": 1,
+    "stalled": false,
+    "last_cycle_age_sec": 0.06504208594560623,
+    "stopping": false,
+    "db_ready": false,
+    "inbox": {
+      "queued_messages": 0,
+      "queued_bytes": 0,
+      "max_messages": 8,
+      "max_bytes": 4096,
+      "max_age_seconds": 5.0,
+      "accepted": 16,
+      "processing_attempts": 16,
+      "high_water_messages": 1,
+      "dropped": {
+        "db_failure": 0,
+        "db_unavailable": 99
+      },
+      "closed": false
+    },
+    "mqtt_connected": true,
+    "contact_candidates_dropped": 1,
+    "legacy_pending_measurements": 0,
+    "received_epoch": 1793217897.1885934
+  },
+  "ordered_temperature_values": [
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0
+  ],
+  "contact_bounce_suppressed": true,
+  "contact_candidate_dropped_at_failure": true,
+  "no_outage_replay": true,
+  "mqtt_and_heartbeat_continue": true,
+  "shutdown_exit_code": 0,
+  "shutdown_flush_saved_last_sample": true,
+  "device_network": false
+}

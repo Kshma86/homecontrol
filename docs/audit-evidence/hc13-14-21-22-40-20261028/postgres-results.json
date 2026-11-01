@@ -1,0 +1,140 @@
+{
+  "measurement_rows": 6840083,
+  "equivalence": [
+    {
+      "view": "irrigation_daily_energy",
+      "days": 14,
+      "rows": 11,
+      "equal": true
+    },
+    {
+      "view": "irrigation_pump_daily",
+      "days": 14,
+      "rows": 11,
+      "equal": true
+    },
+    {
+      "view": "irrigation_solar_daily",
+      "days": 14,
+      "rows": 13,
+      "equal": true
+    },
+    {
+      "view": "irrigation_controller_temp_daily",
+      "days": 14,
+      "rows": 11,
+      "equal": true
+    },
+    {
+      "view": "irrigation_tank_daily",
+      "days": 14,
+      "rows": 13,
+      "equal": true
+    },
+    {
+      "view": "irrigation_daily_energy",
+      "days": 35,
+      "rows": 32,
+      "equal": true
+    },
+    {
+      "view": "irrigation_pump_daily",
+      "days": 35,
+      "rows": 32,
+      "equal": true
+    },
+    {
+      "view": "irrigation_solar_daily",
+      "days": 35,
+      "rows": 34,
+      "equal": true
+    },
+    {
+      "view": "irrigation_controller_temp_daily",
+      "days": 35,
+      "rows": 32,
+      "equal": true
+    },
+    {
+      "view": "irrigation_tank_daily",
+      "days": 35,
+      "rows": 34,
+      "equal": true
+    },
+    {
+      "view": "irrigation_daily_energy",
+      "days": 200,
+      "rows": 122,
+      "equal": true
+    },
+    {
+      "view": "irrigation_pump_daily",
+      "days": 200,
+      "rows": 122,
+      "equal": true
+    },
+    {
+      "view": "irrigation_solar_daily",
+      "days": 200,
+      "rows": 122,
+      "equal": true
+    },
+    {
+      "view": "irrigation_controller_temp_daily",
+      "days": 200,
+      "rows": 122,
+      "equal": true
+    },
+    {
+      "view": "irrigation_tank_daily",
+      "days": 200,
+      "rows": 124,
+      "equal": true
+    }
+  ],
+  "boundary_cases": {
+    "timezones": [
+      "UTC",
+      "Europe/Budapest"
+    ],
+    "spring_and_autumn_dst": true,
+    "carry_in_and_cap": true,
+    "late_arrival": true,
+    "cases": 30
+  },
+  "before": {
+    "requests": 20,
+    "cold_ms": 31214.69,
+    "warm_p95_ms": 22.24,
+    "queries": 381,
+    "diagnostic_updates": 20,
+    "summary_upserts": 5,
+    "wal_bytes": 264352
+  },
+  "after": {
+    "requests": 20,
+    "cold_ms": 8.0,
+    "warm_p95_ms": 8.22,
+    "queries": 360,
+    "diagnostic_updates": 0,
+    "summary_upserts": 0,
+    "wal_bytes": 0
+  },
+  "payload_equal_sections": [
+    "energy_daily",
+    "pump_daily",
+    "solar_daily",
+    "tank_daily",
+    "temp_daily",
+    "schedules",
+    "sessions",
+    "latest"
+  ],
+  "readonly_builders": [
+    "build_snapshot",
+    "statistics_payload",
+    "evaluate_solar_pump_scheduler"
+  ],
+  "negative_control_old_evaluation_writes": true,
+  "background_refresh_ms": 30327.9
+}

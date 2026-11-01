@@ -1,0 +1,18 @@
+{
+  "roles": 11,
+  "all_existing_selected_devices_valid": true,
+  "legacy_fallback_roles": [],
+  "invalid_reasons": {
+    "ai_node_power_plug": null,
+    "climate_extra_fan_socket": null,
+    "climate_power_meter": null,
+    "combustion_co_sensor": null,
+    "combustion_extractor": null,
+    "combustion_indicator": null,
+    "combustion_smoke_sensor": null,
+    "hc_server_power_meter": null,
+    "irrigation_soil_moisture": null,
+    "marten_motion_sensor": null,
+    "marten_power_socket": null
+  }
+}

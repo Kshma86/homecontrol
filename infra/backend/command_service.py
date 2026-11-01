@@ -49,7 +49,7 @@ class CommandService:
         sections = []
         if "/irrigation/" in text or text.startswith("homecontrol/tele/irrigation/") or text.startswith("homecontrol/stat/irrigation/"):
             sections.extend(["irrigation", "irrigation_pilot"])
-        if text.startswith("zigbee/0xa4c13844a0908898") or text.startswith("zigbee/0xa4c1387594b09c83"):
+        if text.startswith(("zigbee/0xa4c13844a0908898", "zigbee/0xa4c1387594b09c83", "zigbee/0xa4c13880b130079c")):
             sections.extend(["irrigation", "irrigation_pilot", "irrigation_statistics"])
         if "xiaomi_x10" in text:
             sections.append("robot")

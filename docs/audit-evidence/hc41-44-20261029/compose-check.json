@@ -1,0 +1,19 @@
+{
+  "compose_valid": true,
+  "api_user": "10001:10001",
+  "rootfs_read_only": true,
+  "capabilities_dropped": [
+    "ALL"
+  ],
+  "security_opt": [
+    "no-new-privileges:true"
+  ],
+  "write_mounts": [
+    "/srv/docker/homecontrol/backups/ai-backup.lock",
+    "/srv/docker/homecontrol/backups/ai-control",
+    "/srv/docker/homecontrol/backups/homecontrol-backup.lock",
+    "/srv/docker/homecontrol/infra/private"
+  ],
+  "raw_docker_socket": false,
+  "applied": false
+}

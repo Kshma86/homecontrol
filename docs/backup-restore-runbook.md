@@ -1,5 +1,12 @@
 # HomeControl backup and restore runbook
 
+> **2026-10-23, F6 helyi javítás:** a HC-19/25/30/42 új közös mentője és host
+> unitjai még nincsenek élesítve. Az alábbi régi scriptút továbbra is az éles r2
+> leírása. A következő kiadás új protokollját, teljes/részleges tartalmát,
+> unit-átadását és rollback-korlátait a [külön F6 runbook](hc-f6-backups.md)
+> tartalmazza. Ez nem javítja automatikusan a nyitott restoreaudit-pontokat.
+
+
 Ez a runbook a HC szerver helyi archívumait, az AI szerver HDD-n lévő restic repositoryt és a Gitea konfigurációs repositoryt kezeli együtt.
 
 ## Gyors állapotellenőrzés
@@ -436,7 +443,7 @@ A Backup tabon a `Run Full AI Backup` gomb a teljes AI HDD-s folyamatot kéri:
 2. Gitea config snapshot sync, benne az aktuális encrypted secrets bundle-lel.
 3. Gitea dump az AI szerveren.
 4. Kötelező restic backup az AI HDD-re.
-5. Opcionális AI szerver leállítás, de csak akkor automatikusan, ha a backup ébresztette fel az AI szervert.
+5. Opcionális AI szerver leállítás, de csak akkor, ha a backup ébresztette fel az AI szervert és az `ai_weekly_shutdown_after` beállítás engedélyezett.
 
 A gomb nem közvetlenül a konténerből indít host `systemctl` parancsot. A backend a `backups/full-ai-backup.request` fájlt frissíti, a hoston futó `homecontrol-full-ai-backup-request.path` systemd helper pedig erre elindítja a `weekly_ai_backup.sh` full mentési folyamatot.
 
@@ -453,9 +460,9 @@ A Backup oldali `AI Shutdown Guard` csempe mutatja, hogy fut-e full AI backup va
 Két normál full backup ág van:
 
 1. AI szerver már ment induláskor: backup lefut, AI szerver bekapcsolva marad.
-2. AI szerver nem volt elérhető induláskor: HC wake kérést küld, backup lefut, majd sikeres mentés után automatikus shutdown kérés megy az AI szerverre.
+2. AI szerver nem volt elérhető induláskor: HC wake kérést küld, backup lefut, majd sikeres mentés után automatikus shutdown kérés megy az AI szerverre, ha `ai_weekly_shutdown_after=true`.
 
-Ha backup közben te külön megnyomod az AI oldali `Shutdown After Backup` gombot, az explicit kérésnek számít. Ilyenkor a shutdown akkor is lefut a backup végén, ha az AI szerver már induláskor be volt kapcsolva.
+Ha backup közben te külön megnyomod az AI oldali `Shutdown After Backup` gombot, az explicit kérésnek számít. Ilyenkor a shutdown a backup végén lefut, ha a mentés sikeres.
 
 Ha az AI szerver nem érhető el SSH-n, a full/weekly backup várakozás közben 30 másodpercenként státuszt logol, és 60 másodpercenként újraküldi a wake kérést/Wake-on-LAN csomagot. Ha a konnektor bekapcsolt állapotban van, de a PC nem bootol és az SSH nem jön fel 15 percen belül, akkor a hiba már az AI gép fizikai/BIOS/WoL oldalán keresendő.
 

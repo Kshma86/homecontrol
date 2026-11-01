@@ -1,0 +1,157 @@
+{
+  "release": "hc-access-20261030-r10",
+  "prepared": true,
+  "deployed": false,
+  "scope": [
+    "HC-41",
+    "HC-44",
+    "HC-45 necessary restore integration"
+  ],
+  "excluded": [
+    "HC-35",
+    "HC-36"
+  ],
+  "tests": {
+    "tests": 427,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "failed_ids": [],
+    "modules": [
+      "access_release",
+      "mqtt_credentials",
+      "host_operations",
+      "read_runtime_repair",
+      "ai_proxy_service",
+      "ai_images",
+      "ai_node_power",
+      "read_model_cache",
+      "context_service_contract",
+      "command_service",
+      "api_route_modules",
+      "robot_service",
+      "scheduler_feedback",
+      "scheduler_bridge_samples",
+      "scheduler_service",
+      "startup_service",
+      "admin_bootstrap",
+      "schema_service",
+      "irrigation_service",
+      "irrigation_admission",
+      "irrigation_recovery",
+      "irrigation_stop_priority",
+      "climate_window_guard",
+      "power_wall_service",
+      "mqtt_monitor_service",
+      "deployment_policy",
+      "combustion_safety_service",
+      "combustion_safety_state",
+      "combustion_safety_delivery",
+      "combustion_opening_events"
+    ]
+  },
+  "candidate_integration": {
+    "ok": true,
+    "production_used": false,
+    "published_ports": false,
+    "network": "none; shared isolated namespace",
+    "broker_uid_1883_private_0600_config": true,
+    "real_postgresql": true,
+    "real_pgbouncer": true,
+    "authenticated_mqtt": true,
+    "candidate_ingest_mqtt_and_db_ready": true,
+    "nonroot_candidate_backend_ready": true,
+    "host_executor_uid": 0,
+    "host_executor_docker": "strict fake CLI fixture; no daemon socket",
+    "wrong_peer_uid_denied": true,
+    "uid": 10001,
+    "socket_root_10001_0660": true,
+    "root_rpc_allowed": true,
+    "backup_queued": true,
+    "ai_state_shared": true,
+    "no_docker_socket": true,
+    "protected_writes_denied": true
+  },
+  "namespace_network": {
+    "success": true,
+    "esp_dnat_allowed": true,
+    "other_lan_denied": true,
+    "direct_docker_peer_denied": true,
+    "host_denied": true,
+    "ipv6_proxy_path_denied": true,
+    "authenticated_port_unchanged": true,
+    "idempotent_reapply": true,
+    "rollback_internal_and_dashboard_allowed": true,
+    "rollback_foreign_lan_still_denied": true,
+    "production_rules_changed": false,
+    "namespace": "unshare -Urn"
+  },
+  "fresh_backup": {
+    "sha256": "c2c2542ac386a6d4f3a6ee23f90382d5c4d5455246c21f2d6f6ce2f23a7c2598",
+    "size_bytes": 132458573,
+    "verified_files": 969
+  },
+  "offline_images": {
+    "offline_archive_readable": true,
+    "all_blob_sha256_verified": true,
+    "docker_manifest_config_and_layer_references_present": true,
+    "requested_image_ids_present": true,
+    "image_count": 20,
+    "blob_count": 233,
+    "docker_load_production": false,
+    "format": "Docker save OCI index; engine image IDs are manifest digests",
+    "linux_amd64_manifest_closure_complete": true,
+    "other_platform_or_attestation_descriptors_not_exported": 50,
+    "ok": true
+  },
+  "secrets": {
+    "encrypted": true,
+    "roundtrip_verified": true,
+    "secret_files": 50,
+    "current_files_refreshed": 13,
+    "inherited_protected_paths": [],
+    "includes_mqtt_credentials": true,
+    "includes_runtime_environments": true,
+    "images_excluded": true,
+    "live_secrets_changed": false,
+    "sha256": "08791c950cb9b1ce0e3ef4475689ab03b2fde40bd38ea5b688a469cef74572d1"
+  },
+  "systemd": {
+    "verify_exit_code": 0,
+    "unit_files": 16,
+    "docker_base_unit_also_checked": true,
+    "dropins": 9,
+    "live_daemon_reload": false,
+    "live_enable_start": false,
+    "limitations": [
+      "Host dependency/sandbox warnings while checking as UID1000",
+      "Actual PID1/fresh VM restore not exercised"
+    ]
+  },
+  "production_unchanged": {
+    "production_containers_compared": 16,
+    "all_ids_images_startedat_restarts_unchanged": true,
+    "changed_containers": [],
+    "protected_host_files": 37,
+    "changed_protected_files": [],
+    "source_guards": {
+      "HC_REFACTOR_AUDIT.md": true,
+      "infra/backend/combustion_safety_service.py": true,
+      "infra/mqtt/config/mosquitto.conf": true
+    },
+    "active_override": "/srv/docker/homecontrol/backups/releases/hc-ingest-20261028-r9/release.override.json",
+    "new_runtime_not_installed": true,
+    "hostops_unit_not_installed": true
+  },
+  "remaining": [
+    "User confirmation of ESP identity and fixed/DHCP reserved IP",
+    "confirm-esp preparation finalization and new seal, no live changes",
+    "Root supervised deployment, real telemetry/STOP/ack/reconnect and development PC clients"
+  ],
+  "limitations": [
+    "No full fresh VM/PID1 restore; HC-45 remains pending",
+    "Integration root executor uses strict Docker CLI fixture, no daemon socket; previous real own-container restart evidence is separate",
+    "HC-41 remains in progress until ESP authentication later and legacy listener retirement"
+  ],
+  "audit_status_changed": false
+}

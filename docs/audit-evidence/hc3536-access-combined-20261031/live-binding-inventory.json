@@ -1,0 +1,9 @@
+{
+  "read_only": true,
+  "production_commands_sent": false,
+  "production_rows_modified": false,
+  "roles": 11,
+  "invalid_roles": [],
+  "legacy_fallback_roles": [],
+  "pending_climate_entity_ids": []
+}

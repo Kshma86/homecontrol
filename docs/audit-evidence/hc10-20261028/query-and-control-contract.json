@@ -1,0 +1,25 @@
+{
+  "irrigation_service.py": {
+    "query_call_ast_count": 84,
+    "identical": true
+  },
+  "admin_service.py": {
+    "query_call_ast_count": 16,
+    "identical": true
+  },
+  "power_wall_service.py": {
+    "query_call_ast_count": 34,
+    "identical": true
+  },
+  "energy_device_service.py": {
+    "query_call_ast_count": 18,
+    "identical": true
+  },
+  "control_methods_checked": [
+    "live_valve_state",
+    "publish_open_with_confirmation",
+    "publish_stop_with_confirmation",
+    "start_scheduled_session",
+    "scheduler_tick"
+  ]
+}

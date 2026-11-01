@@ -1,0 +1,73 @@
+{
+  "at": "2026-10-31T19:09:15.330421+00:00",
+  "status": "verified_local_partial_audit_not_deployed",
+  "audit_status": {
+    "HC-32": "checked_not_deployed",
+    "HC-23": "in_progress",
+    "HC-43": "in_progress"
+  },
+  "unit_frontend_tests_passed": 591,
+  "broker_cases_passed": 15,
+  "python_process_smokes_passed": 7,
+  "frontend_static_http_passed": true,
+  "broad_discovery": {
+    "tests_each": 998,
+    "failures_each": 29,
+    "errors_each": 7,
+    "skipped_each": 183,
+    "new_failure_ids": [],
+    "same_failure_ids": true,
+    "passed": false
+  },
+  "candidate_images": {
+    "backend": "sha256:f973391c190c35d6be7ea493723d07fc3f4e08d60709ed42de4256c58a07df23",
+    "ingest": "sha256:b872923cb88f42467e2bb982b56e6398f86560f3b2dada157ffb13ece8920c46",
+    "tuya-poller": "sha256:4ebc6b5367aff665f0df2f6ea2e0e98054f98702c87c995d7a0d70becf9186c9",
+    "gree-climate": "sha256:2ea3fde755f1cf8a02b722fcaeb7807b94cee32d8d70d5f01d6f4208ba5404db",
+    "xiaomi-x10": "sha256:dd7822e13afcc231f22fecb99e6b6c4bfcf7058a0abcc75d6b41f2aa8f3c924f",
+    "ha-growatt-poller": "sha256:2e486db3ea2764cf2f387d23276dc007e926b6a8929122cceae8ef6e18aeb890",
+    "ai-server": "sha256:b7400a6a2bee3d136bf288e0f4d705d366e22294d37cbb9363dc583a3a698ec6",
+    "frontend": "sha256:6b289cd3aed25ffca09f6efd0ef4b734ded85adc1fe8f74a33ae80ee6ea90c35"
+  },
+  "python_osv_evaluable_matches": 0,
+  "python_osv_unknown_records": 53,
+  "private_inventory_uploaded": false,
+  "full_os_scanner_rerun": false,
+  "homeassistant_updated": false,
+  "original_audit_changed": false,
+  "production": {
+    "checked_at": "2026-10-31T19:08:40.971210+00:00",
+    "production_containers_unchanged": 16,
+    "r10_runtime_sources_unchanged": 646,
+    "audit_unchanged": true,
+    "active_compose_unchanged": true,
+    "lab_containers_and_networks_removed": true
+  },
+  "ready_for_deployment": false,
+  "remaining_checks": [
+    "HC-23: complete isolated test profiles; positive DB/MQTT startup/restore/rollback; external HA/AI deployment paths",
+    "HC-43: Home Assistant supported-release upgrade; OS/advisory triage and maintained image rebuilds; 53 Git-range records; complete fresh npm advisory review",
+    "Release: fresh backup, immutable installer/hostops integration and per-bridge supervised hardware acceptance; no automatic command replay",
+    "Remote AI remains excluded until the SSD repair"
+  ],
+  "policies": {
+    "publish_success_boundary": "local paho admission for QoS0/1, not PUBACK/physical state",
+    "telemetry_replay": "no payload queue; next poll latest data",
+    "publish_rate_default": 100,
+    "publish_burst_default": 100,
+    "changed_cache_topics_maximum": 8192,
+    "paho_queue_maximum": 256,
+    "paho_inflight_maximum": 20
+  },
+  "documented_test_stage_verified": true,
+  "integrity": {
+    "python_candidates": 7,
+    "frontend_assets_match": true,
+    "no_obsolete_frontend_assets": true,
+    "source_and_wheel_integrity": true,
+    "full_dependency_locks_match": true,
+    "pip_check": true,
+    "ai_isolation_preserved": true,
+    "deployed": false
+  }
+}

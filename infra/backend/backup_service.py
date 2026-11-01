@@ -1,4 +1,5 @@
-import io
+from backup_export_manifest import git_paths
+import backup_restore
 import fcntl
 import json
 import os
@@ -9,6 +10,10 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional
+from backup_protocol import NEW_ARCHIVE, enqueue, inventory, jobs, lock_state, read_json, tail
+from ai_power_coordination import AiPowerCoordinator
+from deployment_policy import ai_disabled, unavailable, effective_backup_settings, public_status, backup_mode_allowed
+from router_backup import DEFAULTS as ROUTER_DEFAULTS, is_router, validate as validate_router, repository as router_repository
 
 
 def normalize_text(value: Any, default: str = "") -> str:
@@ -27,6 +32,7 @@ def validate_schedule_time(value: Any, field: str) -> str:
 
 class BackupService:
     DEFAULT_SETTINGS = {
+        **ROUTER_DEFAULTS,
         "include_postgres": True,
         "include_apps": True,
         "include_infra": True,
@@ -94,8 +100,8 @@ class BackupService:
         self.ai_backup_state_file = self.backup_root / "ai-backup-state.json"
         self.ai_shutdown_request_file = self.backup_root / "ai-shutdown-after-backup.request"
         self.restore_staging_root = Path(os.environ.get("HC_RESTORE_STAGING_DIR", "/srv/docker/homecontrol/restore_staging"))
-        self.timer_file = Path(os.environ.get("HC_BACKUP_TIMER_FILE", "/srv/docker/homecontrol/scripts/systemd/homecontrol-backup.timer"))
-        self.service_file = Path(os.environ.get("HC_BACKUP_SERVICE_FILE", "/srv/docker/homecontrol/scripts/systemd/homecontrol-backup.service"))
+        self.timer_file = Path(os.environ.get("HC_BACKUP_TIMER_FILE", "/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-backup.timer"))
+        self.service_file = Path(os.environ.get("HC_BACKUP_SERVICE_FILE", "/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-backup.service"))
         self.sources = {
             "apps": Path("/srv/docker/homecontrol/apps"),
             "infra": Path("/srv/docker/homecontrol/infra"),
@@ -112,52 +118,27 @@ class BackupService:
         }
 
     def latest_info(self):
-        candidates = [
-            Path(os.environ.get("HC_BACKUP_DIR", "")) if os.environ.get("HC_BACKUP_DIR") else None,
-            Path("/srv/docker/homecontrol/backups"),
-            Path(__file__).resolve().parent.parent.parent / "backups",
-        ]
-        for directory in [item for item in candidates if item]:
-            try:
-                files = [item for item in directory.iterdir() if item.is_file() and item.name != "backup.log"]
-            except Exception:
-                continue
-            if not files:
-                continue
-            latest = max(files, key=lambda item: item.stat().st_mtime)
-            stat = latest.stat()
-            return {
-                "ok": True,
-                "path": str(latest),
-                "name": latest.name,
-                "timestamp": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                "size_bytes": stat.st_size,
-                "error": "",
-            }
-        return {
-            "ok": False,
-            "path": None,
-            "name": None,
-            "timestamp": None,
-            "size_bytes": None,
-            "error": "backup directory is not available",
-        }
+        latest = next((row for row in self.archives() if row.get("completed")), None)
+        if latest:
+            return {**latest, "ok": True, "error": ""}
+        return {"ok": False, "path": None, "name": None, "timestamp": None,
+                "size_bytes": None, "error": "No verified completed backup is available"}
 
     def settings(self):
         try:
             if self.settings_file.exists():
                 data = json.loads(self.settings_file.read_text(encoding="utf-8"))
-                return {**self.DEFAULT_SETTINGS, **data}
+                return {**self.DEFAULT_SETTINGS, **data, "git_paths": git_paths()}
         except Exception:
             pass
-        return dict(self.DEFAULT_SETTINGS)
+        return {**self.DEFAULT_SETTINGS, "git_paths": git_paths()}
 
     def parse_timer_file(self):
         result = {
             "timer_file": str(self.timer_file),
             "service_file": str(self.service_file),
-            "apply_path_source": "/srv/docker/homecontrol/scripts/systemd/homecontrol-backup-apply.path",
-            "apply_service_source": "/srv/docker/homecontrol/scripts/systemd/homecontrol-backup-apply.service",
+            "apply_path_source": "/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-backup-apply.path",
+            "apply_service_source": "/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-backup-apply.service",
             "timer_file_exists": self.timer_file.exists(),
             "service_file_exists": self.service_file.exists(),
             "on_calendar": "",
@@ -176,7 +157,7 @@ class BackupService:
                 if line.strip().startswith("OnCalendar="):
                     value = line.split("=", 1)[1].strip()
                     result["on_calendar"] = value
-                    result["source_enabled"] = bool(value)
+                    result["source_enabled"] = bool(value) and "# HCEnabled=false" not in text
                     parts = value.rsplit(" ", 1)
                     if len(parts) == 2 and ":" in parts[1]:
                         result["schedule_time"] = ":".join(parts[1].split(":")[:2])
@@ -221,7 +202,7 @@ class BackupService:
         schedule_time = validate_schedule_time(settings.get("schedule_time") or "02:15", "schedule_time")
         enabled = bool(settings.get("schedule_enabled", True))
         self.timer_file.parent.mkdir(parents=True, exist_ok=True)
-        on_calendar = f"*-*-* {schedule_time}:00" if enabled else ""
+        on_calendar = f"*-*-* {schedule_time}:00"
         self.timer_file.write_text(
             "\n".join(
                 [
@@ -229,6 +210,7 @@ class BackupService:
                     "Description=Run HomeControl backup daily",
                     "",
                     "[Timer]",
+                    "# HCEnabled=" + str(enabled).lower(),
                     f"OnCalendar={on_calendar}",
                     "Persistent=true",
                     "",
@@ -243,6 +225,8 @@ class BackupService:
 
     def save_settings(self, data: Dict[str, Any]):
         settings = self.settings()
+        if "git_paths" in data and data["git_paths"] != git_paths():
+            raise ValueError("git_paths is the reviewed export inventory and cannot be overridden")
         for key, default in self.DEFAULT_SETTINGS.items():
             if key not in data:
                 continue
@@ -255,9 +239,15 @@ class BackupService:
                 else:
                     settings[key] = [line.strip() for line in str(value or "").splitlines() if line.strip()]
             elif isinstance(default, int):
-                settings[key] = max(1, min(int(data.get(key) or default), 365))
+                if key == 'router_ftp_port':
+                    settings[key] = int(data[key])
+                else:
+                    settings[key] = max(1, min(int(data.get(key) or default), 365))
             else:
                 settings[key] = normalize_text(data.get(key), str(default))
+        validate_router(settings)
+        if is_router(settings):
+            settings['restic_repository'] = router_repository(settings)
         settings["schedule_time"] = validate_schedule_time(settings.get("schedule_time"), "schedule_time")
         self.backup_root.mkdir(parents=True, exist_ok=True)
         self.settings_file.write_text(json.dumps(settings, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -266,26 +256,13 @@ class BackupService:
         return settings
 
     def archives(self):
-        try:
-            files = sorted(self.backup_root.glob("homecontrol_*.tar.gz"), key=lambda item: item.stat().st_mtime, reverse=True)
-        except Exception:
-            return []
-        result = []
-        for item in files:
-            stat = item.stat()
-            result.append(
-                {
-                    "name": item.name,
-                    "path": str(item),
-                    "size_bytes": stat.st_size,
-                    "timestamp": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                }
-            )
-        return result
+        return inventory(self.backup_root)
 
     def safe_path(self, name: str):
         clean = Path(name).name
         path = self.backup_root / clean
+        if NEW_ARCHIVE.fullmatch(clean) and not any(row['name']==clean and row['completed'] for row in self.archives()):
+            raise ValueError("backup archive has not been committed as complete")
         if not clean.endswith(".tar.gz") or not path.exists() or path.parent.resolve() != self.backup_root.resolve():
             raise ValueError("backup archive not found")
         return path
@@ -317,13 +294,13 @@ class BackupService:
 
     def read_member_text(self, backup_name: str, rel_path: str, max_bytes: int = 300_000):
         archive_path = self.safe_path(backup_name)
-        wanted = rel_path.strip().strip("/")
+        wanted = backup_restore.canonical(rel_path)
         with tarfile.open(archive_path, "r:gz") as archive:
-            for member in archive.getmembers():
-                rel = self.strip_root(member.name)
+            index, _ = backup_restore.archive_index(archive)
+            for rel, member in index.items():
                 if rel == wanted:
-                    if member.isdir():
-                        raise ValueError("directories cannot be compared")
+                    if not member.isfile():
+                        raise ValueError("only regular files can be compared")
                     if member.size > max_bytes:
                         raise ValueError("file is too large for text compare")
                     source = archive.extractfile(member)
@@ -336,16 +313,17 @@ class BackupService:
         raise ValueError("file not found in backup")
 
     def compare_file(self, backup_name: str, rel_path: str):
+        current_path = backup_restore.destination(rel_path, self.restore_targets)
         backup_text, backup_size = self.read_member_text(backup_name, rel_path)
-        current_path = self.restore_destination_for(rel_path)
-        current_exists = bool(current_path and current_path.exists() and current_path.is_file())
+        current_data = backup_restore.read_current(current_path)
+        current_exists = current_data is not None
         current_text = ""
         current_size = None
         if current_exists:
-            current_size = current_path.stat().st_size
+            current_size = len(current_data)
             if current_size > 300_000:
                 raise ValueError("current file is too large for text compare")
-            data = current_path.read_bytes()
+            data = current_data
             if not self.is_probably_text(data):
                 raise ValueError("current file is not UTF-8 text")
             current_text = data.decode("utf-8")
@@ -366,143 +344,42 @@ class BackupService:
         }
 
     def create(self):
-        settings = self.settings()
-        self.backup_root.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        root_name = f"homecontrol_{timestamp}"
-        archive_path = self.backup_root / f"{root_name}.tar.gz"
-        manifest = []
-
-        with tarfile.open(archive_path, "w:gz") as archive:
-            if settings.get("include_postgres"):
-                dump = self.docker_exec_capture("homecontrol-postgres", ["pg_dump", "-U", "homecontrol", "-d", "homecontrol", "-Fc"])
-                info = tarfile.TarInfo(f"{root_name}/postgres/homecontrol_{timestamp}.dump")
-                info.size = len(dump)
-                info.mtime = time.time()
-                archive.addfile(info, fileobj=io.BytesIO(dump))
-                manifest.append(info.name)
-
-            source_map = [
-                ("include_apps", "apps", self.sources["apps"]),
-                ("include_infra", "infra", self.sources["infra"]),
-                ("include_zigbee2mqtt", "zigbee2mqtt/data", self.sources["zigbee2mqtt/data"]),
-                ("include_homeassistant", "homeassistant", self.sources["homeassistant"]),
-                ("include_scripts", "scripts", self.sources["scripts"]),
-            ]
-            for setting_key, arcname, source in source_map:
-                if settings.get(setting_key):
-                    before = len(archive.getmembers())
-                    self.add_directory_to_tar(archive, source, f"{root_name}/{arcname}")
-                    after = len(archive.getmembers())
-                    if after > before:
-                        manifest.append(f"{root_name}/{arcname}/")
-
-            if settings.get("include_docker_meta"):
-                for filename, content in self.docker_meta_files().items():
-                    info = tarfile.TarInfo(f"{root_name}/{filename}")
-                    info.size = len(content)
-                    info.mtime = time.time()
-                    archive.addfile(info, fileobj=io.BytesIO(content))
-                    manifest.append(info.name)
-
-            manifest_bytes = ("\n".join(sorted(manifest)) + "\n").encode("utf-8")
-            info = tarfile.TarInfo(f"{root_name}/MANIFEST.txt")
-            info.size = len(manifest_bytes)
-            info.mtime = time.time()
-            archive.addfile(info, fileobj=io.BytesIO(manifest_bytes))
-
-        retention_days = int(settings.get("retention_days") or 14)
-        cutoff = time.time() - retention_days * 86400
-        for old in self.backup_root.glob("homecontrol_*.tar.gz"):
-            if old == archive_path:
-                continue
-            try:
-                if old.stat().st_mtime < cutoff:
-                    old.unlink()
-            except Exception:
-                pass
-        stat = archive_path.stat()
-        return {
-            "name": archive_path.name,
-            "path": str(archive_path),
-            "size_bytes": stat.st_size,
-            "timestamp": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-        }
+        # Only the host runner can create archives. The backend queues a fixed mode.
+        return enqueue(self.backup_root, "local")
 
     def restore_paths(self, name: str, selected: Iterable[str], mode: str = "staging", confirm: str = ""):
-        path = self.safe_path(name)
-        if mode == "in_place" and confirm != "RESTORE":
-            raise ValueError("RESTORE confirmation is required")
-        restored = []
-        target_root = self.restore_staging_root / path.name.replace(".tar.gz", "") if mode != "in_place" else None
-        if target_root:
-            target_root.mkdir(parents=True, exist_ok=True)
+        if ai_disabled() and mode != 'staging':
+            from deployment_policy import RESTORE_MESSAGE
+            raise ValueError(RESTORE_MESSAGE)
+        return backup_restore.restore(self.safe_path(name), selected, mode, confirm,
+                                      self.restore_targets, self.restore_staging_root, self.backup_root)
 
-        with tarfile.open(path, "r:gz") as archive:
-            for member in archive.getmembers():
-                rel = self.strip_root(member.name)
-                if not rel or member.isdir() or not self.selected_restore_paths(rel, selected):
-                    continue
-                if rel.startswith("postgres/") and mode == "in_place":
-                    raise ValueError("database dumps can only be restored to staging in this version")
-                destination = (target_root / rel) if target_root else self.restore_destination_for(rel)
-                if destination is None:
-                    continue
-                destination = destination.resolve()
-                restore_root = self.restore_root_for(rel)
-                allowed_root = target_root.resolve() if target_root else restore_root.resolve() if restore_root else None
-                if allowed_root is None:
-                    continue
-                if allowed_root not in destination.parents and destination != allowed_root:
-                    raise ValueError(f"unsafe restore path: {rel}")
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                source = archive.extractfile(member)
-                if source is None:
-                    continue
-                with open(destination, "wb") as handle:
-                    shutil.copyfileobj(source, handle)
-                restored.append({"path": rel, "destination": str(destination), "size_bytes": member.size})
-        return {"mode": mode, "target": str(target_root) if target_root else "in-place", "restored": restored}
+    def recover_restore_payload(self, data):
+        if ai_disabled():
+            from deployment_policy import RESTORE_MESSAGE
+            return {**unavailable(), 'error': RESTORE_MESSAGE}, 503
+        result = backup_restore.recover(data.get("run_id"), self.restore_staging_root,
+                                        self.restore_targets, self.backup_root, data.get("confirm"))
+        return result, 200 if result["ok"] else 409
 
     def update_settings_payload(self, data: Dict[str, Any], context_meta: Callable[..., Dict[str, Any]]):
         settings = self.save_settings(data)
         return {"ok": True, "settings": settings, "timer": self.parse_timer_file(), "plan": self.backup_plan(settings), "context": context_meta("backup")}, 200
 
     def create_payload(self, context_meta: Callable[..., Dict[str, Any]]):
-        backup = self.create()
-        return {"ok": True, "backup": backup, "backups": self.archives(), "context": context_meta("backup")}, 200
+        request = self.create()
+        return {"ok": True, "request": request, "run_id": request["run_id"],
+                "message": "Local backup queued", "backups": self.archives(),
+                "context": context_meta("backup")}, 202
 
     def full_ai_backup_payload(self, context_meta: Callable[..., Dict[str, Any]]):
-        self.backup_root.mkdir(parents=True, exist_ok=True)
-        request_file = self.backup_root / "full-ai-backup.request"
-        now = datetime.now()
-        if request_file.exists() and now.timestamp() - request_file.stat().st_mtime < 60:
-            return {
-                "ok": True,
-                "mode": "full_ai_backup",
-                "request_file": str(request_file),
-                "message": "Full AI backup was already requested less than a minute ago",
-                "context": context_meta("backup"),
-            }, 200
-
-        recent_success = self.latest_log_timestamp("== Weekly AI HDD backup kész ==")
-        if recent_success and (now - recent_success).total_seconds() < 30 * 60:
-            return {
-                "ok": True,
-                "mode": "full_ai_backup",
-                "request_file": str(request_file),
-                "message": f"Full AI backup already completed at {recent_success.strftime('%Y-%m-%d %H:%M:%S')}",
-                "context": context_meta("backup"),
-            }, 200
-
-        request_file.write_text(datetime.now().isoformat() + "\n", encoding="utf-8")
-        return {
-            "ok": True,
-            "mode": "full_ai_backup",
-            "request_file": str(request_file),
-            "message": "Full AI backup request queued for host systemd path helper",
-            "context": context_meta("backup"),
-        }, 202
+        if not backup_mode_allowed('weekly', self.settings()):
+            return unavailable(), 503
+        request = enqueue(self.backup_root, "weekly")
+        return {"ok": True, "mode": "full_ai_backup", "request": request,
+                "run_id": request["run_id"], "request_file": str(self.backup_root / "requests" / (request["run_id"]+".json")),
+                "message": "Router backup queued" if is_router(self.settings()) else "Full AI backup request queued for the common host runner",
+                "context": context_meta("backup")}, 202
 
     def gitea_environment(self):
         settings = self.settings()
@@ -522,6 +399,8 @@ class BackupService:
         }
 
     def run_gitea_script(self, script_name: str, args: Iterable[str] = (), timeout: int = 120):
+        if ai_disabled():
+            raise ValueError(unavailable()['error'])
         script = Path("/srv/docker/homecontrol/scripts") / script_name
         if not script.exists():
             raise ValueError(f"Gitea script not found: {script_name}")
@@ -546,21 +425,23 @@ class BackupService:
         }
 
     def gitea_status_payload(self):
-        result = self.run_gitea_script("gitea_config_status.sh", timeout=90)
+        if ai_disabled() or is_router(self.settings()):
+            return unavailable(), 503
+        result = self.run_gitea_script("gitea_config_status_f1.sh", timeout=90)
         result.update({"mode": "gitea_status", "message": "Gitea snapshot status checked" if result["ok"] else "Gitea snapshot status failed"})
         return result, 200 if result["ok"] else 502
 
     def gitea_commit_payload(self, data: Dict[str, Any], context_meta: Callable[..., Dict[str, Any]]):
-        message = normalize_text(data.get("message"), "Manual HomeControl configuration snapshot")[:200]
-        result = self.run_gitea_script("gitea_config_commit.sh", [message], timeout=180)
-        result.update({
-            "mode": "gitea_commit",
-            "message": "Gitea config snapshot pushed" if result["ok"] else "Gitea config snapshot push failed",
-            "context": context_meta("backup"),
-        })
-        return result, 200 if result["ok"] else 502
+        if not backup_mode_allowed('git', self.settings()):
+            return unavailable(), 503
+        request = enqueue(self.backup_root, "git", normalize_text(data.get("message")))
+        return {"ok": True, "mode": "gitea_commit", "request": request,
+                "run_id": request["run_id"], "message": "Git snapshot queued",
+                "context": context_meta("backup")}, 202
 
     def gitea_restore_payload(self, data: Dict[str, Any]):
+        if ai_disabled() or is_router(self.settings()):
+            return unavailable(), 503
         ref = normalize_text(data.get("ref"), "main")[:120]
         result = self.run_gitea_script("gitea_config_restore.sh", [ref], timeout=180)
         result.update({"mode": "gitea_restore", "ref": ref, "message": "Gitea config restored to staging" if result["ok"] else "Gitea staging restore failed"})
@@ -569,7 +450,7 @@ class BackupService:
     def latest_log_timestamp(self, marker: str):
         log_file = self.backup_root / "backup.log"
         try:
-            lines = log_file.read_text(encoding="utf-8", errors="replace").splitlines()[-500:]
+            lines = tail(log_file, 500)
         except Exception:
             return None
         for line in reversed(lines):
@@ -601,16 +482,19 @@ class BackupService:
             normalize_text(data.get("mode"), "staging"),
             normalize_text(data.get("confirm")),
         )
-        return {"ok": True, **result, "context": context_meta("backup")}, 200
+        return {**result, "context": context_meta("backup")}, 200 if result["ok"] else 409
 
     def payload(self):
         settings = self.settings()
         return {
             "ok": True,
             "settings": settings,
+            "effective_settings": effective_backup_settings(settings),
+            "deployment": public_status(),
             "timer": self.parse_timer_file(),
             "backups": self.archives(),
             "staging_root": str(self.restore_staging_root),
+            "restore_recoveries": backup_restore.recoveries(self.restore_staging_root),
             "backup_root": str(self.backup_root),
             "plan": self.backup_plan(settings),
             "activity": self.activity(),
@@ -618,52 +502,45 @@ class BackupService:
         }
 
     def lock_is_held(self, path: Path):
-        try:
-            self.backup_root.mkdir(parents=True, exist_ok=True)
-            with path.open("a+", encoding="utf-8") as handle:
-                try:
-                    fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError:
-                    return True
-                finally:
-                    try:
-                        fcntl.flock(handle, fcntl.LOCK_UN)
-                    except OSError:
-                        pass
-        except OSError:
-            return False
-        return False
+        return lock_state(path)
 
     def read_json_file(self, path: Path):
-        try:
-            if not path.exists():
-                return None
-            data = json.loads(path.read_text(encoding="utf-8") or "{}")
-            return data if isinstance(data, dict) else {"value": data}
-        except Exception as exc:
-            return {"error": str(exc), "path": str(path)}
+        result = read_json(path)
+        if result is None and path.exists():
+            return {"error": "State is unreadable, oversized or malformed", "path": str(path)}
+        return result
 
     def ai_shutdown_guard(self):
         state = self.read_json_file(self.ai_backup_state_file)
-        deferred = self.read_json_file(self.ai_shutdown_request_file)
+        coordinator = AiPowerCoordinator(self.backup_root)
+        guard = coordinator.guard()
+        try:
+            power = coordinator.read()
+            intent = power.get('intent') or {}
+            if intent.get('owner') != power.get('backend_owner') or intent.get('generation') != power.get('generation'):
+                intent = {}
+        except (OSError, ValueError):
+            intent = {}
+            guard.update(backup_running=None, guard_known=False)
         return {
-            "backup_running": self.lock_is_held(self.ai_backup_lock_file),
+            **guard,
             "state": state,
-            "deferred_shutdown": deferred,
+            "deferred_shutdown": intent if intent.get('phase') == 'shutdown' else None,
+            "pending_power_off": intent if intent.get('phase') == 'off' else None,
             "lock_file": str(self.ai_backup_lock_file),
             "state_file": str(self.ai_backup_state_file),
-            "deferred_shutdown_file": str(self.ai_shutdown_request_file),
+            "deferred_shutdown_file": str(coordinator.path),
         }
 
     def activity(self, max_lines: int = 300):
         log_file = self.backup_root / "backup.log"
         markers = {
             "latest_backup": ["== Backup kész:", "== Backup kész restic nélkül:"],
-            "latest_restic_backup": ["-- Restic backup:", "snapshot "],
-            "latest_restic_check": ["== Restic check kész ==", "== Restic check indul:"],
+            "latest_restic_backup": [],
+            "latest_restic_check": ["== Restic check kész =="],
             "latest_gitea_sync": ["-- Gitea config snapshot sync kész", "Config sync kész", "Nincs változás, push kihagyva"],
-            "latest_gitea_dump": ["-- Gitea dump kész", "Gitea dump kész:", "-- Gitea dump nem futott le"],
-            "latest_weekly": ["== Weekly AI HDD backup kész ==", "== Weekly AI HDD backup indul =="],
+            "latest_gitea_dump": ["-- Gitea dump kész", "Gitea dump kész:"],
+            "latest_weekly": ["== Weekly AI HDD backup kész =="],
             "latest_error": ["HIBA:"],
         }
         result = {
@@ -672,10 +549,10 @@ class BackupService:
         result["log_file"] = str(log_file)
         result["recent"] = []
         try:
-            lines = log_file.read_text(encoding="utf-8", errors="replace").splitlines()[-max_lines:]
+            lines = tail(log_file, max_lines)
         except Exception as exc:
             result["error"] = str(exc)
-            return result
+            lines = []
 
         result["recent"] = lines[-12:]
         for line in reversed(lines):
@@ -684,17 +561,20 @@ class BackupService:
                     continue
                 if any(needle in line for needle in needles):
                     result[key] = line
-        error_ts = self.log_line_timestamp(result.get("latest_error"))
-        if error_ts:
-            recovery_lines = [
-                result.get("latest_backup"),
-                result.get("latest_restic_check"),
-            ]
-            recovery_ts = [self.log_line_timestamp(line) for line in recovery_lines]
-            latest_recovery = max([item for item in recovery_ts if item], default=None)
-            if latest_recovery and latest_recovery > error_ts:
-                result["latest_error_cleared_by"] = latest_recovery.isoformat()
-                result["latest_error"] = None
+        result["legacy_backup_log"] = result["latest_backup"]
+        latest = self.latest_info()
+        result["latest_backup"] = ("Verified archive: " + latest["name"]) if latest["ok"] else None
+        result["run"] = read_json(self.backup_root / "backup-state.json")
+        result["jobs"] = jobs(self.backup_root)
+        result["targets"] = read_json(self.backup_root / "backup-targets.json") or {}
+        result["runner_lock"] = lock_state(self.backup_root / "homecontrol-backup.lock")
+        if result["targets"]:
+            for field, target_name in (("latest_restic_backup","restic"),("latest_restic_check","restic_check"),
+                                       ("latest_gitea_sync","gitea_origin"),("latest_gitea_dump","gitea_dump")):
+                result[field] = result["targets"].get(target_name,{}).get("last_success")
+            failures = [name for name,item in result["targets"].items()
+                        if item.get("last_attempt",{}).get("state")=="failed"]
+            result["latest_error"] = "Failed targets: " + ", ".join(failures) if failures else None
         return result
 
     @staticmethod
@@ -710,12 +590,13 @@ class BackupService:
             return None
 
     def backup_plan(self, settings: Optional[Dict[str, Any]] = None):
-        settings = settings or self.settings()
-        git_paths = settings.get("git_paths") or []
+        settings = effective_backup_settings(settings or self.settings())
+        public_paths = git_paths()
         restic_paths = settings.get("restic_paths") or []
-        return {
+        plan = {
             "git": {
                 "enabled": bool(settings.get("git_enabled")),
+                "origin_enabled": bool(settings.get('git_origin_enabled', True)),
                 "target": settings.get("gitea_url"),
                 "repository": settings.get("git_repository"),
                 "offsite": {
@@ -725,7 +606,7 @@ class BackupService:
                     "token_file": settings.get("git_offsite_token_file"),
                     "ssh_key": settings.get("git_offsite_ssh_key"),
                 },
-                "paths": git_paths,
+                "paths": public_paths,
                 "remote": {
                     "host": settings.get("ai_backup_host"),
                     "user": settings.get("ai_backup_user"),
@@ -794,6 +675,19 @@ class BackupService:
                 ],
             },
         }
+        if is_router(settings):
+            plan['git']['target'] = settings.get('git_offsite_remote')
+            plan['git']['origin_enabled'] = False
+            plan['restic'].update(
+                repository=router_repository(settings), ssh_key=None, target='router_ftp',
+                mode='Daily backup; required weekly router snapshot',
+                remote={'host': settings['router_ftp_host'], 'user': settings['router_ftp_user'],
+                        'port': settings['router_ftp_port'], 'mount': settings['router_mount'],
+                        'path': settings['router_repository_path']},
+                covers=['Ellenőrzött HC archívum és PostgreSQL-dump', 'HC fájlok és kijelölt volume-ok'],
+            )
+            plan['restic']['weekly'].update(wakes_ai_server=False, shutdown_after=False)
+        return plan
 
     @staticmethod
     def strip_root(member_name: str):

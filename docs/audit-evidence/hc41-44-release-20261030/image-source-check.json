@@ -1,0 +1,12 @@
+{
+  "built_images_match_frozen_patched_sources": true,
+  "services": [
+    "backend",
+    "hc_ingest",
+    "homecontrol-tuya-poller",
+    "homecontrol-xiaomi-x10",
+    "homecontrol-gree-climate",
+    "homecontrol-ha-growatt-poller"
+  ],
+  "dependencies_updated": false
+}

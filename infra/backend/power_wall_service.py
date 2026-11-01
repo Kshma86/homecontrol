@@ -1,8 +1,19 @@
 import json
 import random
 import time
+import threading
+from functools import wraps
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
+from deployment_policy import entity_blocked, MESSAGE as RESTRICTION_MESSAGE
+
+
+def serialize_climate_switch(method):
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        with (self.climate_fan_coordinator.locked() if self.climate_fan_coordinator is not None else self._climate_switch_lock):
+            return method(self, *args, **kwargs)
+    return wrapped
 
 
 class PowerWallService:
@@ -20,12 +31,17 @@ class PowerWallService:
         guard_repeat_seconds: int,
         process_binding_payload: Callable[[str], Any] = None,
         process_binding_entity_id: Callable[[str], Any] = None,
+        cached_api_payload: Callable[..., Any] = None,
+        climate_fan_coordinator=None,
     ):
+        self._climate_switch_lock = threading.RLock()
+        self.climate_fan_coordinator = climate_fan_coordinator
         self.fetch_all = fetch_all
         self.fetch_one = fetch_one
         self.execute_one = execute_one
         self.publish_mqtt = publish_mqtt
         self.ensure_schema = ensure_schema
+        self.cached_api_payload = cached_api_payload or (lambda key, ttl, builder: builder())
         self.api_cache_get = api_cache_get
         self.api_cache_set = api_cache_set
         self.api_cache_delete_prefix = api_cache_delete_prefix
@@ -37,17 +53,16 @@ class PowerWallService:
     def marten_motion_payload(self):
         self.ensure_schema()
         cache_key = "marten_motion"
-        cached = self.api_cache_get(cache_key)
-        if cached is not None:
-            return cached
+        return self.cached_api_payload(cache_key, 8, self._build_marten_motion_payload)
 
+    def _build_marten_motion_payload(self):
         entity_id = None
         binding = None
         if self.process_binding_entity_id:
             entity_id = self.process_binding_entity_id("marten_motion_sensor")
         if self.process_binding_payload:
             binding = self.process_binding_payload("marten_motion_sensor")
-            entity_id = entity_id or binding.get("selected_entity_id") or binding.get("selected_entity", {}).get("entity_id")
+            entity_id = entity_id or binding.get("selected_entity_id") or (binding.get("selected_entity") or {}).get("entity_id")
 
         if not entity_id:
             payload = {
@@ -59,7 +74,7 @@ class PowerWallService:
                 "events": [],
                 "summary": {"motion_24h": 0, "last_motion_at": None},
             }
-            return self.api_cache_set(cache_key, payload, 8)
+            return payload
 
         sensor = self.fetch_one(
             """
@@ -94,7 +109,7 @@ class PowerWallService:
                 "events": [],
                 "summary": {"motion_24h": 0, "last_motion_at": None},
             }
-            return self.api_cache_set(cache_key, payload, 8)
+            return payload
 
         state_rows = self.fetch_all(
             """
@@ -149,7 +164,7 @@ class PowerWallService:
             (entity_id,),
         ) or {}
 
-        return self.api_cache_set(cache_key, {
+        return {
             "ok": True,
             "binding": binding,
             "sensor": sensor,
@@ -159,7 +174,8 @@ class PowerWallService:
                 "motion_24h": summary.get("motion_24h") or 0,
                 "last_motion_at": summary.get("last_motion_at"),
             },
-        }, 8)
+        }
+
 
     def bool_from_request_value(self, value: Any) -> Optional[bool]:
         if isinstance(value, bool):
@@ -244,6 +260,8 @@ class PowerWallService:
         return devices
 
     def publish_switch(self, row: Dict[str, Any], value: bool, source: str = "homecontrol-power-wall"):
+        if entity_blocked(row):
+            return False, RESTRICTION_MESSAGE, '', {}
         if row["platform"] == "tuya":
             topic = f"homecontrol/cmd/tuya/{row['entity_name']}/switch"
             payload = {
@@ -443,12 +461,16 @@ class PowerWallService:
                 )
                 print(f"[POWER_WALL] scheduler planned entity={row['entity_name']} delay={delay}", flush=True)
 
+    @serialize_climate_switch
     def sync_auto_climate(self, power: str):
         self.ensure_schema()
         if power not in {"on", "off"}:
             return []
         target = power == "on"
         selected_entity_id = self.process_binding_entity_id("climate_extra_fan_socket") if self.process_binding_entity_id else None
+        self.cancel_unselected_climate_starts(selected_entity_id)
+        if selected_entity_id is None:
+            return []
         rows = self.fetch_all(
             """
             select
@@ -456,24 +478,35 @@ class PowerWallService:
               e.name as entity_name,
               e.topic_base,
               d.platform,
-              d.ext_id
+              d.ext_id,
+              wp.auto_climate_delay_minutes
             from hc.power_wall_policy wp
             join hc.entity e on e.id = wp.entity_id
             join hc.device d on d.id = e.device_id
-            where (
-                (%s::bigint is not null and e.id = %s::bigint)
-                or (%s::bigint is null and wp.auto_climate = true)
-              )
+            where e.id = %s
+              and (%s = false or wp.auto_climate = true)
               and e.is_active = true
               and d.is_active = true
               and d.platform in ('zigbee', 'tuya')
             order by e.name
             """
             ,
-            (selected_entity_id, selected_entity_id, selected_entity_id),
+            (selected_entity_id, target),
         )
         results = []
         for row in rows:
+            delay = row.get("auto_climate_delay_minutes") or 0
+            if target and delay > 0:
+                self.execute_one(
+                    """update hc.power_wall_policy
+                       set auto_climate_on_at = coalesce(auto_climate_on_at, now() + (%s * interval '1 minute')),
+                           updated_at = now()
+                       where entity_id = %s returning entity_id""",
+                    (delay, row["entity_id"]),
+                )
+                results.append({"ok": True, "entity_id": row["entity_id"], "delay_minutes": delay, "message": "Fan start scheduled"})
+                continue
+            self.cancel_climate_start(row["entity_id"])
             ok, message, topic, payload = self.publish_switch(row, target, "homecontrol-climate-auto")
             self.execute_one(
                 """
@@ -497,8 +530,61 @@ class PowerWallService:
             })
         return results
 
+    def cancel_unselected_climate_starts(self, selected_id):
+        # This column belongs only to the climate fan, not manual/scheduler jobs.
+        self.execute_one(
+            """with cancelled as (
+                update hc.power_wall_policy set auto_climate_on_at = null
+                where auto_climate_on_at is not null
+                  and (entity_id is distinct from %s::bigint or auto_climate = false)
+                returning entity_id
+            ) select count(*) as cancelled from cancelled""", (selected_id,),
+        )
+
+    def cancel_climate_start(self, entity_id):
+        self.execute_one(
+            "update hc.power_wall_policy set auto_climate_on_at = null where entity_id = %s returning entity_id",
+            (entity_id,),
+        )
+
+    @serialize_climate_switch
+    def climate_delay_tick(self):
+        self.ensure_schema()
+        selected_id = self.process_binding_entity_id("climate_extra_fan_socket") if self.process_binding_entity_id else None
+        self.cancel_unselected_climate_starts(selected_id)
+        if selected_id is None:
+            return
+        rows = self.fetch_all(
+            """select e.id as entity_id, e.name as entity_name, e.topic_base, d.platform,
+                      wp.auto_climate_on_at
+               from hc.power_wall_policy wp
+               join hc.entity e on e.id = wp.entity_id
+               join hc.device d on d.id = e.device_id
+               where wp.entity_id = %s and wp.auto_climate = true
+                 and wp.auto_climate_on_at <= now()
+                 and e.is_active = true and d.is_active = true
+                 and d.platform in ('zigbee', 'tuya')""",
+            (selected_id,),
+        )
+        for row in rows:
+            claimed = self.execute_one(
+                """update hc.power_wall_policy set auto_climate_on_at = null
+                   where entity_id = %s and auto_climate_on_at = %s
+                     and auto_climate = true returning entity_id""",
+                (row["entity_id"], row["auto_climate_on_at"]),
+            )
+            if claimed:
+                ok, message, _, _ = self.publish_switch(row, True, "homecontrol-climate-auto")
+                self.execute_one(
+                    """update hc.power_wall_policy set last_action_at = now(),
+                       last_action = 'climate_auto_on', last_error = %s where entity_id = %s returning entity_id""",
+                    (None if ok else message, row["entity_id"]),
+                )
+                self.api_cache_delete_prefix("power_wall_state")
+
     def guard_tick(self):
         self.ensure_schema()
+        self.climate_delay_tick()
         rows = self.fetch_all(
             """
             select
@@ -552,9 +638,9 @@ class PowerWallService:
 
     def state_payload(self):
         self.ensure_schema()
-        cached = self.api_cache_get("power_wall_state")
-        if cached is not None:
-            return cached
+        return self.cached_api_payload("power_wall_state", 8, self._build_state_payload)
+
+    def _build_state_payload(self):
         battery_devices = self.fetch_all(
             """
             select
@@ -605,6 +691,12 @@ class PowerWallService:
                     'mains_voltage_v', 'voltage_v', 'energy_kwh', 'energy_calc_kwh'
                   )
               )
+              and not exists (
+                select 1
+                from hc.entity_metric em_sensor
+                where em_sensor.entity_id = e.id
+                  and em_sensor.metric_key in ('contact', 'occupancy', 'motion', 'presence')
+              )
             order by
               case
                 when coalesce(bl.v_bool, false) then 0
@@ -634,6 +726,8 @@ class PowerWallService:
               coalesce(wp.always_on, false) as always_on,
               wp.display_name as power_wall_display_name,
               coalesce(wp.auto_climate, false) as auto_climate,
+              coalesce(wp.auto_climate_delay_minutes, 0) as auto_climate_delay_minutes,
+              wp.auto_climate_on_at,
               coalesce(wp.scheduler_enabled, false) as scheduler_enabled,
               to_char(coalesce(wp.scheduler_window_start, '20:00'::time), 'HH24:MI') as scheduler_window_start,
               to_char(coalesce(wp.scheduler_window_end, '06:00'::time), 'HH24:MI') as scheduler_window_end,
@@ -676,8 +770,14 @@ class PowerWallService:
                         'switch_state', 'power', 'power_w', 'current', 'current_a',
                         'mains_voltage_v', 'voltage_v', 'energy_kwh'
                       )
-                    )
+                  )
                 )
+              )
+              and not exists (
+                select 1
+                from hc.entity_metric em_sensor
+                where em_sensor.entity_id = e.id
+                  and em_sensor.metric_key in ('contact', 'occupancy', 'motion', 'presence')
               )
             order by d.platform, e.name
             """
@@ -693,7 +793,7 @@ class PowerWallService:
                 bindings["marten_power_socket"] = self.process_binding_payload("marten_power_socket")
                 bindings["marten_motion_sensor"] = self.process_binding_payload("marten_motion_sensor")
                 bindings["climate_extra_fan_socket"] = self.process_binding_payload("climate_extra_fan_socket")
-            return self.api_cache_set("power_wall_state", {
+            return {
                 "devices": [],
                 "battery_devices": battery_devices,
                 "state_rows": [],
@@ -707,7 +807,7 @@ class PowerWallService:
                     "battery_total": len(battery_devices),
                     "battery_low": battery_low_count,
                 },
-            }, 8)
+            }
 
         state_rows = self.fetch_all(
             """
@@ -802,7 +902,7 @@ class PowerWallService:
             bindings["marten_power_socket"] = self.process_binding_payload("marten_power_socket")
             bindings["marten_motion_sensor"] = self.process_binding_payload("marten_motion_sensor")
             bindings["climate_extra_fan_socket"] = self.process_binding_payload("climate_extra_fan_socket")
-        return self.api_cache_set("power_wall_state", {
+        return {
             "devices": devices,
             "battery_devices": battery_devices,
             "state_rows": state_rows,
@@ -810,15 +910,14 @@ class PowerWallService:
             "marten_motion": self.marten_motion_payload(),
             "process_bindings": bindings,
             "summary": summary,
-        }, 8)
+        }
 
     def history_payload(self, entity_id: int):
         self.ensure_schema()
         cache_key = f"power_wall_history:{entity_id}"
-        cached = self.api_cache_get(cache_key)
-        if cached is not None:
-            return cached
+        return self.cached_api_payload(cache_key, 30, lambda: self._build_history_payload(entity_id))
 
+    def _build_history_payload(self, entity_id):
         entity = self.fetch_one(
             """
             select
@@ -860,7 +959,7 @@ class PowerWallService:
             """,
             (entity_id,),
         )
-        return self.api_cache_set(cache_key, {
+        return {
             "ok": True,
             "entity": entity,
             "power_24h": rows,
@@ -869,15 +968,20 @@ class PowerWallService:
                 "max_power_w": max((row.get("power_w") or 0 for row in rows), default=0),
                 "latest_power_w": rows[-1].get("power_w") if rows else None,
             },
-        }, 30)
+        }
 
-    def set_policy(self, entity_id: Any, *, always_on_marker: Any = None, auto_climate_marker: Any = None):
+
+    @serialize_climate_switch
+    def set_policy(self, entity_id: Any, *, always_on_marker: Any = None, auto_climate_marker: Any = None, delay_minutes: Any = None):
         self.ensure_schema()
         has_always_on = always_on_marker is not None
         has_auto_climate = auto_climate_marker is not None
         always_on = self.bool_from_request_value(always_on_marker) if has_always_on else None
         auto_climate = self.bool_from_request_value(auto_climate_marker) if has_auto_climate else None
-        if not has_always_on and not has_auto_climate:
+        if delay_minutes is not None:
+            if isinstance(delay_minutes, bool) or not isinstance(delay_minutes, int) or not 0 <= delay_minutes <= 120:
+                raise ValueError("auto_climate_delay_minutes must be an integer between 0 and 120")
+        if not has_always_on and not has_auto_climate and delay_minutes is None:
             raise ValueError("always_on or auto_climate is required")
         if has_always_on and always_on is None:
             raise ValueError("always_on must be true/false")
@@ -899,6 +1003,14 @@ class PowerWallService:
             """,
             (entity_id, always_on, auto_climate, has_always_on, has_auto_climate, has_always_on),
         )
+        if delay_minutes is not None:
+            policy = self.execute_one(
+                """update hc.power_wall_policy set auto_climate_delay_minutes = %s,
+                   updated_at = now() where entity_id = %s returning *""",
+                (delay_minutes, entity_id),
+            )
+        if has_auto_climate and not auto_climate:
+            self.cancel_climate_start(entity_id)
         self.api_cache_delete_prefix("power_wall_state")
         return row, policy
 
@@ -1018,20 +1130,26 @@ class PowerWallService:
         )
         return row, rows
 
+    @serialize_climate_switch
     def switch_command(self, entity_id: Any, value: bool):
         self.ensure_schema()
         row = self.command_entity(entity_id)
         if not row:
             return None, None
+        self.cancel_climate_start(entity_id)
         ok, message, topic, payload = self.publish_switch(row, value)
         if topic:
             self.api_cache_delete_prefix("power_wall_state")
         return row, {"ok": ok, "message": message, "topic": topic, "payload": payload}
 
+    @serialize_climate_switch
     def tuya_switch_command(self, entity_id: Any, entity_name: str, value: bool):
         row = self.tuya_command_entity(entity_id=entity_id, entity_name=entity_name)
         if not row:
             return None, None
+        if entity_blocked(row):
+            return row, {'ok': False, 'message': RESTRICTION_MESSAGE, 'topic': '', 'payload': {}}
+        self.cancel_climate_start(row["entity_id"])
         topic = f"homecontrol/cmd/tuya/{row['entity_name']}/switch"
         payload = {
             "value": value,

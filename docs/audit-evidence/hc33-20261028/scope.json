@@ -1,0 +1,17 @@
+{
+  "changed_existing_functions": [
+    "should_write",
+    "persist_metric",
+    "warm_last_saved_from_entity_state",
+    "upsert_entity_state",
+    "queue_measurement",
+    "flush_measurements",
+    "verify_runtime_role",
+    "main"
+  ],
+  "removed_obsolete_function": [
+    "insert_measurement_one"
+  ],
+  "unchanged_existing_functions_and_classes": 38,
+  "hc34_mapper_unchanged": true
+}

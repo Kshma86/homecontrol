@@ -1,0 +1,83 @@
+--- before/mqtt_ingest_multi.py
++++ after/mqtt_ingest_multi.py
+@@ -247,16 +247,25 @@
+ 
+ 
+ def map_key(raw_key: str, raw_value: Any, topic: str = "") -> str:
+-    if topic.endswith("/solar"):
+-        solar_keys = {
+-            "battery_voltage": "solar_battery_voltage_v",
+-            "charge_current": "solar_charge_current_a",
+-            "pv_voltage": "solar_pv_voltage_v",
+-            "pv_current": "solar_pv_current_a",
+-            "controller_temp": "solar_controller_temp_c",
+-        }
+-        if raw_key in solar_keys:
+-            return solar_keys[raw_key]
++    parts = topic.split('/')
++    irrigation = (len(parts) == 5 and parts[:3] == ['homecontrol','tele','irrigation']
++                  and bool(parts[3]) and parts[4] in ('pump_metrics','solar'))
++    if irrigation:
++        if parts[4] == 'solar':
++            solar_keys = {
++                'battery_voltage': 'solar_battery_voltage_v',
++                'charge_current': 'solar_charge_current_a',
++                'pv_voltage': 'solar_pv_voltage_v',
++                'pv_current': 'solar_pv_current_a',
++                'controller_temp': 'solar_controller_temp_c',
++            }
++            if raw_key in solar_keys:
++                return solar_keys[raw_key]
++        aliases = {'pump': 'pump_running', 'current_a': 'pump_current_a',
++                   'voltage_12v': 'supply_voltage_12v', 'temp_c': 'controller_temp_c',
++                   'valve': 'valve_state', 'manual_valve': 'manual_valve_state'}
++        if raw_key in aliases:
++            return aliases[raw_key]
+     if raw_key == "energy":
+         return "energy_kwh"
+     if raw_key == "energy_forward_kwh":
+@@ -265,18 +274,6 @@
+         return "switch_state"
+     if raw_key == "switch":
+         return "switch_state"
+-    if raw_key == "pump":
+-        return "pump_running"
+-    if raw_key == "current_a":
+-        return "pump_current_a"
+-    if raw_key == "voltage_12v":
+-        return "supply_voltage_12v"
+-    if raw_key == "temp_c":
+-        return "controller_temp_c"
+-    if raw_key == "valve":
+-        return "valve_state"
+-    if raw_key == "manual_valve":
+-        return "manual_valve_state"
+     if raw_key == "voltage":
+         fv = coerce_num(raw_value)
+         if fv is not None and fv >= 1000:
+@@ -296,7 +293,7 @@
+         return []
+ 
+     parts = topic.split("/")
+-    if len(parts) >= 7 and parts[-2] == "m":
++    if len(parts) >= 6 and parts[-2] == "m" and all(parts[3:-2]):
+         return [(parts[-1], payload, parts[-1])]
+ 
+     if topic.endswith("/state"):
+@@ -1361,6 +1358,7 @@
+     print("[CFG] PG_DSN =", PG_DSN.replace(PG_PASSWORD, "***") if PG_PASSWORD else PG_DSN)
+     print("[CFG] MQTT =", MQTT_HOST, MQTT_PORT)
+ 
++    process_start_ticks = Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()[19]
+     conn = cur = None
+     next_mqtt_retry = time.monotonic()
+     last_flush_at = now()
+@@ -1748,7 +1746,7 @@
+ 
+     def report_status():
+         status = worker.status()
+-        status.update(measurements=pending_measurements.status(), mqtt_connected=mqtt_connected, contact_candidates_dropped=contact_drops,
++        status.update(process_start_ticks=process_start_ticks, measurements=pending_measurements.status(), mqtt_connected=mqtt_connected, contact_candidates_dropped=contact_drops,
+                       legacy_pending_measurements=len(pending_measurements),
+                       received_epoch=now())
+         try:

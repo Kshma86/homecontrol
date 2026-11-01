@@ -1,0 +1,43 @@
+{
+  "checked_at": "2026-10-30T16:37:26.982652+00:00",
+  "deployed": false,
+  "protected_host_count": 37,
+  "changed_protected_host_files": [],
+  "active_override": "/srv/docker/homecontrol/backups/releases/hc-ingest-20261028-r9/release.override.json",
+  "active_override_is_r9": true,
+  "audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "audit_unchanged": true,
+  "safety_sha256": "7334974829abd6c9497b6bda41190c25967751e2490b6e6824ba0fe28183a2c6",
+  "safety_unchanged": true,
+  "backend_mounts_unchanged": true,
+  "mqtt_bindings_unchanged": true,
+  "mqtt_config_sha256": "a63e791bce2e3d44f6ea2d296786ee4574c3135619a03d9f0295efc97618326b",
+  "mqtt_config_unchanged": true,
+  "container_changes_since_20261029": [
+    {
+      "name": "/homecontrol-xiaomi-x10",
+      "before": {
+        "Name": "/homecontrol-xiaomi-x10",
+        "Id": "07f3ee1efeae52ddfe10b9fe7d8a2cc0ee147cd3f445f024931b3df73cf30975",
+        "Image": "sha256:60d86722bd277ceb9591092e06777c441148f6475769a599d275cde076206a26",
+        "StartedAt": "2026-10-29T13:31:57.988952626Z",
+        "RestartCount": 6
+      },
+      "after": {
+        "Name": "/homecontrol-xiaomi-x10",
+        "Id": "07f3ee1efeae52ddfe10b9fe7d8a2cc0ee147cd3f445f024931b3df73cf30975",
+        "Image": "sha256:60d86722bd277ceb9591092e06777c441148f6475769a599d275cde076206a26",
+        "StartedAt": "2026-10-30T13:20:29.227169366Z",
+        "RestartCount": 10
+      }
+    }
+  ],
+  "changes_are_not_deployment_actions": true,
+  "containers_count": 15,
+  "same_container_ids_and_images": true,
+  "runtime_changes_since_yesterday": [
+    "/homecontrol-xiaomi-x10"
+  ],
+  "x10_unchanged_since_this_phase_started": true,
+  "remaining_laboratory_containers": []
+}

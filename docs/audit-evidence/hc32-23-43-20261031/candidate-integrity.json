@@ -1,0 +1,10 @@
+{
+  "python_candidates": 7,
+  "frontend_assets_match": true,
+  "no_obsolete_frontend_assets": true,
+  "source_and_wheel_integrity": true,
+  "full_dependency_locks_match": true,
+  "pip_check": true,
+  "ai_isolation_preserved": true,
+  "deployed": false
+}

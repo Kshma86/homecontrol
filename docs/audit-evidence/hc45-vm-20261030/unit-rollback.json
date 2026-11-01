@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "real_systemd_manager": true,
+  "fault": "one enable --now return code replaced; all other calls real",
+  "previous_unit_bytes_restored": true,
+  "previous_enabled_states_restored": true,
+  "sentinel_preserved_on_failed_transition": true,
+  "unit_files_compared": 16,
+  "no_backup_started_by_probe": true
+}

@@ -1,0 +1,41 @@
+{
+  "backend": {
+    "image": "sha256:f973391c190c35d6be7ea493723d07fc3f4e08d60709ed42de4256c58a07df23",
+    "seconds": 2.6,
+    "success": true
+  },
+  "ingest": {
+    "image": "sha256:b872923cb88f42467e2bb982b56e6398f86560f3b2dada157ffb13ece8920c46",
+    "seconds": 2.1,
+    "success": true
+  },
+  "tuya-poller": {
+    "image": "sha256:4ebc6b5367aff665f0df2f6ea2e0e98054f98702c87c995d7a0d70becf9186c9",
+    "seconds": 2.7,
+    "success": true
+  },
+  "gree-climate": {
+    "image": "sha256:2ea3fde755f1cf8a02b722fcaeb7807b94cee32d8d70d5f01d6f4208ba5404db",
+    "seconds": 2.3,
+    "success": true
+  },
+  "xiaomi-x10": {
+    "image": "sha256:dd7822e13afcc231f22fecb99e6b6c4bfcf7058a0abcc75d6b41f2aa8f3c924f",
+    "seconds": 2.6,
+    "success": true
+  },
+  "ha-growatt-poller": {
+    "image": "sha256:2e486db3ea2764cf2f387d23276dc007e926b6a8929122cceae8ef6e18aeb890",
+    "seconds": 1.9,
+    "success": true
+  },
+  "ai-server": {
+    "image": "sha256:b7400a6a2bee3d136bf288e0f4d705d366e22294d37cbb9363dc583a3a698ec6",
+    "seconds": 2.1,
+    "success": true
+  },
+  "frontend": {
+    "image": "sha256:6b289cd3aed25ffca09f6efd0ef4b734ded85adc1fe8f74a33ae80ee6ea90c35",
+    "success": true
+  }
+}

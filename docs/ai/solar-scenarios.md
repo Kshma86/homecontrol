@@ -45,7 +45,8 @@ Given:
 Expected:
 
 - `charts.production_daily_30d` contains 30 date rows.
-- Production uses `energy_today_kwh`, then `plant_energy_today_kwh`, then
+- Production ignores stale pre-reset samples just after midnight.
+- Production uses `plant_energy_today_kwh`, then `energy_today_kwh`, then
   `solar_energy_today_kwh` fallback order.
 
 ## Suggested Tests

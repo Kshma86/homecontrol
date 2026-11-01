@@ -1,0 +1,25 @@
+{
+  "observed_utc": "2026-10-30T17:15:42.722737+00:00",
+  "source_ip": "192.168.1.179",
+  "neighbor_mac": "ec:e3:34:db:ea:9c",
+  "neighbor_interface": "eno1",
+  "neighbor_state": "REACHABLE",
+  "broker_connection": {
+    "state": "ESTABLISHED",
+    "source_port": 59913,
+    "broker_port": 1883
+  },
+  "irrigation_publisher": "esp-irrigation-1-db34e3ec",
+  "observed_topics": [
+    "homecontrol/tele/irrigation/esp-irrigation-1/nano_status",
+    "homecontrol/tele/irrigation/esp-irrigation-1/solar",
+    "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics"
+  ],
+  "mac_first_four_bytes_reversed_match_client_suffix": true,
+  "assessment": "Operational ESP identity strongly corroborated by neighbor MAC/client suffix and active irrigation publishing; source-IP attribution is inferred, not a new broker CONNECT record",
+  "dhcp_reservation_confirmed": false,
+  "http_identity_available": false,
+  "diagnostic_message_received_during_4_second_window": false,
+  "mqtt_commands_sent": 0,
+  "live_configuration_changed": false
+}

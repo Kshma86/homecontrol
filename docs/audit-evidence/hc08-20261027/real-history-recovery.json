@@ -1,0 +1,17 @@
+{
+  "real_audit_rows_replayed": true,
+  "repaired_legacy_chains": 3,
+  "row_delta": {
+    "scheduler_config": 0,
+    "scheduler_job": 0,
+    "scheduler_run": 0,
+    "event": 3,
+    "plan": 3,
+    "execution": 3
+  },
+  "existing_rows_unchanged": true,
+  "second_recovery_rows": 0,
+  "device_publishes": 0,
+  "power_wall_calls": 0,
+  "production_changed": false
+}

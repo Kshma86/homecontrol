@@ -1,0 +1,15 @@
+{
+  "passed": 6,
+  "cases": [
+    "qos0_local_admission_and_broker_observation",
+    "unchanged_suppressed",
+    "offline_keeps_value_publishable",
+    "reconnect_uses_next_poll_latest_value_without_payload_replay",
+    "burst_2000_bounded_by_remaining_18_tokens",
+    "heartbeat_republishes_unchanged_state"
+  ],
+  "burst_client_admitted": 18,
+  "hardware_contacted": false,
+  "clock": "controlled token-bucket clock",
+  "success_boundary": "local_client_admission; separate broker observations above"
+}

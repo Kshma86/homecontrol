@@ -1,0 +1,7 @@
+{
+  "valid": true,
+  "only_changed_service": "hc_ingest",
+  "ingest_environment_matches_live": true,
+  "rollback_image_pinned": true,
+  "other_service_definitions_unchanged": true
+}

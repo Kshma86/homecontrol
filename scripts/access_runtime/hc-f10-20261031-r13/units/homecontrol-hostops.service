@@ -1,0 +1,29 @@
+[Unit]
+Description=HomeControl fixed host operation capabilities
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+RuntimeDirectory=homecontrol-hostops
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+StateDirectory=homecontrol-hostops
+StateDirectoryMode=0700
+WorkingDirectory=/srv/docker/homecontrol
+ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/access_runtime/hc-f10-20261031-r13/scripts/hostops/server.py
+ExecStopPost=/usr/bin/rm -f /run/homecontrol-hostops/operations.sock
+Restart=on-failure
+KillMode=mixed
+TimeoutStopSec=200
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=/run/homecontrol-hostops /var/lib/homecontrol-hostops /srv/docker/homecontrol/backups /srv/docker/homecontrol/restore_staging /srv/docker/homecontrol/apps /srv/docker/homecontrol/infra /srv/docker/homecontrol/scripts /srv/docker/homecontrol/homeassistant
+
+[Install]
+WantedBy=multi-user.target

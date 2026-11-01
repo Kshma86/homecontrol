@@ -1,0 +1,4 @@
+["hc-audit-base-backend:20261022-r1","homecontrol-backend:latest","homecontrol-backend:rollback-hc-audit-20261022-r1"] sha256:02eeec7c53042759bd25764ca668594dc25d364e6339f0a1ed2ce73fea2a78ed 2026-10-22T08:48:42.053872154+02:00
+["homecontrol-backend:hc-sleeping-20261023-r2"] sha256:dfe3ac9fbde9bd5ff1e3730363eee2579db3da2c12e7a4bec53f94c7ea3395d4 2026-10-23T20:37:25.595424669+02:00
+["homecontrol-backend:hc-opening-events-20261027-r4"] sha256:e68ce3eebe8b690e4c463624852ca17cab6655761f4426be42a2b84f298e0a20 2026-10-27T17:01:03.369325322+01:00
+["homecontrol-backend:hc-refactor-ai-offline-20261027-r6"] sha256:205586e060338e5db90b863e5c4fcecbb947c05b4577ea687383af27cb2f6aa8 2026-10-27T18:22:44.311568038+01:00

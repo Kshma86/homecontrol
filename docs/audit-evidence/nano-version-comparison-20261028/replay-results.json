@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "network_used": false,
+  "versions": {
+    "preaudit": {
+      "subscriptions": [
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_status",
+        "homecontrol/tele/irrigation/esp-irrigation-1/diag",
+        "homecontrol/stat/irrigation/esp-irrigation-1/availability",
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_cfg",
+        "homecontrol/stat/irrigation/esp-irrigation-1/cmd_ack",
+        "homecontrol/tele/irrigation/esp-irrigation-1/solar",
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_event",
+        "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics",
+        "zigbee/0xa4c13880b130079c",
+        "zigbee/0xa4c13844a0908898",
+        "zigbee/0xa4c1387594b09c83",
+        "homecontrol/tele/irrigation/esp-irrigation-1/#",
+        "homecontrol/stat/irrigation/esp-irrigation-1/#"
+      ],
+      "observed_named_topics": [
+        "esp_availability",
+        "solar"
+      ],
+      "observed_nano_status": false,
+      "observed_tele": false,
+      "observed_named_config": false,
+      "synthetic_status_accepted": true,
+      "synthetic_tele_accepted": true
+    },
+    "r2": {
+      "subscriptions": [
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_status",
+        "homecontrol/tele/irrigation/esp-irrigation-1/diag",
+        "homecontrol/stat/irrigation/esp-irrigation-1/availability",
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_cfg",
+        "homecontrol/stat/irrigation/esp-irrigation-1/cmd_ack",
+        "homecontrol/tele/irrigation/esp-irrigation-1/solar",
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_event",
+        "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics",
+        "zigbee/0xa4c13880b130079c",
+        "zigbee/0xa4c13844a0908898",
+        "zigbee/0xa4c1387594b09c83",
+        "homecontrol/tele/irrigation/esp-irrigation-1/#",
+        "homecontrol/stat/irrigation/esp-irrigation-1/#"
+      ],
+      "observed_named_topics": [
+        "esp_availability",
+        "solar"
+      ],
+      "observed_nano_status": false,
+      "observed_tele": false,
+      "observed_named_config": false,
+      "synthetic_status_accepted": true,
+      "synthetic_tele_accepted": true
+    },
+    "r4": {
+      "subscriptions": [
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_status",
+        "homecontrol/tele/irrigation/esp-irrigation-1/diag",
+        "homecontrol/stat/irrigation/esp-irrigation-1/availability",
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_cfg",
+        "homecontrol/stat/irrigation/esp-irrigation-1/cmd_ack",
+        "homecontrol/tele/irrigation/esp-irrigation-1/solar",
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_event",
+        "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics",
+        "zigbee/0xa4c13880b130079c",
+        "zigbee/0xa4c13844a0908898",
+        "zigbee/0xa4c1387594b09c83",
+        "homecontrol/tele/irrigation/esp-irrigation-1/#",
+        "homecontrol/stat/irrigation/esp-irrigation-1/#"
+      ],
+      "observed_named_topics": [
+        "esp_availability",
+        "solar"
+      ],
+      "observed_nano_status": false,
+      "observed_tele": false,
+      "observed_named_config": false,
+      "synthetic_status_accepted": true,
+      "synthetic_tele_accepted": true
+    },
+    "live": {
+      "subscriptions": [
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_status",
+        "homecontrol/tele/irrigation/esp-irrigation-1/diag",
+        "homecontrol/stat/irrigation/esp-irrigation-1/availability",
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_cfg",
+        "homecontrol/stat/irrigation/esp-irrigation-1/cmd_ack",
+        "homecontrol/tele/irrigation/esp-irrigation-1/solar",
+        "homecontrol/tele/irrigation/esp-irrigation-1/nano_event",
+        "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics",
+        "zigbee/0xa4c13880b130079c",
+        "zigbee/0xa4c13844a0908898",
+        "zigbee/0xa4c1387594b09c83",
+        "homecontrol/tele/irrigation/esp-irrigation-1/#",
+        "homecontrol/stat/irrigation/esp-irrigation-1/#"
+      ],
+      "observed_named_topics": [
+        "esp_availability",
+        "solar"
+      ],
+      "observed_nano_status": false,
+      "observed_tele": false,
+      "observed_named_config": false,
+      "synthetic_status_accepted": true,
+      "synthetic_tele_accepted": true
+    }
+  }
+}

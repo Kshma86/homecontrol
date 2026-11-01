@@ -14,7 +14,8 @@ def compact_context_payload(payload):
         climate = realtime["climate"] or {}
         realtime["climate"] = _pick(climate, [
             "ok", "_context", "bridge_online", "power", "mode", "target_temperature",
-            "current_temperature", "current_humidity", "fan_speed", "light", "error", "power_meter",
+            "current_temperature", "current_humidity", "fan_speed", "quiet", "turbo",
+            "sleep", "xfan", "power_save", "light", "error", "power_meter",
         ])
 
     if "power_wall" in realtime:

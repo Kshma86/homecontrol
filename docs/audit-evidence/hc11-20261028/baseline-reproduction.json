@@ -1,0 +1,5 @@
+{
+  "callback_connect_remains_blocked_after_error": true,
+  "connection_attempts": 5,
+  "device_io": false
+}

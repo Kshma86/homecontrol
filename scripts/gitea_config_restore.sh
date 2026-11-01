@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+python3 "$(dirname -- "${BASH_SOURCE[0]}")/deployment_policy_cli.py" --worker-mode git || exit $?
 set -Eeuo pipefail
 
 BASE="${BASE:-/srv/docker/homecontrol}"

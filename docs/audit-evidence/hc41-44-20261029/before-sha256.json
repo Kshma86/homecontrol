@@ -1,0 +1,16 @@
+{
+  "infra/docker-compose.yml": "f8329fa706f0b0826030b89108ce2dbee4f927aeefad066343cfd9cfcbf6e65d",
+  "infra/backend/system_status_service.py": "0a572767f97fcc9dec452ddd25d276dbdc4209332c4bfb3a9e1c16e281a3d045",
+  "infra/backend/mqtt_monitor_service.py": "299f38bc37f21cd8a7b4fc0bbc6a4d56055ba9d1097e316a25e33a31fc823872",
+  "infra/backend/backup_service.py": "bdee53b1a2aa3b7a3bb8e578522dabe958cc76810994475c9efc333920a656c8",
+  "infra/backend/api_route_modules.py": "c0f5f0a5f0798ea6cbecf146123db08347d927d8014bfa50a64c381c6ad71148",
+  "infra/backend/app.py": "cfca0d79b2a9fa563cdbf0fe76409ed343d77a08cdbc7f328cc9ce5a4d22c93a",
+  "infra/backend/Dockerfile": "d0cf95b29694d5dba9986f49dff471af148de4eaa3ba2c9f4980246efc2b4e71",
+  "apps/hc_ingest/mqtt_ingest_multi.py": "55f51322c6d5eb3adf69c5524b7e43660de578e366ebe76ecbf4da44aa4f4c99",
+  "apps/gree-climate/gree_climate_bridge.py": "4620cd48dd6a1496cbf4a918ffc12776f1068a1880ffd172068241187d18a7e6",
+  "apps/xiaomi-x10/xiaomi_x10_bridge.py": "9cdd8bc63311a1a4d60fe3ab1d658d3c9695be21cf51e56f66266ba186e18022",
+  "apps/xiaomi-x10/xiaomi_x10_api.py": "cdad97bfb9f921380b32e4d6f4292c60f331291ada4e3d4c4c67a63df31b68d7",
+  "apps/ha-growatt-poller/ha_growatt_poller.py": "56cbab04ac42ecd38047ff1789a67522d66c9a3ae592e8ea9c2e7f9c6c76a297",
+  "apps/tuya-poller/tuya_poller.py": "4ac7c4d73f4e43c3dec53c9379457f8d75f421cc86c33030c33aaddf5d7beb11",
+  "infra/mqtt/config/mosquitto.conf": "a63e791bce2e3d44f6ea2d296786ee4574c3135619a03d9f0295efc97618326b"
+}

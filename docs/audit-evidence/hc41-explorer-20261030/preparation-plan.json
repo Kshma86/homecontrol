@@ -1,0 +1,38 @@
+{
+  "finding": "HC-41",
+  "applied": false,
+  "state": "prepared_not_deployed",
+  "device": "esp-irrigation-1",
+  "esp_ip": "192.168.1.179",
+  "esp_ip_confirmed": false,
+  "passwords_need_hashing": false,
+  "authenticated_port": 1884,
+  "legacy_port": 1883,
+  "roles": [
+    "backend",
+    "ingest",
+    "tuya",
+    "x10",
+    "x10_api",
+    "climate",
+    "growatt",
+    "grott",
+    "dashboard",
+    "explorer",
+    "zigbee2mqtt"
+  ],
+  "blockers": [
+    "Review immutable release/images and merge with the active frozen Compose",
+    "Apply and verify ESP-only IPv4/IPv6 network restriction before opening the legacy listener",
+    "Configure and verify the approved dev-PC dashboard credentials over SSH tunnel; confirm fixed ESP address/DHCP reservation",
+    "Install the authenticated post-boot probe adapter with the release",
+    "Verify broker UID ownership/readability of the private config/password database",
+    "Include new MQTT secrets in the encrypted restore bundle, never in config Git exports",
+    "Supervised telemetry/STOP/ack/reconnect validation and rollback required",
+    "ESP IP/DHCP identity is not confirmed"
+  ],
+  "network_applied": false,
+  "broker_restarted": false,
+  "later_phase": "Move ESP to authenticated 1884, remove anonymous listener and its publication/rules",
+  "password_database_hashed": true
+}

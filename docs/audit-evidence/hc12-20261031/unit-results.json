@@ -1,0 +1,17 @@
+[
+  {
+    "suite": "bridge-commands",
+    "tests": 33,
+    "returncode": 0
+  },
+  {
+    "suite": "x10-runtime",
+    "tests": 32,
+    "returncode": 0
+  },
+  {
+    "suite": "scheduler-contract",
+    "tests": 25,
+    "returncode": 0
+  }
+]

@@ -1,0 +1,164 @@
+{
+  "GHSA-w5vr-8v7q-w6rv": {
+    "ghsa_id": "GHSA-w5vr-8v7q-w6rv",
+    "summary": "baseline-browser-mapping process termination on invalid input causes denial of service",
+    "html_url": "https://github.com/advisories/GHSA-w5vr-8v7q-w6rv",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "baseline-browser-mapping"
+        },
+        "vulnerable_version_range": ">= 2.0.0, < 2.11.0",
+        "first_patched_version": "2.11.0",
+        "vulnerable_functions": []
+      }
+    ],
+    "published_at": "2026-08-13T12:31:09Z",
+    "withdrawn_at": null
+  },
+  "GHSA-c83g-rgw3-j3cx": {
+    "ghsa_id": "GHSA-c83g-rgw3-j3cx",
+    "summary": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+    "html_url": "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "browserslist"
+        },
+        "vulnerable_version_range": "<= 4.28.6",
+        "first_patched_version": "4.28.7",
+        "vulnerable_functions": []
+      }
+    ],
+    "published_at": "2026-09-01T16:42:13Z",
+    "withdrawn_at": null
+  },
+  "GHSA-73wf-gq98-2v4g": {
+    "ghsa_id": "GHSA-73wf-gq98-2v4g",
+    "summary": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+    "html_url": "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "browserslist"
+        },
+        "vulnerable_version_range": "<= 4.28.6",
+        "first_patched_version": "4.28.7",
+        "vulnerable_functions": []
+      }
+    ],
+    "published_at": "2026-09-01T16:41:54Z",
+    "withdrawn_at": null
+  },
+  "GHSA-28wg-ghj8-5hjv": {
+    "ghsa_id": "GHSA-28wg-ghj8-5hjv",
+    "summary": "nanoid: non-secure generators can loop indefinitely with negative size",
+    "html_url": "https://github.com/advisories/GHSA-28wg-ghj8-5hjv",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "nanoid"
+        },
+        "vulnerable_version_range": "< 3.3.16",
+        "first_patched_version": "3.3.16",
+        "vulnerable_functions": []
+      },
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "nanoid"
+        },
+        "vulnerable_version_range": ">= 4.0.0, < 5.1.16",
+        "first_patched_version": "5.1.16",
+        "vulnerable_functions": []
+      }
+    ],
+    "published_at": "2026-07-29T15:31:12Z",
+    "withdrawn_at": null
+  },
+  "GHSA-2v37-7h3g-55p8": {
+    "ghsa_id": "GHSA-2v37-7h3g-55p8",
+    "summary": "nanoid: custom generators can loop indefinitely when size is zero",
+    "html_url": "https://github.com/advisories/GHSA-2v37-7h3g-55p8",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "nanoid"
+        },
+        "vulnerable_version_range": ">= 4.0.0, < 5.1.6",
+        "first_patched_version": "5.1.6",
+        "vulnerable_functions": []
+      },
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "nanoid"
+        },
+        "vulnerable_version_range": "< 3.3.18",
+        "first_patched_version": "3.3.18",
+        "vulnerable_functions": []
+      }
+    ],
+    "published_at": "2026-07-29T15:31:12Z",
+    "withdrawn_at": null
+  },
+  "GHSA-fxqj-rqcc-2cmp": {
+    "ghsa_id": "GHSA-fxqj-rqcc-2cmp",
+    "summary": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+    "html_url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "postcss"
+        },
+        "vulnerable_version_range": "<= 8.5.22",
+        "first_patched_version": "8.5.23",
+        "vulnerable_functions": []
+      }
+    ],
+    "published_at": "2026-08-03T17:11:39Z",
+    "withdrawn_at": null
+  },
+  "GHSA-r28c-9q8g-f849": {
+    "ghsa_id": "GHSA-r28c-9q8g-f849",
+    "summary": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+    "html_url": "https://github.com/advisories/GHSA-r28c-9q8g-f849",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "postcss"
+        },
+        "vulnerable_version_range": "<= 8.5.17",
+        "first_patched_version": "8.5.18",
+        "vulnerable_functions": []
+      }
+    ],
+    "published_at": "2026-07-24T16:24:55Z",
+    "withdrawn_at": null
+  },
+  "GHSA-68fv-2mgg-jv7q": {
+    "ghsa_id": "GHSA-68fv-2mgg-jv7q",
+    "summary": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+    "html_url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "source-map-js"
+        },
+        "vulnerable_version_range": ">= 1.0.0, < 1.2.2",
+        "first_patched_version": "1.2.2",
+        "vulnerable_functions": []
+      }
+    ],
+    "published_at": "2026-09-18T18:31:44Z",
+    "withdrawn_at": null
+  }
+}

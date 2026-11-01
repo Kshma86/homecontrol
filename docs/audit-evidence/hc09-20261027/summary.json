@@ -1,0 +1,58 @@
+{
+  "audit": "HC-09",
+  "date": "2026-10-27",
+  "status": "locally_verified_not_deployed",
+  "tests": 330,
+  "new_tests": 48,
+  "new_postgres_tests": 23,
+  "new_bridge_tests": 6,
+  "new_transport_freshness_tests": 19,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "production_commands": 0,
+  "new_migrations": 0,
+  "source_files_changed": [
+    "infra/backend/app.py",
+    "infra/backend/settings.py",
+    "infra/backend/mqtt_monitor_service.py",
+    "infra/backend/scheduler_service.py",
+    "infra/backend/scheduler_audit.py",
+    "infra/backend/tests/test_scheduler_service.py",
+    "infra/backend/tests/test_scheduler_audit_postgres.py",
+    "apps/gree-climate/gree_climate_bridge.py",
+    "apps/xiaomi-x10/xiaomi_x10_bridge.py",
+    "AUDIT_REPAIR.md",
+    "DEPLOYMENT_PREP.md",
+    "infra/docker-compose.yml",
+    "infra/backend/scheduler_feedback.py",
+    "infra/backend/x10_schedule_delivery.py",
+    "infra/backend/tests/test_scheduler_feedback.py",
+    "infra/backend/tests/test_scheduler_feedback_postgres.py",
+    "infra/backend/tests/test_scheduler_bridge_samples.py",
+    "docs/hc-09-repair.md"
+  ],
+  "phases_reviewed": [
+    "F2",
+    "F3",
+    "F4 dependency"
+  ],
+  "deployment_dependencies": [
+    "HC-08 local repair",
+    "matched Gree/X10 bridge rollout",
+    "supervised physical verification"
+  ],
+  "other_findings_unchanged": [
+    "HC-12",
+    "HC-13",
+    "HC-35",
+    "HC-36",
+    "HC-45"
+  ],
+  "lab": "PG16 tmpfs/network-none; runners share only lab network; no host ports, LAN or Docker socket",
+  "limitations": [
+    "no real climate/robot test",
+    "no AI probe",
+    "no full VM restore"
+  ]
+}

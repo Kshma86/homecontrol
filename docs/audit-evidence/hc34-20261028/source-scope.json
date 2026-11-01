@@ -1,0 +1,9 @@
+{
+  "changed_existing_functions": [
+    "map_key",
+    "tuya_metric_items",
+    "main"
+  ],
+  "hc33_batch_module_unchanged": true,
+  "other_audit_points_changed": false
+}

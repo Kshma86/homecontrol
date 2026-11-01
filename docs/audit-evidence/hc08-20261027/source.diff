@@ -1,0 +1,843 @@
+--- before/infra/backend/app.py
++++ after/infra/backend/app.py
+@@ -66,6 +66,7 @@
+ from process_binding_service import ProcessBindingService
+ from robot_service import RobotService
+ from scheduler_service import SchedulerService
++from scheduler_audit import scheduler_audit_transaction
+ from season_profile_service import SeasonProfileService
+ from schema_service import HcSchemaService
+ from sql_lab_service import SqlLabService
+@@ -493,42 +494,7 @@
+ 
+ 
+ def record_scheduler_shadow_audit():
+-    scheduler = get_scheduler_service()
+-    inserted = 0
+-
+-    for event in scheduler.shadow_audit_events():
+-        domain = event["domain"]
+-        source = event["source"]
+-        source_ref = event["source_ref"]
+-        action = event["action"]
+-        status = event["status"]
+-        event_payload = dict(event["payload"])
+-        key = event["key"]
+-        row = scheduler.insert_run_once(
+-            key,
+-            domain,
+-            action,
+-            status,
+-            payload=event_payload,
+-        )
+-        if row:
+-            event_payload["scheduler_run_id"] = row.get("id")
+-            event_row = scheduler.insert_v2_event_once(
+-                f"v2:{key}",
+-                domain,
+-                action,
+-                status,
+-                event_payload,
+-            )
+-            plan_row = scheduler.insert_v2_irrigation_plan_once(event_row, action, event_payload)
+-            scheduler.insert_v2_irrigation_execution_once(plan_row, action, event_payload)
+-            x10_plan_row = scheduler.insert_v2_x10_plan_once(event_row, action, event_payload)
+-            scheduler.insert_v2_x10_execution_once(x10_plan_row, event_payload)
+-            climate_plan_row = scheduler.insert_v2_climate_plan_once(event_row, action, event_payload)
+-            scheduler.insert_v2_climate_execution_once(climate_plan_row, event_payload)
+-            inserted += 1
+-            print(f"[SCHEDULER] {status} domain={domain} source={source} ref={source_ref}", flush=True)
+-    return inserted
++    return get_scheduler_service().record_shadow_audit()
+ 
+ 
+ def check_db():
+@@ -718,6 +684,7 @@
+         with _scheduler_service_lock:
+             if _scheduler_service is None:
+                 _scheduler_service = SchedulerService(
++                    audit_transaction=lambda: scheduler_audit_transaction(lambda: db_conn(dict_row)),
+                     fetch_all=fetch_all,
+                     fetch_one=fetch_one,
+                     execute_one=execute_one,
+@@ -1022,6 +989,7 @@
+                 power_wall_guard_seconds=POWER_WALL_GUARD_SECONDS,
+                 safety_worker_enabled=SAFETY_WORKER_ENABLED,
+                 record_scheduler_shadow_audit=record_scheduler_shadow_audit,
++                climate_scheduler_tick=lambda: get_scheduler_service().climate_scheduler_tick(),
+                 irrigation_scheduler_tick=lambda: get_irrigation_service().scheduler_tick(),
+                 irrigation_scheduler_stop_tick=lambda: get_irrigation_service().scheduler_stop_tick(),
+                 irrigation_recovery_tick=lambda: get_irrigation_service().session_recovery.tick(),
+--- before/infra/backend/scheduler_service.py
++++ after/infra/backend/scheduler_service.py
+@@ -41,6 +41,7 @@
+         running_irrigation_session: Optional[Callable[[], Optional[Dict[str, Any]]]] = None,
+         execute_sql: Optional[Callable[[str], Any]] = None,
+         now: Optional[Callable[[Any], datetime]] = None,
++        audit_transaction: Optional[Callable[..., Any]] = None,
+     ):
+         self.fetch_all = fetch_all
+         self.fetch_one = fetch_one
+@@ -76,6 +77,15 @@
+         self.manual_valve_scheduler_guard = manual_valve_scheduler_guard
+         self.running_irrigation_session = running_irrigation_session
+         self.now = now or (lambda tz=None: datetime.now(tz))
++        self.audit_transaction = audit_transaction
++
++    def record_shadow_audit(self):
++        from scheduler_audit import SchedulerAudit
++        return SchedulerAudit(self).record_due()
++
++    def climate_scheduler_tick(self):
++        from scheduler_audit import SchedulerAudit
++        return SchedulerAudit(self).climate_tick()
+ 
+     @staticmethod
+     def normalized_segment_list(value: Any):
+@@ -1200,32 +1210,25 @@
+         first_action = actions[0] if actions and isinstance(actions[0], dict) else {}
+         command_payload = dict(first_action.get("command") or {})
+         engine = self.engine_state(self.config())
+-        can_publish = "climate" in (engine.get("publish_domains") or [])
+-        command_payload["shadow_only"] = not can_publish
++        can_publish = engine['enabled'] and "climate" in (engine.get("publish_domains") or [])
++        legacy_recovery = bool(payload.get('_audit_legacy_recovery'))
++        command_payload["shadow_only"] = not can_publish or legacy_recovery
+         metadata = {
+             "model": "HC_V2",
+-            "component": "v2_scheduler_executor" if can_publish else "v2_scheduler_shadow",
+-            "command_owner": "v2" if can_publish else "blocked",
+-            "side_effects": bool(can_publish),
++            "component": "v2_scheduler_shadow",
++            "command_owner": "v2_climate_dispatch" if can_publish and not legacy_recovery else "blocked",
++            "side_effects": False,
+             "scheduler_run_id": payload.get("scheduler_run_id"),
+-        }
+-        ok = False
+-        message = "v2_publish_blocked_by_engine"
+-        auto_power_wall = []
+-        if can_publish and self.publish_mqtt:
+-            ok, message = self.publish_mqtt(self.climate_command_topic, command_payload)
+-            if ok and command_payload.get("power") in {"on", "off"} and self.sync_auto_climate_power_wall:
+-                auto_power_wall = self.sync_auto_climate_power_wall(command_payload["power"])
+-            if ok and payload.get("extra_fan") in {"on", "off"} and self.sync_auto_climate_power_wall:
+-                auto_power_wall = self.sync_auto_climate_power_wall(payload["extra_fan"])
++            "audit_protocol": "hc08-v1",
++        }
+         result = {
+-            "shadow": not can_publish,
++            "shadow": not can_publish or legacy_recovery,
+             "would_publish": True,
+-            "published": bool(ok),
+-            "publish_attempted": bool(can_publish),
+-            "message": message,
+-            "reason": "v2_command_owner" if can_publish else "v2_publish_blocked_by_engine",
+-            "auto_power_wall": auto_power_wall,
++            "published": None if legacy_recovery else False,
++            "publish_attempted": None if legacy_recovery else False,
++            "reason": "legacy_partial_chain_publish_unknown" if legacy_recovery else "awaiting_explicit_dispatch" if can_publish else "v2_publish_blocked_by_engine",
++            "delivery_uncertain": legacy_recovery,
++            "auto_power_wall": [],
+             "extra_fan": payload.get("extra_fan") or "keep",
+         }
+         return self.execute_one(
+@@ -1243,8 +1246,8 @@
+             (
+                 plan_row.get("id"),
+                 plan_row.get("event_id"),
+-                "v2_gree_climate" if can_publish else "v2_gree_climate_audit",
+-                "confirmed" if ok else "failed" if can_publish else "shadow_ready",
++                "v2_gree_climate" if can_publish and not legacy_recovery else "v2_gree_climate_audit",
++                "unknown" if legacy_recovery else "pending" if can_publish else "shadow_ready",
+                 self.climate_command_topic,
+                 self.json_dumps(command_payload),
+                 self.json_dumps(result),
+--- before/infra/backend/startup_service.py
++++ after/infra/backend/startup_service.py
+@@ -60,6 +60,7 @@
+         context_refresh_enabled: bool = True,
+         irrigation_scheduler_stop_tick: Callable[[], None] = lambda: None,
+         irrigation_recovery_tick: Callable[[], None] = lambda: None,
++        climate_scheduler_tick: Callable[[], None] = lambda: None,
+     ):
+         self.bootstrap = bootstrap
+         self.scheduler_poll_seconds = scheduler_poll_seconds
+@@ -71,6 +72,7 @@
+         self.irrigation_scheduler_stop_tick = irrigation_scheduler_stop_tick
+         self.irrigation_recovery_tick = irrigation_recovery_tick
+         self.x10_scheduler_tick = x10_scheduler_tick
++        self.climate_scheduler_tick = climate_scheduler_tick
+         self.stop_overdue_sessions = stop_overdue_sessions
+         self.fail_sessions_without_physical_watering = fail_sessions_without_physical_watering
+         self.openweather_ready = openweather_ready
+@@ -152,6 +154,7 @@
+     def _scheduler_tick(self) -> None:
+         run_guarded_callbacks("SCHEDULER", (
+             ("shadow audit", self.record_scheduler_shadow_audit),
++            ("climate dispatch", self.climate_scheduler_tick),
+             ("irrigation start", self.irrigation_scheduler_tick),
+             ("xiaomi x10", self.x10_scheduler_tick),
+         ))
+--- /dev/null
++++ after/infra/backend/scheduler_audit.py
+@@ -0,0 +1,233 @@
++"""HC-08: atomic audit preparation and separately claimed climate dispatch.
++
++The database never spans device I/O. An unknown dispatch is deliberately not
++replayed: a committed claim may have reached a device even if its reply was lost.
++"""
++from contextlib import contextmanager
++from copy import copy
++
++
++PROTOCOL = 'hc08-v1'
++
++
++class AuditQueries:
++    def __init__(self, connection):
++        self.connection = connection
++
++    def fetch_one(self, query, params=()):
++        return self.connection.execute(query, params).fetchone()
++
++    def fetch_all(self, query, params=()):
++        return self.connection.execute(query, params).fetchall()
++
++    execute_one = fetch_one
++
++
++@contextmanager
++def scheduler_audit_transaction(connect):
++    with connect() as connection:
++        with connection.transaction():
++            connection.execute('set transaction isolation level read committed')
++            connection.execute("set local lock_timeout='5s'")
++            connection.execute("set local statement_timeout='10s'")
++            yield AuditQueries(connection)
++
++
++class SchedulerAudit:
++    def __init__(self, scheduler):
++        self.scheduler = scheduler
++
++    def transaction(self):
++        if self.scheduler.audit_transaction is None:
++            raise RuntimeError('HC-08 requires an explicit scheduler transaction adapter')
++        return self.scheduler.audit_transaction()
++
++    def scoped(self, queries):
++        # Do not replace callbacks on the shared service while other threads read it.
++        service = copy(self.scheduler)
++        service.fetch_one = queries.fetch_one
++        service.fetch_all = queries.fetch_all
++        service.execute_one = queries.execute_one
++        service.ensure_schema_callback = lambda: None
++        return service
++
++    @staticmethod
++    def unique(queries, table, column, value):
++        # Identifiers come only from the fixed call sites below.
++        rows = queries.fetch_all('select * from hc.' + table + ' where ' + column + '=%s', (value,))
++        if len(rows) > 1:
++            raise RuntimeError('Duplicate scheduler audit links require explicit reconciliation')
++        return rows[0] if rows else None
++
++    def prepare(self, event):
++        self.scheduler.ensure_schema_callback()
++        domain, action, key = event['domain'], event['action'], event['key']
++        allowed = {'irrigation': ('water_start', 'water_stop'), 'xiaomi_x10': ('clean_start',), 'climate': ('climate_set',)}
++        if action not in allowed.get(domain, ()) or not key.startswith('shadow:'):
++            raise ValueError('Unsupported scheduler audit event')
++        climate_snapshot = {}
++        if domain == 'climate' and self.scheduler.climate_state_payload:
++            existing_plan = self.scheduler.fetch_one("""select p.id from hc.plan p
++                join hc.event e on e.id=p.event_id where e.idempotency_key=%s limit 1""", ('v2:' + key,))
++            if not existing_plan:
++                # The UI snapshot can read other repositories. Capture it before
++                # reserving audit rows, never hold the transaction across it.
++                climate_snapshot = self.scheduler.climate_state_payload()
++        with self.transaction() as queries:
++            # Serialize writers even before a scheduler_run row exists. All four
++            # inserts and legacy gap repair share this transaction/connection.
++            queries.fetch_one('select pg_advisory_xact_lock(hashtextextended(%s, 8008))', (key,))
++            service = self.scoped(queries)
++            service.climate_state_payload = lambda: climate_snapshot
++            run = self.unique(queries, 'scheduler_run', 'idempotency_key', key)
++            created = run is None
++            if created:
++                payload = {**event['payload'], '_audit_protocol': PROTOCOL}
++                run = service.insert_run_once(key, domain, action, event['status'], payload=payload)
++            if not run or run['domain'] != domain or run['action'] != action:
++                raise RuntimeError('Scheduler audit run identity mismatch')
++            payload = dict(run['payload'])
++            payload['scheduler_run_id'] = run['id']
++            if payload.get('_audit_protocol') != PROTOCOL:
++                # A legacy missing execution may have published before crashing.
++                # Complete its diagnostic chain, never manufacture a replay right.
++                payload['_audit_legacy_recovery'] = True
++            event_row = self.unique(queries, 'event', 'idempotency_key', 'v2:' + key)
++            if not event_row:
++                event_row = service.insert_v2_event_once('v2:' + key, domain, action, run['status'], payload)
++            if (not event_row or event_row['domain'] != domain
++                    or str(event_row['payload'].get('scheduler_run_id')) != str(run['id'])):
++                raise RuntimeError('Scheduler event link is missing or inconsistent')
++            plan = self.unique(queries, 'plan', 'event_id', event_row['id'])
++            if not plan:
++                builder = {'irrigation': service.insert_v2_irrigation_plan_once,
++                           'xiaomi_x10': service.insert_v2_x10_plan_once,
++                           'climate': service.insert_v2_climate_plan_once}[domain]
++                plan = builder(event_row, action, payload)
++            if not plan or plan['domain'] != domain:
++                raise RuntimeError('Scheduler plan is missing or inconsistent')
++            execution = self.unique(queries, 'execution', 'plan_id', plan['id'])
++            if not execution:
++                if domain == 'irrigation':
++                    execution = service.insert_v2_irrigation_execution_once(plan, action, payload)
++                elif domain == 'xiaomi_x10':
++                    execution = service.insert_v2_x10_execution_once(plan, payload)
++                else:
++                    execution = service.insert_v2_climate_execution_once(plan, payload)
++                if execution and payload.get('_audit_legacy_recovery'):
++                    # Existing domain executors mark recent shadow rows. A July
++                    # backfill must not become today's executable/confirmed work.
++                    recovered = {'audit_recovered': True, 'delivery_uncertain': True,
++                                 'published': None, 'publish_attempted': None,
++                                 'reason': 'legacy_partial_chain_publish_unknown'}
++                    execution = queries.execute_one("""update hc.execution set status='unknown',
++                        created_at=%s, result=result || %s::jsonb,
++                        metadata=metadata || '{"audit_recovered":true}'::jsonb
++                        where id=%s returning *""",
++                        (run['requested_at'], service.json_dumps(recovered), execution['id']))
++            if (not execution or execution['domain'] != domain
++                    or execution['event_id'] != event_row['id']):
++                raise RuntimeError('Scheduler execution link is missing or inconsistent')
++            return {'created': created, 'run': run, 'execution': execution}
++
++    def recover(self):
++        # Recovery is independent of the current due minute/day. Bounded batches
++        # also repair legacy run-only/event-only/plan-only chains after a restart.
++        with self.transaction() as queries:
++            runs = queries.fetch_all("""
++                select r.* from hc.scheduler_run r
++                where r.idempotency_key like 'shadow:%%'
++                  and ((r.domain='irrigation' and r.action in ('water_start','water_stop'))
++                    or (r.domain='xiaomi_x10' and r.action='clean_start')
++                    or (r.domain='climate' and r.action='climate_set'))
++                  and not exists (
++                    select 1 from hc.event e join hc.plan p on p.event_id=e.id
++                    join hc.execution x on x.plan_id=p.id and x.event_id=e.id
++                    where e.idempotency_key='v2:' || r.idempotency_key)
++                order by r.requested_at, r.id limit 50
++            """)
++        for run in runs:
++            self.prepare({'key': run['idempotency_key'], 'domain': run['domain'],
++                          'action': run['action'], 'status': run['status'], 'payload': run['payload']})
++        return len(runs)
++
++    def record_due(self):
++        self.scheduler.ensure_schema_callback()
++        self.recover()
++        return sum(int(self.prepare(event)['created']) for event in self.scheduler.shadow_audit_events())
++
++    def claim_climate(self, execution_id):
++        with self.transaction() as queries:
++            row = queries.fetch_one("""
++                select x.*, date_trunc('minute',r.requested_at)=date_trunc('minute',now()) as due_now
++                from hc.execution x join hc.plan p on p.id=x.plan_id and p.event_id=x.event_id
++                join hc.event e on e.id=x.event_id
++                join hc.scheduler_run r on r.id::text=e.payload->>'scheduler_run_id'
++                where x.id=%s and x.domain='climate' and x.status='pending'
++                  and x.metadata->>'audit_protocol'=%s
++                  and r.payload->>'_audit_protocol'=%s
++                for update of x skip locked
++            """, (execution_id, PROTOCOL, PROTOCOL))
++            if not row:
++                return None
++            service = self.scoped(queries)
++            engine = service.engine_state(service.config())
++            allowed = (engine['enabled'] and 'climate' in engine['publish_domains'] and row['due_now']
++                       and row['command_topic'] == self.scheduler.climate_command_topic)
++            if not allowed:
++                queries.execute_one("""update hc.execution set status='blocked', ended_at=now(), updated_at=now(),
++                    result=result || %s::jsonb where id=%s returning *""",
++                    (self.scheduler.json_dumps({'reason': 'dispatch_expired_or_domain_disabled', 'publish_attempted': False}), execution_id))
++                return None
++            result = {**row['result'], 'shadow': False, 'publish_attempted': True, 'published': None,
++                      'delivery_uncertain': True, 'reason': 'dispatch_claimed_do_not_replay'}
++            metadata = {**row['metadata'], 'component': 'v2_scheduler_executor',
++                        'command_owner': 'v2_climate_dispatch', 'side_effects': True}
++            return queries.execute_one("""update hc.execution set status='unknown', attempt=1,
++                started_at=now(), updated_at=now(), result=%s::jsonb, metadata=%s::jsonb
++                where id=%s and status='pending' returning *""",
++                (self.scheduler.json_dumps(result), self.scheduler.json_dumps(metadata), execution_id))
++
++    def dispatch(self, execution_id):
++        # The context must commit successfully before any external side effect.
++        claim = self.claim_climate(execution_id)
++        if not claim:
++            return None
++        command = claim['command_payload']
++        result = dict(claim['result'])
++        result['physical_confirmation'] = False
++        status = 'unknown'
++        error = None
++        try:
++            if self.scheduler.publish_mqtt is None:
++                raise RuntimeError('Climate publisher unavailable')
++            ok, message = self.scheduler.publish_mqtt(claim['command_topic'], command)
++            result.update(published=bool(ok), message=str(message)[:512])
++            auto = []
++            if ok and self.scheduler.sync_auto_climate_power_wall:
++                if command.get('power') in ('on', 'off'):
++                    auto = self.scheduler.sync_auto_climate_power_wall(command['power'])
++                if result.get('extra_fan') in ('on', 'off'):
++                    auto = self.scheduler.sync_auto_climate_power_wall(result['extra_fan'])
++            result.update(auto_power_wall=auto, delivery_uncertain=not bool(ok),
++                          reason='publisher_reported_success' if ok else 'publisher_result_uncertain')
++            status = 'sent' if ok else 'unknown'
++        except Exception as exc:
++            result.update(delivery_uncertain=True, reason='dispatch_exception', exception_type=type(exc).__name__)
++            error = 'Dispatch outcome uncertain; automatic replay is disabled'
++        with self.transaction() as queries:
++            saved = queries.execute_one("""update hc.execution set status=%s, result=%s::jsonb,
++                error=%s, ended_at=now(), updated_at=now()
++                where id=%s and status='unknown' and attempt=1 returning *""",
++                (status, self.scheduler.json_dumps(result), error, execution_id))
++            if not saved:
++                raise RuntimeError('Climate dispatch result was not persisted; do not replay')
++            return saved
++
++    def climate_tick(self):
++        self.scheduler.ensure_schema_callback()
++        with self.transaction() as queries:
++            candidates = queries.fetch_all("""select id from hc.execution
++                where domain='climate' and status='pending' and metadata->>'audit_protocol'=%s
++                order by created_at, id limit 50""", (PROTOCOL,))
++        return [self.dispatch(row['id']) for row in candidates]
+--- before/infra/backend/tests/test_scheduler_service.py
++++ after/infra/backend/tests/test_scheduler_service.py
+@@ -309,7 +309,7 @@
+         self.assertEqual(published, [])
+         self.assertEqual(execution_updates[0][0], "blocked")
+ 
+-    def test_insert_climate_execution_publishes_when_domain_enabled(self):
++    def test_insert_climate_execution_prepares_intent_without_publishing(self):
+         published = []
+ 
+         def fetch_one(query, params=None):
+@@ -343,9 +343,10 @@
+         )
+         execution = service.insert_v2_climate_execution_once(plan, {"scheduler_run_id": 2})
+ 
+-        self.assertEqual(published[0][0], "climate/command")
+-        self.assertEqual(execution["status"], "confirmed")
+-        self.assertTrue(execution["result"]["published"])
++        self.assertEqual(published, [])
++        self.assertEqual(execution["status"], "pending")
++        self.assertFalse(execution["result"]["published"])
++        self.assertFalse(execution["result"]["publish_attempted"])
+ 
+     def test_x10_legacy_comparison_reports_strict_match(self):
+         service = self.service(
+--- before/infra/backend/tests/test_startup_service.py
++++ after/infra/backend/tests/test_startup_service.py
+@@ -81,7 +81,7 @@
+     def test_each_callback_error_cannot_skip_other_callbacks(self):
+         groups = {
+             "_safety_tick": ["irrigation_recovery_tick", "irrigation_scheduler_stop_tick", "stop_overdue_sessions", "fail_sessions_without_physical_watering"],
+-            "_scheduler_tick": ["record_scheduler_shadow_audit", "irrigation_scheduler_tick", "x10_scheduler_tick"],
++            "_scheduler_tick": ["record_scheduler_shadow_audit", "climate_scheduler_tick", "irrigation_scheduler_tick", "x10_scheduler_tick"],
+         }
+         for method, names in groups.items():
+             for broken in names:
+@@ -101,6 +101,27 @@
+                         getattr(service, method)()
+                     self.assertEqual(calls, names)
+                     self.assertIn("injected DB/transport timeout", output.getvalue())
++
++    def test_scheduler_dispatch_is_explicit_and_follows_audit(self):
++        calls = []
++        service = self.service(calls, safety_worker_enabled=True)
++        service.climate_scheduler_tick = lambda: calls.append('climate_dispatch')
++        service._scheduler_tick()
++        self.assertEqual(calls, ['audit', 'climate_dispatch', 'irrigation', 'x10_tick'])
++
++    def test_app_audit_callback_only_delegates_to_recording(self):
++        source = Path(__file__).resolve().parents[1] / 'app.py'
++        tree = ast.parse(source.read_text())
++        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'record_scheduler_shadow_audit')
++        calls = []
++        namespace = {'get_scheduler_service': lambda: SimpleNamespace(record_shadow_audit=lambda: calls.append('record') or 7)}
++        exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'), namespace)
++        self.assertEqual(namespace['record_scheduler_shadow_audit'](), 7)
++        self.assertEqual(calls, ['record'])
++        constructor = next(node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'StartupService')
++        callback = next(item.value for item in constructor.keywords if item.arg == 'climate_scheduler_tick')
++        self.assertIsInstance(callback, ast.Lambda)
++        self.assertEqual(callback.body.func.attr, 'climate_scheduler_tick')
+ 
+     def test_scheduler_waits_until_initial_safety_check(self):
+         service = self.service([], safety_worker_enabled=True)
+--- /dev/null
++++ after/infra/backend/tests/test_scheduler_audit_postgres.py
+@@ -0,0 +1,360 @@
++"""HC-08 faults/races on a dedicated, opt-in, disposable PostgreSQL only."""
++from contextlib import contextmanager
++import os
++from pathlib import Path
++import re
++import threading
++import unittest
++from urllib.parse import urlparse, urlunparse
++
++from scheduler_audit import SchedulerAudit, scheduler_audit_transaction
++from tests import test_scheduler_service as fixtures
++
++
++class ProcessCrash(BaseException):
++    pass
++
++
++@unittest.skipUnless(os.environ.get('HC08_TEST_POSTGRES') == '1', 'requires isolated HC-08 PostgreSQL')
++class SchedulerAuditPostgresTest(unittest.TestCase):
++    def setUp(self):
++        from database_service import DatabaseService
++        from psycopg.rows import dict_row
++        url = os.environ['HC08_TEST_DATABASE_URL']
++        parsed = urlparse(url)
++        if parsed.hostname != '127.0.0.1' or parsed.path != '/hc08_audit_test':
++            raise AssertionError('HC-08 tests require the dedicated isolated database')
++        self.admin = DatabaseService(url)
++        source = (Path(__file__).resolve().parents[2] / 'db/003_hc_v2_core.sql').read_text()
++        scheduler = (Path(__file__).resolve().parents[2] / 'db/059_hc07_startup_schema.sql').read_text()
++        ddl = '\n'.join(re.search(r'create table if not exists hc\.' + table + r' \(.*?\n\);', scheduler, re.S).group()
++                        for table in ('scheduler_config', 'scheduler_job', 'scheduler_run'))
++        self.admin.execute_sql('create schema if not exists hc; create table if not exists hc.entity(id bigint primary key);')
++        self.admin.execute_sql(source)
++        self.admin.execute_sql(ddl + '''
++            alter table hc.scheduler_run add column if not exists idempotency_key text;
++            create unique index if not exists ux_scheduler_run_idempotency on hc.scheduler_run(idempotency_key) where idempotency_key is not null;
++            DO $$ BEGIN IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='hc_app') THEN
++                CREATE ROLE hc_app LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
++            END IF; END $$;
++            grant connect on database hc08_audit_test to hc_app;
++            grant usage on schema hc to hc_app;
++            grant select,insert,update,delete on all tables in schema hc to hc_app;
++            grant usage on all sequences in schema hc to hc_app;
++        ''')
++        self.clear()
++        app_url = urlunparse(parsed._replace(netloc='hc_app@127.0.0.1' + (':' + str(parsed.port) if parsed.port else '')))
++        self.db = DatabaseService(app_url, expected_role='hc_app')
++        self.connect = lambda: self.db.conn(dict_row)
++        self.published = []
++        self.fans = []
++        self.service = self.make_service()
++        self.audit = SchedulerAudit(self.service)
++
++    def clear(self):
++        self.admin.execute_sql('truncate hc.event,hc.plan,hc.execution,hc.scheduler_run,hc.scheduler_config restart identity cascade; insert into hc.scheduler_config(id,mode) values(1,\'v2_execute_climate\');')
++
++    def make_service(self, **overrides):
++        values = dict(fetch_one=self.db.fetch_one, fetch_all=self.db.fetch_all,
++                      execute_one=self.db.execute_one,
++                      audit_transaction=lambda: scheduler_audit_transaction(self.connect),
++                      climate_command_topic='test/climate/command',
++                      climate_state_payload=lambda: {'power': 'off'},
++                      publish_mqtt=lambda topic, command: self.published.append((topic, command)) or (True, 'fake publisher'),
++                      sync_auto_climate_power_wall=lambda value: self.fans.append(value) or [{'power': value}])
++        values.update(overrides)
++        return fixtures.SchedulerServiceTest().service(**values)
++
++    def event(self, domain='climate', action=None, suffix='one'):
++        action = action or {'climate': 'climate_set', 'irrigation': 'water_start', 'xiaomi_x10': 'clean_start'}[domain]
++        return dict(key='shadow:' + domain + ':fixture:' + suffix, domain=domain, action=action,
++                    status='shadow_would_set', payload={'source_ref': 'rule-one', 'power': 'on',
++                    'climate_mode': 'heat', 'target_temperature': 24, 'duration_minutes': 5, 'extra_fan': 'off'})
++
++    def counts(self):
++        return [self.admin.fetch_one('select count(*) as n from hc.' + name)['n'] for name in ['scheduler_run', 'event', 'plan', 'execution']]
++
++    def execution(self):
++        return self.admin.fetch_one('select * from hc.execution order by created_at limit 1')
++
++    @contextmanager
++    def fault_transaction(self, stage, *, before=False, after_commit=False):
++        with scheduler_audit_transaction(self.connect) as real:
++            class FaultQueries:
++                def invoke(inner, method, query, params=()):
++                    matches = stage in query.lower()
++                    if matches and before:
++                        raise ProcessCrash(stage)
++                    result = getattr(real, method)(query, params)
++                    if matches and not after_commit:
++                        raise ProcessCrash(stage)
++                    return result
++                def fetch_one(inner, query, params=()): return inner.invoke('fetch_one', query, params)
++                def fetch_all(inner, query, params=()): return inner.invoke('fetch_all', query, params)
++                def execute_one(inner, query, params=()): return inner.invoke('execute_one', query, params)
++            yield FaultQueries()
++        if after_commit:
++            raise ProcessCrash('commit acknowledgement lost')
++
++    def parallel(self, *callbacks):
++        gate = threading.Barrier(len(callbacks), timeout=10)
++        results, errors = [], []
++        def work(callback):
++            try:
++                gate.wait()
++                results.append(callback())
++            except BaseException as exc: errors.append(exc)
++        threads = [threading.Thread(target=work, args=(callback,)) for callback in callbacks]
++        for t in threads:t.start()
++        for t in threads:
++            t.join(15)
++            self.assertFalse(t.is_alive(), 'scheduler DB worker hung')
++        self.assertEqual(errors, [])
++        return results
++
++    def test_failure_after_every_insert_rolls_back_whole_chain_all_domains(self):
++        for domain, action in [('climate','climate_set'),('irrigation','water_start'),('irrigation','water_stop'),('xiaomi_x10','clean_start')]:
++            for stage in ['scheduler_run','event','plan','execution']:
++                with self.subTest(domain=domain, action=action, stage=stage):
++                    self.clear()
++                    service = self.make_service(audit_transaction=lambda: self.fault_transaction('insert into hc.' + stage))
++                    with self.assertRaises(ProcessCrash):SchedulerAudit(service).prepare(self.event(domain, action))
++                    self.assertEqual(self.counts(), [0,0,0,0])
++                    self.assertTrue(self.audit.prepare(self.event(domain, action))['created'])
++                    self.assertEqual(self.counts(), [1,1,1,1])
++                    self.assertEqual(self.published, [])
++                    self.assertEqual(self.fans, [])
++
++    def test_independent_connections_prepare_one_chain(self):
++        other = SchedulerAudit(self.make_service())
++        result = self.parallel(lambda: self.audit.prepare(self.event()), lambda: other.prepare(self.event()))
++        self.assertEqual(sorted(row['created'] for row in result), [False,True])
++        self.assertEqual(self.counts(), [1,1,1,1])
++
++    def test_independent_dispatchers_publish_only_once(self):
++        row = self.audit.prepare(self.event())['execution']
++        other = SchedulerAudit(self.make_service())
++        result = self.parallel(lambda: self.audit.dispatch(row['id']), lambda: other.dispatch(row['id']))
++        self.assertEqual(sum(x is not None for x in result), 1)
++        self.assertEqual(len(self.published), 1)
++        self.assertEqual(self.execution()['attempt'], 1)
++
++    def test_legacy_partial_chains_recover_after_due_time_without_replay(self):
++        for domain in ['climate','irrigation','xiaomi_x10']:
++            for depth in [1,2,3]:
++                with self.subTest(domain=domain, depth=depth):
++                    self.clear()
++                    event = self.event(domain)
++                    run = self.service.insert_run_once(event['key'],domain,event['action'],event['status'],event['payload'])
++                    self.admin.execute_sql("update hc.scheduler_run set requested_at=now()-interval '2 days'")
++                    payload = {**event['payload'], 'scheduler_run_id':run['id']}
++                    if depth>=2:
++                        fact = self.service.insert_v2_event_once('v2:'+event['key'],domain,event['action'],event['status'],payload)
++                    if depth>=3:
++                        builder = {'climate':self.service.insert_v2_climate_plan_once,'irrigation':self.service.insert_v2_irrigation_plan_once,'xiaomi_x10':self.service.insert_v2_x10_plan_once}[domain]
++                        builder(fact,event['action'],payload)
++                    self.service.shadow_audit_events = lambda: []
++                    self.assertEqual(self.service.record_shadow_audit(), 0)
++                    self.assertEqual(self.counts(), [1,1,1,1])
++                    self.service.climate_scheduler_tick()
++                    row=self.execution()
++                    self.assertEqual(row['status'],'unknown')
++                    self.assertTrue(row['result']['delivery_uncertain'])
++                    self.assertIsNone(row['result']['publish_attempted'])
++                    self.assertEqual(row['created_at'],self.admin.fetch_one('select requested_at from hc.scheduler_run')['requested_at'])
++                    self.assertEqual(self.published, [])
++                    self.assertEqual(self.fans, [])
++
++    def test_legacy_completed_execution_is_never_overwritten(self):
++        row=self.audit.prepare(self.event())['execution']
++        self.admin.execute_sql("update hc.scheduler_run set payload=payload-'_audit_protocol'; update hc.execution set status='confirmed',result='{\"old\":true}'")
++        self.audit.prepare(self.event())
++        self.service.climate_scheduler_tick()
++        self.assertEqual(self.execution()['result'], {'old':True})
++        self.assertEqual(self.execution()['status'],'confirmed')
++        self.assertEqual(self.published, [])
++
++    def test_historical_x10_recovery_cannot_be_marked_as_new_weekly_execution(self):
++        event=self.event('xiaomi_x10')
++        self.service.insert_run_once(event['key'],event['domain'],event['action'],event['status'],event['payload'])
++        self.admin.execute_sql("update hc.scheduler_run set requested_at=now()-interval '4 months'")
++        self.audit.recover()
++        self.service.mark_v2_x10_executions('confirmed',{'weekly':'current'})
++        self.assertEqual(self.execution()['status'],'unknown')
++        self.assertTrue(self.execution()['result']['audit_recovered'])
++        self.assertEqual(self.published,[])
++
++    def test_repeat_uses_original_payload_and_cannot_change_intent(self):
++        self.audit.prepare(self.event())
++        changed=self.event();changed['payload']['target_temperature']=16
++        self.assertFalse(self.audit.prepare(changed)['created'])
++        self.assertEqual(self.execution()['command_payload']['target_temperature'],24)
++
++    def test_pending_committed_chain_survives_restart_and_dispatches_once(self):
++        service=self.make_service(audit_transaction=lambda:self.fault_transaction('never match',after_commit=True))
++        with self.assertRaises(ProcessCrash):SchedulerAudit(service).prepare(self.event())
++        self.assertEqual(self.counts(),[1,1,1,1])
++        restarted=self.make_service()
++        restarted.shadow_audit_events=lambda:[]
++        restarted.record_shadow_audit()
++        restarted.climate_scheduler_tick();restarted.climate_scheduler_tick()
++        row=self.execution()
++        self.assertEqual(row['status'],'sent')
++        self.assertFalse(row['result']['physical_confirmation'])
++        self.assertEqual(row['confirmation'],{})
++        self.assertEqual(len(self.published),1)
++
++    def test_claim_commit_reply_lost_never_authorizes_publish(self):
++        row=self.audit.prepare(self.event())['execution']
++        service=self.make_service(audit_transaction=lambda:self.fault_transaction('never match',after_commit=True))
++        with self.assertRaises(ProcessCrash):SchedulerAudit(service).dispatch(row['id'])
++        self.service.climate_scheduler_tick()
++        self.assertEqual(self.execution()['status'],'unknown')
++        self.assertEqual(self.published,[])
++
++    def test_crash_after_claim_before_publish_is_not_replayed(self):
++        row=self.audit.prepare(self.event())['execution']
++        claim=self.audit.claim_climate(row['id'])
++        self.assertEqual(claim['status'],'unknown')
++        self.make_service().climate_scheduler_tick()
++        self.assertEqual(self.published,[])
++
++    def test_crash_after_publish_before_result_is_not_replayed(self):
++        row=self.audit.prepare(self.event())['execution']
++        def publish(topic,payload):
++            self.published.append((topic,payload));raise ProcessCrash('reply lost')
++        with self.assertRaises(ProcessCrash):SchedulerAudit(self.make_service(publish_mqtt=publish)).dispatch(row['id'])
++        self.make_service().climate_scheduler_tick()
++        self.assertEqual(len(self.published),1)
++        self.assertEqual(self.execution()['status'],'unknown')
++
++    def test_publisher_timeout_and_false_result_remain_unknown(self):
++        for kind in ['timeout','false']:
++            with self.subTest(kind=kind):
++                self.clear();self.published.clear()
++                row=self.audit.prepare(self.event())['execution']
++                def publish(topic,payload):
++                    self.published.append((topic,payload))
++                    if kind=='timeout':raise TimeoutError('lost acknowledgement')
++                    return False,'transport outcome uncertain'
++                SchedulerAudit(self.make_service(publish_mqtt=publish)).dispatch(row['id'])
++                self.service.climate_scheduler_tick()
++                self.assertEqual(self.execution()['status'],'unknown')
++                self.assertEqual(len(self.published),1)
++
++    def test_result_write_failure_cannot_trigger_second_publish(self):
++        row=self.audit.prepare(self.event())['execution']
++        service=self.make_service(audit_transaction=lambda:self.fault_transaction('error=%s',before=True))
++        with self.assertRaises(ProcessCrash):SchedulerAudit(service).dispatch(row['id'])
++        self.service.climate_scheduler_tick()
++        self.assertEqual(self.execution()['status'],'unknown')
++        self.assertEqual(len(self.published),1)
++
++    def test_secondary_power_action_failure_is_uncertain_and_not_replayed(self):
++        row=self.audit.prepare(self.event())['execution']
++        def fan(value):raise TimeoutError('power wall reply lost')
++        SchedulerAudit(self.make_service(sync_auto_climate_power_wall=fan)).dispatch(row['id'])
++        self.service.climate_scheduler_tick()
++        self.assertTrue(self.execution()['result']['delivery_uncertain'])
++        self.assertTrue(self.execution()['result']['published'])
++        self.assertEqual(len(self.published),1)
++
++    def test_publisher_observes_committed_claim_outside_any_preparation_transaction(self):
++        row=self.audit.prepare(self.event())['execution']
++        def publish(topic,payload):
++            observed=self.admin.fetch_one('select status,attempt from hc.execution where id=%s',(row['id'],))
++            self.assertEqual(observed,{'status':'unknown','attempt':1})
++            self.assertEqual(self.counts(),[1,1,1,1])
++            self.published.append((topic,payload));return True,'fake'
++        SchedulerAudit(self.make_service(publish_mqtt=publish)).dispatch(row['id'])
++        self.assertEqual(len(self.published),1)
++
++    def test_expired_intent_is_blocked_instead_of_late_restart_publish(self):
++        self.audit.prepare(self.event())
++        self.admin.execute_sql("update hc.scheduler_run set requested_at=now()-interval '2 minutes'")
++        self.service.climate_scheduler_tick()
++        self.assertEqual(self.execution()['status'],'blocked')
++        self.assertEqual(self.execution()['attempt'],0)
++        self.assertEqual(self.published,[])
++
++    def test_domain_and_global_flags_rechecked_at_dispatch(self):
++        for mode,global_flag,domain_flag in [('v2_execute_irrigation',True,True),('v2_execute_climate',False,True),('v2_execute_climate',True,False)]:
++            with self.subTest(mode=mode,global_flag=global_flag,domain_flag=domain_flag):
++                self.clear();self.audit.prepare(self.event())
++                self.admin.execute_sql('update hc.scheduler_config set mode=%s',(mode,))
++                self.make_service(v2_execution_enabled=global_flag,v2_allow_climate=domain_flag).climate_scheduler_tick()
++                self.assertEqual(self.execution()['status'],'blocked')
++                self.assertEqual(self.published,[])
++
++    def test_disabled_engine_prepares_shadow_only(self):
++        for flags in [dict(v2_execution_enabled=False),dict(v2_allow_climate=False)]:
++            with self.subTest(flags=flags):
++                self.clear();SchedulerAudit(self.make_service(**flags)).prepare(self.event())
++                self.service.climate_scheduler_tick()
++                self.assertEqual(self.execution()['status'],'shadow_ready')
++                self.assertEqual(self.published,[])
++
++    def test_duplicate_historical_plan_requires_reconciliation(self):
++        self.audit.prepare(self.event())
++        self.admin.execute_sql("insert into hc.plan(event_id,domain,type) select event_id,domain,type from hc.plan limit 1")
++        with self.assertRaisesRegex(RuntimeError,'Duplicate'):self.audit.prepare(self.event())
++        self.assertEqual(self.published,[])
++
++    def test_daily_and_dst_repeated_local_minute_deduplication(self):
++        job={'domain':'climate','source':'fixture','source_ref':'rule','is_enabled':True,'day_of_week':6,'start_time':'02:30','payload':{'power':'on'}}
++        clock={'today':'2026-10-25','day_of_week':6,'local_minute':'02:30'}
++        first=self.service.shadow_audit_events(clock=clock,jobs=[job])[0]
++        repeated=self.service.shadow_audit_events(clock=clock,jobs=[job])[0]
++        self.assertTrue(self.audit.prepare(first)['created']);self.assertFalse(self.audit.prepare(repeated)['created'])
++        next_day=self.service.shadow_audit_events(clock={**clock,'today':'2026-11-01'},jobs=[job])[0]
++        self.assertTrue(self.audit.prepare(next_day)['created'])
++        self.assertEqual(self.counts(),[2,2,2,2])
++
++    def test_missing_table_rolls_back_run_reservation(self):
++        self.admin.execute_sql('alter table hc.execution rename to unavailable_execution')
++        try:
++            with self.assertRaises(Exception):self.audit.prepare(self.event())
++        finally:self.admin.execute_sql('alter table hc.unavailable_execution rename to execution')
++        self.assertEqual(self.counts(),[0,0,0,0])
++
++    def test_transaction_adapter_is_required(self):
++        with self.assertRaisesRegex(RuntimeError,'transaction adapter'):
++            SchedulerAudit(self.make_service(audit_transaction=None)).prepare(self.event())
++        self.assertEqual(self.counts(),[0,0,0,0])
++
++    def test_diagnostic_snapshot_does_not_hold_audit_transaction(self):
++        reads=[]
++        def snapshot():
++            count=self.admin.fetch_one("select count(*) as n from pg_stat_activity where datname=current_database() and usename='hc_app' and state='idle in transaction'")['n']
++            self.assertEqual(count,0)
++            reads.append(True)
++            return {'power':'off'}
++        audit=SchedulerAudit(self.make_service(climate_state_payload=snapshot))
++        audit.prepare(self.event());audit.prepare(self.event())
++        self.assertEqual(reads,[True])
++
++    def test_claim_update_failure_rolls_back_without_publishing(self):
++        row=self.audit.prepare(self.event())['execution']
++        audit=SchedulerAudit(self.make_service(audit_transaction=lambda:self.fault_transaction("status='unknown'")))
++        with self.assertRaises(ProcessCrash):audit.dispatch(row['id'])
++        self.assertEqual(self.execution()['status'],'pending')
++        self.assertEqual(self.published,[])
++        self.service.climate_scheduler_tick()
++        self.assertEqual(len(self.published),1)
++
++    def test_result_commit_reply_loss_keeps_final_record_without_replay(self):
++        row=self.audit.prepare(self.event())['execution']
++        counter=[]
++        @contextmanager
++        def transaction():
++            with scheduler_audit_transaction(self.connect) as q:yield q
++            counter.append(True)
++            if len(counter)==2:raise ProcessCrash('final commit reply lost')
++        audit=SchedulerAudit(self.make_service(audit_transaction=transaction))
++        with self.assertRaises(ProcessCrash):audit.dispatch(row['id'])
++        self.service.climate_scheduler_tick()
++        self.assertEqual(self.execution()['status'],'sent')
++        self.assertEqual(len(self.published),1)
++
++
++if __name__=='__main__':unittest.main()

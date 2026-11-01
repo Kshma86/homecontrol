@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from mqtt_credentials import configure_mqtt_auth
+from worker_health import WorkerHealth
 
 import json
 import os
@@ -115,6 +117,8 @@ def main():
         raise SystemExit("HA_TOKEN is required. Create a Home Assistant long-lived access token and set HA_GROWATT_TOKEN in infra/.env.")
 
     entity_map = load_entity_map()
+    health = WorkerHealth(maximum=max(POLL_SECONDS * 3,
+        (REQUEST_TIMEOUT_SECONDS + 1) * len(entity_map) * 3, 120))
     session = requests.Session()
     session.headers.update({
         "Authorization": f"Bearer {HA_TOKEN}",
@@ -122,9 +126,14 @@ def main():
     })
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=MQTT_CLIENT_ID)
-    client.connect(MQTT_HOST, MQTT_PORT, keepalive=30)
+    configure_mqtt_auth(client)
+    def on_connect(client, userdata, flags, reason_code, properties):
+        if not reason_code.is_failure:
+            client.publish(f"{BASE_TOPIC}/availability", "online", qos=MQTT_QOS, retain=True)
+    client.on_connect = on_connect
+    client.connect_async(MQTT_HOST, MQTT_PORT, keepalive=30)
     client.loop_start()
-    client.publish(f"{BASE_TOPIC}/availability", "online", qos=MQTT_QOS, retain=True)
+    health.start(lambda: {'connected': client.is_connected()})
 
     print(f"[RUN] HA Growatt poller started: ha={HA_BASE_URL} mqtt={MQTT_HOST}:{MQTT_PORT} topic={BASE_TOPIC}")
     try:
@@ -162,12 +171,14 @@ def main():
             payload["meta"] = meta
             publish_json(client, BASE_TOPIC, payload, retain=MQTT_RETAIN)
             print(f"[MQTT] published {ok_count}/{len(entity_map)} Growatt states")
+            health.progress(success=ok_count > 0)
 
             sleep_for = max(1.0, POLL_SECONDS - (time.time() - started))
             end_at = time.time() + sleep_for
             while running and time.time() < end_at:
                 time.sleep(min(1.0, end_at - time.time()))
     finally:
+        health.close()
         try:
             client.publish(f"{BASE_TOPIC}/availability", "offline", qos=MQTT_QOS, retain=True)
             client.loop_stop()

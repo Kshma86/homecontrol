@@ -1,0 +1,159 @@
+{
+  "date": "2026-10-30",
+  "finding": "HC-41",
+  "status": "in_progress_not_deployed",
+  "deployed": false,
+  "authorization": "Prepare HC server clients and dev-PC dashboard authentication; keep restricted temporary irrigation ESP exception",
+  "user_esp_ip": "192.168.1.179",
+  "esp_identity_and_dhcp_confirmed": false,
+  "observed_external_mqtt_sources": [
+    "192.168.1.179",
+    "192.168.1.89"
+  ],
+  "dashboard_client_observed": "irrigation-dashboard-lite-local-web",
+  "dashboard_own_credentials_authorized": true,
+  "unit": {
+    "tests": 422,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "failed_ids": [],
+    "modules": [
+      "mqtt_credentials",
+      "host_operations",
+      "process_binding_service",
+      "read_runtime_repair",
+      "ai_proxy_service",
+      "ai_images",
+      "ai_node_power",
+      "read_model_cache",
+      "context_service_contract",
+      "command_service",
+      "api_route_modules",
+      "robot_service",
+      "scheduler_feedback",
+      "scheduler_bridge_samples",
+      "scheduler_service",
+      "startup_service",
+      "admin_bootstrap",
+      "schema_service",
+      "irrigation_service",
+      "irrigation_admission",
+      "irrigation_recovery",
+      "irrigation_stop_priority",
+      "climate_window_guard",
+      "power_wall_service",
+      "mqtt_monitor_service",
+      "deployment_policy",
+      "combustion_safety_service",
+      "combustion_safety_state",
+      "combustion_safety_delivery",
+      "combustion_opening_events"
+    ]
+  },
+  "broker": {
+    "passed": [
+      "all_10_role_credentials_accepted",
+      "anonymous_and_wrong_password_rejected_on_1884",
+      "legacy_esp_telemetry_visible_to_authenticated_backend",
+      "authenticated_backend_stop_reaches_legacy_esp",
+      "legacy_ack_visible",
+      "legacy_foreign_topics_and_command_publish_denied",
+      "legacy_cannot_read_other_domains",
+      "ingest_retained_read_and_write_denial",
+      "bridge_domain_writes_and_cross_domain_denials",
+      "tuya_x10_climate_commands_delivered",
+      "optional_dashboard_irrigation_scope_only",
+      "real_backend_monitor_and_postboot_probe_authenticate",
+      "authenticated_lwt_published",
+      "legacy_reconnect_preserves_route"
+    ],
+    "checks": 14,
+    "production_messages": 0,
+    "network": "none; shared laboratory namespace",
+    "network_ip_filter_tested": false,
+    "physical_devices_tested": false
+  },
+  "compose": {
+    "valid": true,
+    "python_clients": 6,
+    "zigbee_environment_override": true,
+    "authenticated_host_port_loopback_only": true,
+    "applied": false,
+    "uses_worktree_only_for_parser_validation": true
+  },
+  "production": {
+    "checked_at": "2026-10-30T16:37:26.982652+00:00",
+    "deployed": false,
+    "protected_host_count": 37,
+    "changed_protected_host_files": [],
+    "active_override": "/srv/docker/homecontrol/backups/releases/hc-ingest-20261028-r9/release.override.json",
+    "active_override_is_r9": true,
+    "audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+    "audit_unchanged": true,
+    "safety_sha256": "7334974829abd6c9497b6bda41190c25967751e2490b6e6824ba0fe28183a2c6",
+    "safety_unchanged": true,
+    "backend_mounts_unchanged": true,
+    "mqtt_bindings_unchanged": true,
+    "mqtt_config_sha256": "a63e791bce2e3d44f6ea2d296786ee4574c3135619a03d9f0295efc97618326b",
+    "mqtt_config_unchanged": true,
+    "container_changes_since_20261029": [
+      {
+        "name": "/homecontrol-xiaomi-x10",
+        "before": {
+          "Name": "/homecontrol-xiaomi-x10",
+          "Id": "07f3ee1efeae52ddfe10b9fe7d8a2cc0ee147cd3f445f024931b3df73cf30975",
+          "Image": "sha256:60d86722bd277ceb9591092e06777c441148f6475769a599d275cde076206a26",
+          "StartedAt": "2026-10-29T13:31:57.988952626Z",
+          "RestartCount": 6
+        },
+        "after": {
+          "Name": "/homecontrol-xiaomi-x10",
+          "Id": "07f3ee1efeae52ddfe10b9fe7d8a2cc0ee147cd3f445f024931b3df73cf30975",
+          "Image": "sha256:60d86722bd277ceb9591092e06777c441148f6475769a599d275cde076206a26",
+          "StartedAt": "2026-10-30T13:20:29.227169366Z",
+          "RestartCount": 10
+        }
+      }
+    ],
+    "changes_are_not_deployment_actions": true,
+    "containers_count": 15,
+    "same_container_ids_and_images": true,
+    "runtime_changes_since_yesterday": [
+      "/homecontrol-xiaomi-x10"
+    ],
+    "x10_unchanged_since_this_phase_started": true,
+    "remaining_laboratory_containers": []
+  },
+  "test_broker_image": "sha256:077fe4ff4c49df1e860c98335c77dda08360629e0e2a718147027e4db3eace9d",
+  "source_sha256": {
+    "apps/gree-climate/gree_climate_bridge.py": "45745468d1f5db34ccad371ea2b11276dad574c1707d9d71b66d680b4af5e41f",
+    "apps/ha-growatt-poller/ha_growatt_poller.py": "db6e752c814aad3f5826cdbf0a9ce4638ff2fce037ead1cb9434ea6a7c5b22cf",
+    "apps/hc_ingest/Dockerfile": "71d2ff472e8ee30708aa25ff517fb0bec95279d3a2fee9d53f6db074aad3e95e",
+    "apps/hc_ingest/mqtt_ingest_multi.py": "d9ff1e030bb088751eab5e75ede24374adbba5a6a01d1312fdd6b27b9e1332af",
+    "apps/tuya-poller/tuya_poller.py": "8efa7c8dfc6fb6348013ca02464ec92cec089b054a548fe51120f1489c70be30",
+    "apps/xiaomi-x10/xiaomi_x10_api.py": "3ff216a5768419d4d9f3b22e36abffc04930b71984e1f53b56abec6c3a143b4b",
+    "apps/xiaomi-x10/xiaomi_x10_bridge.py": "74ec08794788feb296d9b310ee967edcad8df945e59ca5710c9f2f9e55b455da",
+    "infra/backend/mqtt_monitor_service.py": "cf7bce1657e5d64680dd42b241846b88376e6c1e6c0b94045fc3b53a0ba2a812",
+    "infra/backend/mqtt_credentials.py": "7f9ac677e786b6e223b970c3e59997c9bc76368139dfa5ee04ca8e4529e179c2",
+    "infra/backend/mqtt_read_probe.py": "458410609b11133d91b11f4a4518594f4942c06245edec0e5476df04eae33755",
+    "infra/backend/tests/test_mqtt_credentials.py": "e25f43242c2cb5c228120fe9671443fd455dfa496838f86d19767b7fca1d6621",
+    "scripts/prepare_mqtt_access.py": "cdc2bda9c5732c7b037f46e1adfe9f2c5097a1d7c8c12b9891e6e384081d9505",
+    "scripts/plan_mqtt_legacy.py": "1524db1dc2c637d034b2fd7cab7bb2653c69a053be652bd2a938a33e84b822f6",
+    "scripts/mqtt_access/post_boot_health.sh": "7414e51d4e2d567d04be5b5edfe25030fe6119c40bff6f4e1e5c64626e9b5a1d",
+    "apps/hc_ingest/mqtt_credentials.py": "7f9ac677e786b6e223b970c3e59997c9bc76368139dfa5ee04ca8e4529e179c2",
+    "apps/tuya-poller/mqtt_credentials.py": "7f9ac677e786b6e223b970c3e59997c9bc76368139dfa5ee04ca8e4529e179c2",
+    "apps/xiaomi-x10/mqtt_credentials.py": "7f9ac677e786b6e223b970c3e59997c9bc76368139dfa5ee04ca8e4529e179c2",
+    "apps/gree-climate/mqtt_credentials.py": "7f9ac677e786b6e223b970c3e59997c9bc76368139dfa5ee04ca8e4529e179c2",
+    "apps/ha-growatt-poller/mqtt_credentials.py": "7f9ac677e786b6e223b970c3e59997c9bc76368139dfa5ee04ca8e4529e179c2"
+  },
+  "limitations": [
+    "No host firewall rules applied/tested",
+    "No full candidate release images or live client handover",
+    "No ESP firmware or physical STOP/ack test",
+    "Dashboard PC configuration and SSH tunnel not changed/tested",
+    "Production credential ownership and encrypted backup/restore handover still required"
+  ],
+  "credentials_in_public_evidence": false,
+  "other_audit_findings_fixed": false
+}

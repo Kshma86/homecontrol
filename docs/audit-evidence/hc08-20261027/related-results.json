@@ -1,0 +1,28 @@
+{
+  "tests": 282,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "failed_ids": [],
+  "modules": [
+    "scheduler_audit_postgres",
+    "scheduler_service",
+    "startup_service",
+    "admin_bootstrap",
+    "schema_service",
+    "irrigation_service",
+    "irrigation_admission",
+    "irrigation_admission_postgres",
+    "irrigation_recovery",
+    "irrigation_recovery_postgres",
+    "irrigation_stop_priority",
+    "climate_window_guard",
+    "power_wall_service",
+    "mqtt_monitor_service",
+    "deployment_policy",
+    "combustion_safety_service",
+    "combustion_safety_state",
+    "combustion_safety_delivery",
+    "combustion_opening_events"
+  ]
+}

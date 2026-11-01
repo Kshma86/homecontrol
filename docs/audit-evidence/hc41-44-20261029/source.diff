@@ -1,0 +1,1366 @@
+--- a/infra/backend/Dockerfile
++++ b/infra/backend/Dockerfile
+@@ -12,6 +12,12 @@
+ COPY *.py /app/
+ COPY static /app/static
+ 
++RUN groupadd --gid 10001 homecontrol \
++    && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /tmp homecontrol
++
++USER 10001:10001
++ENV PYTHONDONTWRITEBYTECODE=1 HOME=/tmp
++
+ EXPOSE 5000
+ ENV PYTHONUNBUFFERED=1
+ 
+--- a/infra/backend/api_route_modules.py
++++ b/infra/backend/api_route_modules.py
+@@ -233,21 +233,12 @@
+         service.clear_knowledge_cache()
+         service.clear_status_cache()
+         try:
+-            docker_socket_request("POST", "/containers/homecontrol-ai-server/restart?t=10", timeout=20)
++            response, _ = docker_socket_request("POST", "/containers/homecontrol-ai-server/restart?t=10", timeout=20)
+         except RuntimeError as exc:
+             return jsonify({"ok": False, "cache_cleared": True, "error": f"AI gateway restart failed: {exc}"}), 502
+ 
+-        checks = []
+-        for delay in (0.8, 1.5, 2.5, 4.0):
+-            time.sleep(delay)
+-            payload, status = service.status(force=True)
+-            checks.append({"status": status, "ready": bool(payload.get("ready")), "ok": bool(payload.get("ok") or payload.get("gateway_ok"))})
+-            if status < 400 and payload.get("ready"):
+-                payload["ok"] = True
+-                payload["cache_cleared"] = True
+-                payload["restart_requested"] = True
+-                return jsonify(payload), 200
+-        return jsonify({"ok": True, "cache_cleared": True, "restart_requested": True, "ready": False, "checks": checks}), 202
++        receipt = json.loads(response)
++        return jsonify({"ok": True, "cache_cleared": True, "ready": False, **receipt}), 202
+ 
+     @app.get("/api/ai/node/status")
+     def ai_node_status():
+@@ -851,22 +842,24 @@
+         if not container_name:
+             return jsonify({"ok": False, "error": "container is not allowed"}), 404
+ 
+-        if container_key == "backend":
+-            def delayed_restart():
+-                time.sleep(0.4)
+-                try:
+-                    docker_socket_request("POST", f"/containers/{container_name}/restart?t=10", timeout=20)
+-                except RuntimeError:
+-                    pass
+-
+-            threading.Thread(target=delayed_restart, daemon=True).start()
+-            return jsonify({"ok": True, "container": container_name, "restart_requested": True})
+-
+-        try:
+-            docker_socket_request("POST", f"/containers/{container_name}/restart?t=10", timeout=20)
++        try:
++            response, _ = docker_socket_request("POST", f"/containers/{container_name}/restart?t=10", timeout=20)
++            receipt = json.loads(response)
++        except (RuntimeError, TimeoutError) as exc:
++            return jsonify({"ok": False, "error": str(exc), "container": container_name}), 502
++        return jsonify({"ok": True, "container": container_name, **receipt}), 202
++
++
++    @app.get("/api/admin/host-jobs/<job_id>")
++    def host_operation_job(job_id):
++        from host_operations_client import HostOperationsClient
++        try:
++            job = HostOperationsClient().call('job', job_id=job_id, timeout=3)
++        except ValueError as exc:
++            return jsonify({"ok": False, "error": str(exc)}), 404
+         except RuntimeError as exc:
+-            return jsonify({"ok": False, "error": str(exc), "container": container_name}), 502
+-        return jsonify({"ok": True, "container": container_name, "restart_requested": True})
++            return jsonify({"ok": False, "error": str(exc)}), 503
++        return jsonify({"ok": True, "job": job})
+ 
+     @app.get("/api/process-bindings")
+     def process_bindings():
+--- a/infra/backend/app.py
++++ b/infra/backend/app.py
+@@ -30,10 +30,10 @@
+ )
+ from ai_chat_audit_service import AiChatAuditService
+ from ai_node_service import AiNodeService
+-from ai_power_coordination import AiPowerCoordinator
++from scoped_ai_power_coordination import ScopedAiPowerCoordinator as AiPowerCoordinator
+ from deployment_policy import install_routes as install_deployment_policy
+ from ai_proxy_service import AiProxyService
+-from backup_service import BackupService
++from host_operations_client import HostBackupService, HostOperationsUnavailable
+ from climate_service import ClimateService
+ from climate_window_guard import ClimateWindowGuard
+ from combustion_safety_service import CombustionSafetyService
+@@ -101,6 +101,11 @@
+ STATIC_DIR = BASE_DIR / "static"
+ 
+ app = Flask(__name__)
++
++@app.errorhandler(HostOperationsUnavailable)
++def host_operation_unavailable(error):
++    return jsonify({"ok": False, "error": str(error), "code": "host_executor_unavailable"}), 503
++
+ install_deployment_policy(app)
+ sock = Sock(app)
+ 
+@@ -602,10 +607,7 @@
+ def get_backup_service():
+     global _backup_service
+     if _backup_service is None:
+-        _backup_service = BackupService(
+-            docker_socket_request=docker_socket_request,
+-            docker_exec_capture=docker_exec_capture,
+-        )
++        _backup_service = HostBackupService()
+     return _backup_service
+ 
+ 
+@@ -1035,6 +1037,7 @@
+                 invalidate_context_sections=invalidate_context_sections,
+                 process_binding_payload=lambda key: get_process_binding_service().binding(key, include_candidates=True),
+                 process_binding_entity_id=lambda key: get_process_binding_service().selected_entity_id(key),
++                coordinator=AiPowerCoordinator(get_backup_service().backup_root),
+             )
+         return _ai_node_service
+ 
+--- a/infra/backend/system_status_service.py
++++ b/infra/backend/system_status_service.py
+@@ -1,3 +1,4 @@
++from host_operations_client import HostOperationsClient, docker_capability_request
+ from worker_runtime import BoundedJobs, Busy
+ import concurrent.futures
+ import json
+@@ -846,9 +847,6 @@
+ 
+ 
+ def docker_socket_containers(timeout=4):
+-    socket_path = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
+-    if not Path(socket_path).exists():
+-        return None
+     body, _ = docker_socket_request('GET', '/containers/json?all=1', timeout=timeout)
+     containers = []
+     for item in json.loads(body.decode("utf-8")):
+@@ -900,27 +898,7 @@
+ 
+ 
+ def docker_container_live_stats(container_id: str, timeout=2.5) -> Dict[str, Any]:
+-    response, _ = docker_socket_request("GET", f"/containers/{container_id}/stats?stream=false", timeout=timeout)
+-    stats = json.loads(response.decode("utf-8"))
+-    memory_stats = stats.get("memory_stats") or {}
+-    memory_usage = memory_stats.get("usage")
+-    memory_limit = memory_stats.get("limit")
+-    memory_percent = None
+-    if isinstance(memory_usage, (int, float)) and isinstance(memory_limit, (int, float)) and memory_limit > 0:
+-        memory_percent = round((memory_usage / memory_limit) * 100, 2)
+-    net_rx, net_tx = docker_network_bytes(stats)
+-    block_read, block_write = docker_block_bytes(stats)
+-    return {
+-        "cpu_percent": docker_cpu_percent(stats),
+-        "memory_usage_bytes": memory_usage,
+-        "memory_limit_bytes": memory_limit,
+-        "memory_percent": memory_percent,
+-        "network_rx_bytes": net_rx,
+-        "network_tx_bytes": net_tx,
+-        "block_read_bytes": block_read,
+-        "block_write_bytes": block_write,
+-        "pids": (stats.get("pids_stats") or {}).get("current"),
+-    }
++    return HostOperationsClient().call('stats',container=container_id,timeout=timeout)
+ 
+ 
+ def docker_log_stream_text(raw: bytes) -> str:
+@@ -1015,79 +993,11 @@
+ 
+ 
+ def docker_socket_request(method: str, path: str, body: Optional[bytes] = None, content_type: str = "application/json", timeout: float = 30):
+-    socket_path = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
+-    if not Path(socket_path).exists():
+-        raise RuntimeError("docker socket is not available")
+-    deadline = time.monotonic() + max(.001, timeout)
+-    def remaining():
+-        value = deadline - time.monotonic()
+-        if value <= 0:
+-            raise TimeoutError("docker socket total deadline exceeded")
+-        return value
+-    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+-    try:
+-        client.settimeout(remaining())
+-        client.connect(socket_path)
+-        headers = [
+-            f"{method} {path} HTTP/1.1",
+-            "Host: docker",
+-            "Connection: close",
+-        ]
+-        if body is not None:
+-            headers.extend([f"Content-Type: {content_type}", f"Content-Length: {len(body)}"])
+-        request_bytes = ("\r\n".join(headers) + "\r\n\r\n").encode("utf-8") + (body or b"")
+-        client.settimeout(remaining())
+-        client.sendall(request_bytes)
+-        chunks = []
+-        while True:
+-            client.settimeout(remaining())
+-            chunk = client.recv(65536)
+-            if not chunk:
+-                break
+-            chunks.append(chunk)
+-    finally:
+-        client.close()
+-    raw = b"".join(chunks)
+-    header, _, response_body = raw.partition(b"\r\n\r\n")
+-    header_text = header.decode("utf-8", errors="replace")
+-    status_line = header_text.splitlines()[0] if header_text else ""
+-    if "transfer-encoding: chunked" in header_text.lower():
+-        response_body = decode_chunked_body(response_body)
+-    if not (" 200 " in status_line or " 201 " in status_line or " 204 " in status_line):
+-        raise RuntimeError(f"{status_line}: {response_body[:300].decode('utf-8', errors='replace')}")
+-    return response_body, header_text
++    return docker_capability_request(method,path,body,content_type,timeout)
+ 
+ 
+ def docker_exec_capture(container: str, command: Iterable[str]) -> bytes:
+-    payload = json.dumps(
+-        {
+-            "AttachStdout": True,
+-            "AttachStderr": True,
+-            "Tty": False,
+-            "Cmd": list(command),
+-        }
+-    ).encode("utf-8")
+-    response, _ = docker_socket_request("POST", f"/containers/{container}/exec", payload)
+-    exec_id = json.loads(response.decode("utf-8"))["Id"]
+-    stream, _ = docker_socket_request("POST", f"/exec/{exec_id}/start", b'{"Detach":false,"Tty":false}')
+-    stdout = bytearray()
+-    stderr = bytearray()
+-    index = 0
+-    while index + 8 <= len(stream):
+-        stream_type = stream[index]
+-        size = int.from_bytes(stream[index + 4 : index + 8], "big")
+-        index += 8
+-        payload = stream[index : index + size]
+-        index += size
+-        if stream_type == 1:
+-            stdout.extend(payload)
+-        elif stream_type == 2:
+-            stderr.extend(payload)
+-    inspect_body, _ = docker_socket_request("GET", f"/exec/{exec_id}/json")
+-    inspect = json.loads(inspect_body.decode("utf-8"))
+-    if inspect.get("ExitCode") not in (0, None):
+-        raise RuntimeError(stderr.decode("utf-8", errors="replace") or f"docker exec failed: {inspect.get('ExitCode')}")
+-    return bytes(stdout)
++    raise RuntimeError('General Docker exec is not available to the API')
+ 
+ 
+ def docker_container_status():
+@@ -1160,80 +1070,7 @@
+             DOCKER_STATUS_CACHE["expires_at"] = time.monotonic() + DOCKER_STATUS_CACHE_TTL
+         return result
+ 
+-    docker_bin = shutil.which("docker")
+-    if time.monotonic() >= deadline:
+-        return {"ok": False, "containers": [], "error": "docker status deadline exceeded"}
+-    if not docker_bin:
+-        return {"ok": False, "containers": [], "error": socket_error or "docker command is not available"}
+-    try:
+-        result = subprocess.run(
+-            [
+-                docker_bin,
+-                "ps",
+-                "-a",
+-                "--format",
+-                "{{json .}}",
+-            ],
+-            check=True,
+-            capture_output=True,
+-            text=True,
+-            timeout=max(.001, deadline-time.monotonic()),
+-        )
+-        containers = []
+-        for line in result.stdout.splitlines():
+-            if not line.strip():
+-                continue
+-            item = json.loads(line)
+-            containers.append(
+-                {
+-                    "id": item.get("ID"),
+-                    "name": item.get("Names"),
+-                    "image": item.get("Image"),
+-                    "state": item.get("State"),
+-                    "status": item.get("Status"),
+-                }
+-            )
+-        if time.monotonic() >= deadline:
+-            return {"ok": True, "containers": containers, "error": "docker stats deadline exceeded"}
+-        stats_result = subprocess.run(
+-            [
+-                docker_bin,
+-                "stats",
+-                "--no-stream",
+-                "--format",
+-                "{{json .}}",
+-            ],
+-            check=False,
+-            capture_output=True,
+-            text=True,
+-            timeout=max(.001, deadline-time.monotonic()),
+-        )
+-        stats_by_name = {}
+-        if stats_result.returncode == 0:
+-            for line in stats_result.stdout.splitlines():
+-                if not line.strip():
+-                    continue
+-                item = json.loads(line)
+-                name = item.get("Name")
+-                cpu_raw = str(item.get("CPUPerc") or "").rstrip("%")
+-                mem_raw = str(item.get("MemPerc") or "").rstrip("%")
+-                stats_by_name[name] = {
+-                    "cpu_percent": float(cpu_raw) if cpu_raw else None,
+-                    "memory_percent": float(mem_raw) if mem_raw else None,
+-                    "memory_usage": item.get("MemUsage"),
+-                    "network_io": item.get("NetIO"),
+-                    "block_io": item.get("BlockIO"),
+-                    "pids": item.get("PIDs"),
+-                }
+-        for container in containers:
+-            container.update(stats_by_name.get(container.get("name"), {}))
+-        result = {"ok": True, "containers": containers, "error": ""}
+-        with DOCKER_STATUS_CACHE_LOCK:
+-            DOCKER_STATUS_CACHE["data"] = result
+-            DOCKER_STATUS_CACHE["expires_at"] = time.monotonic() + DOCKER_STATUS_CACHE_TTL
+-        return result
+-    except Exception as exc:
+-        return {"ok": False, "containers": [], "error": socket_error or str(exc)}
++    return {"ok": False, "containers": [], "error": socket_error or "Host executor is unavailable"}
+ 
+ 
+ class SystemStatusService:
+--- a/infra/docker-compose.yml
++++ b/infra/docker-compose.yml
+@@ -141,6 +141,12 @@
+       dockerfile: Dockerfile
+     container_name: homecontrol-backend
+     restart: unless-stopped
++    user: "10001:10001"
++    read_only: true
++    cap_drop: [ALL]
++    security_opt: ["no-new-privileges:true"]
++    tmpfs:
++      - /tmp:rw,exec,nosuid,nodev,size=128m
+     depends_on:
+       pgbouncer:
+         condition: service_healthy
+@@ -205,18 +211,23 @@
+       HC_V2_EXECUTION_ALLOW_CLIMATE: ${HC_V2_EXECUTION_ALLOW_CLIMATE:-0}
+       HC_SCHEDULER_FEEDBACK_MAX_AGE_SECONDS: ${HC_SCHEDULER_FEEDBACK_MAX_AGE_SECONDS:-90}
+       HC_SCHEDULER_CONFIRMATION_TIMEOUT_SECONDS: ${HC_SCHEDULER_CONFIRMATION_TIMEOUT_SECONDS:-120}
+-      DOCKER_SOCKET: /var/run/docker.sock
+-    volumes:
+-      - /var/run/docker.sock:/var/run/docker.sock:ro
+-      - ../backups:/srv/docker/homecontrol/backups
+-      - ../restore_staging:/srv/docker/homecontrol/restore_staging
+-      - ../apps:/srv/docker/homecontrol/apps
++      HC_HOST_OPS_SOCKET: /run/hc-host-ops/operations.sock
++      HOME: /tmp
++    volumes:
++      - /run/homecontrol-hostops:/run/hc-host-ops:ro
++      - ../backups:/srv/docker/homecontrol/backups:ro
++      - ../restore_staging:/srv/docker/homecontrol/restore_staging:ro
++      - ../apps:/srv/docker/homecontrol/apps:ro
+       - ../docs:/srv/docker/homecontrol/docs:ro
+-      - .:/srv/docker/homecontrol/infra
+-      - ./zigbee2mqtt/data:/srv/docker/homecontrol/infra/zigbee2mqtt/data
++      - .:/srv/docker/homecontrol/infra:ro
++      - ./zigbee2mqtt/data:/srv/docker/homecontrol/infra/zigbee2mqtt/data:ro
+       - ./ssh:/srv/docker/homecontrol/infra/ssh:ro
+-      - ../homeassistant:/srv/docker/homecontrol/homeassistant
+-      - ../scripts:/srv/docker/homecontrol/scripts
++      - ../homeassistant:/srv/docker/homecontrol/homeassistant:ro
++      - ../scripts:/srv/docker/homecontrol/scripts:ro
++      - ../backups/ai-control:/srv/docker/homecontrol/backups/ai-control
++      - ../backups/homecontrol-backup.lock:/srv/docker/homecontrol/backups/homecontrol-backup.lock
++      - ../backups/ai-backup.lock:/srv/docker/homecontrol/backups/ai-backup.lock
++      - ./private:/srv/docker/homecontrol/infra/private
+     ports:
+       - "${BACKEND_PORT}:5000"
+     logging:
+--- a/infra/backend/tests/test_read_runtime_repair.py
++++ b/infra/backend/tests/test_read_runtime_repair.py
+@@ -43,7 +43,7 @@
+                 peer, _ = server.accept()
+                 try:
+                     peer.recv(4096)
+-                    peer.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
++                    peer.sendall(b'{"ok":true,"value":"')
+                     for _ in range(20):
+                         peer.sendall(b'x')
+                         time.sleep(.01)
+@@ -55,8 +55,8 @@
+             thread.start()
+             try:
+                 started = time.monotonic()
+-                with patch.dict('os.environ', {'DOCKER_SOCKET': path}), self.assertRaises(TimeoutError):
+-                    system.docker_socket_request('GET', '/', timeout=.05)
++                with patch.dict('os.environ', {'HC_HOST_OPS_SOCKET': path}), self.assertRaises(TimeoutError):
++                    system.docker_socket_request('GET', '/containers/json?all=1', timeout=.05)
+                 self.assertLess(time.monotonic()-started, .2)
+             finally:
+                 server.close()
+--- /dev/null
++++ b/infra/backend/host_operations_client.py
+@@ -0,0 +1,104 @@
++"""HC-44 fixed host capabilities. No Docker protocol or shell fallback."""
++import json
++import os
++from pathlib import Path
++import socket
++import time
++import uuid
++from urllib.parse import urlsplit, parse_qs
++
++REQUEST_LIMIT = 65536
++RESPONSE_LIMIT = 4 * 1024 * 1024
++OPERATIONS = frozenset(('containers', 'stats', 'logs', 'restart', 'version', 'images', 'backup', 'job'))
++
++
++class HostOperationsUnavailable(RuntimeError):
++    pass
++
++
++class HostOperationsClient:
++    def __init__(self, path=None):
++        self.path = str(path or os.getenv('HC_HOST_OPS_SOCKET', '/run/hc-host-ops/operations.sock'))
++
++    def call(self, operation, *, timeout=30, request_id=None, **args):
++        if operation not in OPERATIONS:
++            raise ValueError('Unsupported host operation')
++        request_id = request_id or uuid.uuid4().hex
++        body = json.dumps(dict(version=1, request_id=request_id, operation=operation, args=args)).encode()+b'\n'
++        if len(body)>REQUEST_LIMIT:raise ValueError('Host request too large')
++        deadline=time.monotonic()+max(.001,min(float(timeout),180))
++        def remaining():
++            value=deadline-time.monotonic()
++            if value<=0:raise TimeoutError('Host operation deadline; outcome may be unknown: '+request_id)
++            return value
++        client=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
++        try:
++            client.settimeout(remaining());client.connect(self.path)
++            client.settimeout(remaining());client.sendall(body)
++            raw=bytearray()
++            while not raw.endswith(b'\n'):
++                client.settimeout(remaining());part=client.recv(min(65536,RESPONSE_LIMIT+1-len(raw)))
++                if not part:raise HostOperationsUnavailable('Host reply incomplete: '+request_id)
++                raw.extend(part)
++                if len(raw)>RESPONSE_LIMIT:raise HostOperationsUnavailable('Host reply too large')
++            try:
++                result=json.loads(raw)
++                if type(result) is not dict or type(result.get('ok')) is not bool:raise ValueError('Invalid host reply')
++            except (ValueError,TypeError):
++                raise HostOperationsUnavailable('Host reply protocol error: '+request_id) from None
++            if result.get('request_id')!=request_id:raise HostOperationsUnavailable('Host reply identity mismatch')
++            if not result.get('ok'):
++                if result.get('kind')=='invalid':raise ValueError(result.get('error','Host request rejected'))
++                raise HostOperationsUnavailable(result.get('error','Host operation failed'))
++            return result['value']
++        except OSError as exc:
++            if isinstance(exc,TimeoutError):raise TimeoutError('Host operation deadline; query job '+request_id) from None
++            raise HostOperationsUnavailable('Host executor unavailable; no fallback: '+request_id) from None
++        finally:client.close()
++
++
++def docker_capability_request(method, path, body=None, content_type='application/json', timeout=30):
++    """Compatibility for the existing API; only named capabilities cross IPC."""
++    if body is not None:raise ValueError('Docker request bodies are not permitted')
++    client=HostOperationsClient()
++    parsed=urlsplit(path)
++    if parsed.scheme or parsed.netloc or parsed.fragment:raise ValueError('Unsupported Docker operation')
++    parts=parsed.path.strip('/').split('/')
++    if method=='GET' and path=='/containers/json?all=1':value=client.call('containers',timeout=timeout)
++    elif method=='GET' and path=='/version':value=client.call('version',timeout=timeout)
++    elif method=='GET' and path=='/images/json':value=client.call('images',timeout=timeout)
++    elif method=='GET' and len(parts)==3 and parts[0]=='containers' and parts[2]=='logs':
++        query=parse_qs(parsed.query)
++        if set(query)!={'stdout','stderr','timestamps','tail'} or any(query[k]!=['1'] for k in ('stdout','stderr','timestamps')):
++            raise ValueError('Unsupported log request')
++        value=client.call('logs',container=parts[1],tail=int(query['tail'][0]),timeout=timeout)
++        return value.encode(), 'HTTP/1.1 200 OK'
++    elif method=='POST' and len(parts)==3 and parts[0]=='containers' and parts[2]=='restart' and parsed.query=='t=10':
++        value=client.call('restart',container=parts[1],timeout=timeout)
++    else:raise ValueError('Unsupported Docker operation')
++    return json.dumps(value).encode(), 'HTTP/1.1 200 OK'
++
++
++class HostBackupService:
++    """The API holds no writable archive, settings, staging or source mounts."""
++    READS = frozenset(('payload','settings','latest_info','archives','activity','ai_shutdown_guard','backup_plan'))
++    PAYLOADS = frozenset(('update_settings_payload','create_payload','full_ai_backup_payload',
++        'gitea_status_payload','gitea_commit_payload','gitea_restore_payload','contents_payload',
++        'compare_payload','restore_payload','recover_restore_payload'))
++
++    def __init__(self, client=None):
++        self.client=client or HostOperationsClient()
++        self.backup_root=Path(os.getenv('HC_BACKUP_DIR','/srv/docker/homecontrol/backups'))
++
++    def __getattr__(self, method):
++        if method not in self.READS | self.PAYLOADS:raise AttributeError(method)
++        def invoke(*args):
++            context=args[-1] if args and callable(args[-1]) else None
++            actual=args[:-1] if context else args
++            result=self.client.call('backup',method=method,values=list(actual),timeout=180)
++            if method in self.PAYLOADS:
++                payload,status=result
++                if context and status<400:payload={**payload,'context':context('backup')}
++                return payload,status
++            return result
++        return invoke
+--- /dev/null
++++ b/infra/backend/scoped_ai_power_coordination.py
+@@ -0,0 +1,20 @@
++"""HC-44: writable AI state separated from immutable backup archives/settings."""
++from contextlib import contextmanager
++import fcntl
++import os
++from pathlib import Path
++from ai_power_coordination import AiPowerCoordinator
++
++
++class ScopedAiPowerCoordinator(AiPowerCoordinator):
++    def __init__(self, root):
++        super().__init__(root)
++        self.state_root=Path(os.getenv('HC_AI_STATE_DIR', str(Path(root)/'ai-control')))
++        self.path=self.state_root/'ai-power-state.json'
++
++    @contextmanager
++    def locked(self):
++        self.state_root.mkdir(parents=True,exist_ok=True)
++        with (self.state_root/'ai-power-coordination.lock').open('a') as handle:
++            fcntl.flock(handle,fcntl.LOCK_EX)
++            yield self.read()
+--- /dev/null
++++ b/infra/backend/tests/test_host_operations.py
+@@ -0,0 +1,237 @@
++"""HC-44: real Unix RPC/peer identity, synthetic roots, no live Docker."""
++import fcntl,importlib.util,json,os,socket,sys,tarfile,tempfile,threading,time,unittest,uuid
++from pathlib import Path
++from unittest.mock import Mock,patch
++
++PROJECT=Path(__file__).resolve().parents[3]
++sys.path.insert(0,str(PROJECT/'scripts/hostops'))
++from server import CapabilityServer,OperationJournal
++from executor import DockerCapabilities,Executor,bounded_command
++from host_operations_client import HostOperationsClient,HostBackupService,docker_capability_request,HostOperationsUnavailable
++from scoped_ai_power_coordination import ScopedAiPowerCoordinator
++from backup_protocol import atomic_json,seal,verify_archive
++from backup_service import BackupService
++
++
++class HostOperationTest(unittest.TestCase):
++    def setUp(self):
++        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
++        self.root=Path(self.temp.name)
++        with patch.dict(os.environ,{'HC_BACKUP_DIR':str(self.root/'backups'),'HC_RESTORE_STAGING_DIR':str(self.root/'stage')}):
++            self.backup=BackupService(Mock(),Mock())
++        self.backup.backup_root.mkdir()
++        self.backup.timer_file=self.root/'timer';self.backup.service_file=self.root/'service'
++        self.target=self.root/'target';self.target.mkdir()
++        self.backup.restore_targets={'scripts':self.target}
++        self.restart_calls=[]
++        def run(args,**kw):
++            if args[:2]==['docker','ps']:
++                self.assertIn('label=com.docker.compose.project=homecontrol',args)
++                return json.dumps(dict(ID='abcdef123456',Names='homecontrol-backend',Image='pinned',State='running',Status='Up')).encode()
++            if args[:2]==['docker','restart']:
++                self.restart_calls.append(args);return b'abcdef123456'
++            return b'{}'
++        self.docker=DockerCapabilities(run=run,stats=lambda target:{'cpu_percent':1,'memory_usage_bytes':123})
++        self.executor=Executor(self.docker,self.backup)
++        self.journal=OperationJournal(self.root/'jobs')
++        self.socket=self.root/'operations.sock'
++        self.server=CapabilityServer(self.socket,self.executor,self.journal,allowed_uid=os.getuid())
++        self.thread=threading.Thread(target=self.server.serve_forever,kwargs={'poll_interval':.01});self.thread.start()
++        def finish():self.server.shutdown();self.server.server_close();self.thread.join(2)
++        self.addCleanup(finish)
++        self.client=HostOperationsClient(self.socket);self.proxy=HostBackupService(self.client)
++
++    def call_backup(self,method,*values):
++        return self.client.call('backup',method=method,values=list(values))
++
++    def archive(self):
++        source=self.root/'archive-source';(source/'scripts').mkdir(parents=True)
++        (source/'scripts/file.txt').write_text('restored')
++        seal(source,'local',{})
++        path=self.backup.backup_root/'homecontrol_hostops_fixture.tar.gz'
++        with tarfile.open(path,'w:gz') as tar:tar.add(source,arcname='backup')
++        checked=verify_archive(path)
++        atomic_json(str(path)+'.complete.json',dict(version=1,completed=True,name=path.name,
++            timestamp='2026-10-29T12:00:00+00:00',mtime_ns=path.stat().st_mtime_ns,**checked))
++        return path
++
++    def test_inventory_and_stats_are_fixed_capabilities(self):
++        self.assertEqual(self.client.call('containers')[0]['Names'],['/homecontrol-backend'])
++        self.assertEqual(self.client.call('stats',container='backend')['memory_usage_bytes'],123)
++
++    def test_foreign_target_and_command_fields_are_rejected(self):
++        for args in ({'container':'other-container'},{'container':'backend','command':['sh']},
++                     {'container':'backend;id'},{'container':'/var/run/docker.sock'}):
++            with self.subTest(args=args),self.assertRaises(ValueError):self.client.call('restart',**args)
++        self.assertEqual(self.restart_calls,[])
++
++    def test_raw_docker_api_and_exec_have_no_compatibility_route(self):
++        with patch.dict(os.environ,{'HC_HOST_OPS_SOCKET':str(self.socket)}):
++            for method,path in [('POST','/containers/create'),('POST','/containers/backend/exec'),('GET','/containers/backend/json'),('GET','/'),('POST','/exec/id/start')]:
++                with self.subTest(path=path),self.assertRaises(ValueError):docker_capability_request(method,path)
++            with self.assertRaises(ValueError):docker_capability_request('POST','/containers/backend/restart?t=10',b'{}')
++
++    def test_restart_is_durable_accepted_and_idempotent(self):
++        identity=uuid.uuid4().hex
++        receipt=self.client.call('restart',container='backend',request_id=identity)
++        self.assertEqual(receipt['state'],'queued')
++        self.assertEqual(receipt['host_job_id'],identity)
++        self.client.call('restart',container='backend',request_id=identity)
++        for _ in range(100):
++            row=self.client.call('job',job_id=identity)
++            if row['state']=='completed':break
++            time.sleep(.01)
++        self.assertEqual(row['state'],'completed')
++        self.assertEqual(len(self.restart_calls),1)
++        with self.assertRaises(ValueError):self.client.call('restart',container='homecontrol-backend',request_id=identity)
++
++    def test_interrupted_job_is_not_replayed(self):
++        identity=uuid.uuid4().hex
++        atomic_json(self.journal.root/(identity+'.json'),dict(state='running',digest='same'))
++        self.assertEqual(self.journal.recover_abandoned(),1)
++        self.assertEqual(self.journal.lookup(identity)['state'],'uncertain')
++        callback=Mock()
++        with self.assertRaises(RuntimeError):self.journal.perform(identity,'same','backup',callback)
++        callback.assert_not_called()
++
++    def test_restart_cannot_follow_a_replaced_container_identity(self):
++        receipt=self.client.call('restart',container='backend')
++        original=self.docker.run
++        self.docker.run=lambda args,**kw:original(args,**kw).replace(b'abcdef123456',b'fedcba654321')
++        for _ in range(100):
++            job=self.client.call('job',job_id=receipt['host_job_id'])
++            if job['state']=='failed':break
++            time.sleep(.01)
++        self.assertEqual(job['state'],'failed')
++        self.assertEqual(self.restart_calls,[])
++
++    def test_wrong_peer_uid_cannot_execute(self):
++        self.server.allowed_uid=os.getuid()+1
++        with self.assertRaises(HostOperationsUnavailable):self.client.call('containers')
++
++    def test_missing_executor_does_not_try_local_docker(self):
++        with patch('subprocess.run',side_effect=AssertionError('local fallback')):
++            with self.assertRaises(HostOperationsUnavailable):HostOperationsClient(self.root/'missing').call('containers')
++
++    def test_backup_queue_is_the_existing_f6_queue(self):
++        payload,status=self.proxy.create_payload(lambda *a:{'changed':'backup'})
++        self.assertEqual(status,202)
++        request=json.loads((self.backup.backup_root/'requests'/(payload['run_id']+'.json')).read_text())
++        self.assertEqual(request['mode'],'local')
++        self.assertEqual(payload['context'],{'changed':'backup'})
++
++    def test_proxy_cannot_invoke_arbitrary_backup_method(self):
++        with self.assertRaises(AttributeError):self.proxy.run_gitea_script('evil')
++        with self.assertRaises(ValueError):self.call_backup('run_gitea_script','evil')
++
++    def test_settings_cannot_change_host_paths_commands_or_ssh_destinations(self):
++        for data in ({'restic_password_file':'/etc/shadow'},{'ai_backup_host':'evil;id'},
++                     {'git_offsite_remote':'--upload-pack=evil'},{'schedule_time':'02:15\nExecStart=evil'},
++                     {'retention_days':True},{'include_apps':'true'},{'command':'id'}):
++            with self.subTest(data=data),self.assertRaises(ValueError):self.call_backup('update_settings_payload',data)
++        self.assertFalse(self.backup.settings_file.exists())
++
++    def test_safe_schedule_update_keeps_protected_destinations(self):
++        before=self.backup.settings()
++        payload,status=self.proxy.update_settings_payload({'schedule_time':'04:20','retention_days':21},lambda *a:{})
++        self.assertEqual(status,200)
++        self.assertEqual(payload['settings']['ai_backup_host'],before['ai_backup_host'])
++        self.assertIn('04:20',self.backup.timer_file.read_text())
++
++    def test_verified_restore_runs_in_host_targets_and_compare_works(self):
++        path=self.archive();(self.target/'file.txt').write_text('before')
++        with patch('backup_service.ai_disabled',return_value=False):
++            result,status=self.proxy.compare_payload(path.name,'scripts/file.txt')
++            self.assertEqual(status,200);self.assertFalse(result['same'])
++            result,status=self.proxy.restore_payload(dict(backup=path.name,paths=['scripts/file.txt'],mode='in_place',confirm='RESTORE'),lambda *a:{})
++        self.assertEqual(status,200);self.assertTrue(result['ok'])
++        self.assertEqual((self.target/'file.txt').read_text(),'restored')
++
++    def test_unverified_restore_and_arbitrary_destination_rejected(self):
++        path=self.archive();Path(str(path)+'.complete.json').unlink()
++        with self.assertRaises(ValueError):self.call_backup('restore_payload',dict(backup=path.name,paths=['scripts'],mode='in_place',confirm='RESTORE'))
++        with self.assertRaises(ValueError):self.call_backup('restore_payload',dict(backup=path.name,paths=['scripts'],destination='/etc',mode='staging'))
++        self.assertEqual(list(self.target.iterdir()),[])
++
++    def test_restore_path_escape_is_rejected_by_the_existing_contract(self):
++        path=self.archive()
++        with patch('backup_service.ai_disabled',return_value=False),self.assertRaises(ValueError):
++            self.call_backup('restore_payload',dict(backup=path.name,paths=['scripts/../../etc'],mode='in_place',confirm='RESTORE'))
++        self.assertEqual(list(self.target.iterdir()),[])
++
++    def test_total_rpc_timeout_contains_a_reconcilable_job_identity(self):
++        original=self.executor.dispatch
++        self.executor.dispatch=lambda *a:time.sleep(.15)
++        identity=uuid.uuid4().hex
++        with self.assertRaisesRegex(TimeoutError,identity):self.client.call('containers',timeout=.02,request_id=identity)
++        self.executor.dispatch=original
++
++    def test_command_timeout_and_output_are_bounded(self):
++        with self.assertRaises(TimeoutError):bounded_command([sys.executable,'-c','import time;time.sleep(3)'],timeout=.05)
++        with self.assertRaises(RuntimeError):bounded_command([sys.executable,'-c','print("x"*2000)'],limit=100)
++
++    def test_scoped_ai_state_preserves_common_backup_lock_and_cancels_old_owner(self):
++        root=self.backup.backup_root
++        atomic_json(root/'ai-power-state.json',dict(version=1,generation='old',intent={'owner':'old'}))
++        coordinator=ScopedAiPowerCoordinator(root)
++        self.assertIsNone(coordinator.read()['intent'])
++        with coordinator.locked() as state:coordinator.invalidate(state,'new session')
++        self.assertEqual(coordinator.path,root/'ai-control/ai-power-state.json')
++        with (root/'homecontrol-backup.lock').open('a') as lock:
++            fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
++            self.assertTrue(coordinator.guard()['backup_running'])
++            with self.assertRaises(BlockingIOError):
++                with coordinator.reserve_power():pass
++
++    def test_f6_adapter_creates_a_verified_synthetic_archive_with_scoped_state(self):
++        import subprocess
++        from tests.test_backup_runner import BackupRunnerTest
++        fixture=BackupRunnerTest();fixture.setUp()
++        try:
++            launcher=self.root/'canonical_runner.py'
++            launcher.write_text((PROJECT/'scripts/hostops/canonical_backup_runner.py.in').read_text().replace('@RELEASE_ROOT_JSON@',json.dumps(str(PROJECT))))
++            result=subprocess.run([sys.executable,str(launcher),
++                '--root',str(fixture.root),'--mode','local'],env=fixture.env,capture_output=True,text=True,timeout=30)
++            self.assertEqual(result.returncode,0,result.stderr)
++            state=json.loads((fixture.root/'backup-state.json').read_text())
++            self.assertEqual(state['state'],'completed')
++            self.assertTrue((fixture.root/'ai-control/ai-power-state.json').is_file())
++            self.assertFalse((fixture.root/'ai-power-state.json').exists())
++        finally:fixture.doCleanups()
++
++
++class HostOperationRouteTest(unittest.TestCase):
++    def test_backend_restart_returns_the_persisted_host_receipt(self):
++        from flask import Flask
++        from api_route_modules import register_admin_routes
++        app=Flask(__name__)
++        register_admin_routes(app,get_context_service=lambda:None,get_admin_service=lambda:None,
++            get_process_binding_service=lambda:None,get_season_profile_service=lambda:None,json_ready=lambda x:x)
++        receipt={'restart_requested':True,'host_job_id':'1'*32,'state':'queued'}
++        with patch('api_route_modules.docker_socket_request',return_value=(json.dumps(receipt).encode(),'')) as call:
++            response=app.test_client().post('/api/admin/containers/backend/restart')
++            self.assertEqual(response.status_code,202)
++            self.assertEqual(response.get_json()['host_job_id'],'1'*32)
++            call.assert_called_once()
++            self.assertEqual(app.test_client().post('/api/admin/containers/foreign/restart').status_code,404)
++            call.assert_called_once()
++
++    def test_backend_identity_and_mount_gate_rejects_raw_socket_even_read_only(self):
++        from installation_plan import validate_backend
++        good={'Config':{'User':'10001:10001'},'HostConfig':{'ReadonlyRootfs':True,'CapDrop':['ALL'],
++            'SecurityOpt':['no-new-privileges:true']},'Mounts':[]}
++        self.assertEqual(validate_backend(good),[])
++        bad={**good,'Mounts':[{'Type':'bind','Source':'/var/run/docker.sock','Destination':'/var/run/docker.sock','RW':False}]}
++        self.assertIn('raw_host_socket_or_root_mount_forbidden',validate_backend(bad))
++
++    def test_mqtt_plan_is_non_mutating_and_keeps_finding_open(self):
++        spec=importlib.util.spec_from_file_location('hc41_plan',PROJECT/'scripts/plan_mqtt_access.py')
++        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
++        result=module.plan({'1883/tcp':[{'HostIp':'0.0.0.0','HostPort':'1883'}]})
++        self.assertFalse(result['full_finding_fixed'])
++        self.assertFalse(result['network_plan_ready'])
++        self.assertFalse(result['passwords_changed'])
++        with self.assertRaises(ValueError):module.plan({},allowed_clients=['192.168.1.2;id'])
++
++
++if __name__=='__main__':unittest.main()
+--- /dev/null
++++ b/scripts/plan_mqtt_access.py
+@@ -0,0 +1,49 @@
++#!/usr/bin/env python3
++"""HC-41 read-only network plan. Never changes broker, passwords or firewall."""
++import argparse,ipaddress,json,subprocess
++
++
++def plan(bindings,host_ips=(),allowed_clients=()):
++    addresses=[ipaddress.ip_address(v) for v in host_ips]
++    clients=[ipaddress.ip_address(v) for v in allowed_clients]
++    if any(v.is_unspecified or v.is_multicast or v.is_loopback for v in clients):
++        raise ValueError('Remote clients must be explicit unicast host addresses')
++    blockers=[];commands=[];configured=set()
++    if not clients:blockers.append('approved_remote_client_inventory_missing')
++    ports=bindings.get('1883/tcp',[])
++    for item in ports:
++        bind=item.get('HostIp') or '0.0.0.0';port=int(item['HostPort'])
++        address=ipaddress.ip_address(bind)
++        destinations=[address] if not address.is_unspecified else [v for v in addresses if v.version==address.version and not v.is_loopback]
++        if not destinations:blockers.append('all_published_host_addresses_must_be_inventoried')
++        for destination in destinations:
++            binary='iptables' if destination.version==4 else 'ip6tables'
++            chain='HC41_MQTT'
++            if binary not in configured:
++                configured.add(binary)
++                commands.append([binary,'-N',chain])
++                for client in clients:
++                    if client.version==destination.version:commands.append([binary,'-A',chain,'-s',str(client),'-j','ACCEPT'])
++                commands.append([binary,'-A',chain,'-j','DROP'])
++            commands.append([binary,'-I','DOCKER-USER','1','-p','tcp','-m','conntrack','--ctdir','ORIGINAL','--ctorigdst',str(destination),'--ctorigdstport',str(port),'-j',chain])
++    return dict(finding='HC-41',full_finding_fixed=False,authentication='deferred_by_user',
++        broker_changed=False,passwords_changed=False,firewall_changed=False,
++        network_plan_ready=not blockers,blockers=sorted(set(blockers)),commands_for_review_only=commands,
++        limits=['Requires verified Docker iptables backend and both IP families',
++                'Review order/idempotency and every local bind address before applying',
++                'IP filtering does not authenticate clients or provide topic ACLs'])
++
++
++def main():
++    p=argparse.ArgumentParser(description=__doc__)
++    p.add_argument('--bindings-file');p.add_argument('--live',action='store_true')
++    p.add_argument('--host-ip',action='append',default=[]);p.add_argument('--allow-client',action='append',default=[])
++    args=p.parse_args()
++    if args.live:
++        bindings=json.loads(subprocess.check_output(['docker','inspect','--format','{{json .HostConfig.PortBindings}}','homecontrol-mqtt']))
++    elif args.bindings_file:bindings=json.load(open(args.bindings_file))
++    else:bindings={'1883/tcp':[{'HostIp':'0.0.0.0','HostPort':'1883'},{'HostIp':'::','HostPort':'1883'}]}
++    print(json.dumps(plan(bindings,args.host_ip,args.allow_client),indent=2))
++
++
++if __name__=='__main__':main()
+--- /dev/null
++++ b/scripts/hostops/backup_runner.py
+@@ -0,0 +1,14 @@
++#!/usr/bin/env python3
++"""HC-44 F6 adapter: preserve the runner and use isolated shared AI state."""
++import importlib.util
++from pathlib import Path
++import sys
++BASE=Path(__file__).resolve().parents[2]
++sys.path.insert(0,str(BASE/'infra/backend'))
++from scoped_ai_power_coordination import ScopedAiPowerCoordinator
++spec=importlib.util.spec_from_file_location('hc44_f6_runner',BASE/'scripts/backup_runner.py')
++runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)
++runner.AiPowerCoordinator=ScopedAiPowerCoordinator
++# Workers import the unchanged BackupService in their own processes; the
++# coordinator state path is used by this adapter, not changed in the live runner.
++if __name__=='__main__':raise SystemExit(runner.main())
+--- /dev/null
++++ b/scripts/hostops/canonical_backup_runner.py.in
+@@ -0,0 +1,8 @@
++#!/usr/bin/env python3
++"""HC-44 canonical entry point; rendered only into a sealed deployment package."""
++from pathlib import Path
++import runpy
++import sys
++FROZEN_ROOT = Path(@RELEASE_ROOT_JSON@)
++sys.path.insert(0, str(FROZEN_ROOT / 'infra/backend'))
++runpy.run_path(str(FROZEN_ROOT / 'scripts/hostops/backup_runner.py'), run_name='__main__')
+--- /dev/null
++++ b/scripts/hostops/executor.py
+@@ -0,0 +1,209 @@
++"""Host-only HC-44 capability executor; never copied into the API image."""
++import json,os,re,selectors,signal,socket,subprocess,time
++from pathlib import Path
++from backup_protocol import read_json,verify_archive
++from deployment_policy import ai_disabled
++from host_operations_client import HostBackupService
++
++CONTAINERS={
++ 'backend':'homecontrol-backend','frontend':'homecontrol-frontend',
++ 'postgres':'homecontrol-postgres','pgbouncer':'homecontrol-pgbouncer',
++ 'mqtt':'homecontrol-mqtt','zigbee2mqtt':'zigbee2mqtt','ingest':'homecontrol-ingest',
++ 'tuya':'homecontrol-tuya-poller','x10':'homecontrol-xiaomi-x10',
++ 'climate':'homecontrol-gree-climate','solar':'homecontrol-ha-growatt-poller',
++ 'ai':'homecontrol-ai-server','proxy':'homecontrol-proxy','mdns':'homecontrol-mdns'}
++
++
++def bounded_command(args,timeout=10,limit=2*1024*1024):
++    """No shell; bounded process, total deadline and combined output."""
++    process=subprocess.Popen(args,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
++        stderr=subprocess.STDOUT,start_new_session=True)
++    deadline=time.monotonic()+timeout;data=bytearray()
++    try:
++        with selectors.DefaultSelector() as selector:
++            selector.register(process.stdout,selectors.EVENT_READ)
++            while selector.get_map():
++                remaining=deadline-time.monotonic()
++                if remaining<=0:raise TimeoutError('Host command deadline expired')
++                for key,_ in selector.select(remaining):
++                    part=os.read(key.fd,65536)
++                    if not part:selector.unregister(key.fileobj);continue
++                    data.extend(part)
++                    if len(data)>limit:raise RuntimeError('Host command output limit exceeded')
++        code=process.wait(timeout=max(.001,deadline-time.monotonic()))
++        if code:raise RuntimeError('Host command failed; exit='+str(code))
++        return bytes(data)
++    finally:
++        if process.poll() is None:
++            os.killpg(process.pid,signal.SIGKILL);process.wait()
++        process.stdout.close()
++
++
++def read_stats(target):
++    # This is host-only code. The API image does not contain this adapter and
++    # never receives the daemon socket. target was resolved by the allowlist.
++    client=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
++    deadline=time.monotonic()+2
++    def remaining():
++        value=deadline-time.monotonic()
++        if value<=0:raise TimeoutError('Host stats deadline expired')
++        return value
++    try:
++        client.settimeout(remaining());client.connect('/var/run/docker.sock')
++        client.settimeout(remaining())
++        client.sendall(('GET /containers/'+target+'/stats?stream=false HTTP/1.1\r\nHost: docker\r\nConnection: close\r\n\r\n').encode())
++        raw=bytearray()
++        while True:
++            client.settimeout(remaining());part=client.recv(65536)
++            if not part:break
++            raw.extend(part)
++            if len(raw)>2*1024*1024:raise RuntimeError('Host stats output limit exceeded')
++    finally:client.close()
++    header,sep,body=bytes(raw).partition(b'\r\n\r\n')
++    if not sep or b' 200 ' not in header.split(b'\r\n',1)[0]:raise RuntimeError('Host stats read failed')
++    if b'transfer-encoding: chunked' in header.lower():
++        decoded=bytearray()
++        while body:
++            size_raw,_,rest=body.partition(b'\r\n');size=int(size_raw.split(b';',1)[0],16)
++            if size==0:break
++            if len(rest)<size+2:raise RuntimeError('Incomplete host stats frame')
++            decoded.extend(rest[:size]);body=rest[size+2:]
++        body=bytes(decoded)
++    stats=json.loads(body)
++    cpu=stats.get('cpu_stats') or {};pre=stats.get('precpu_stats') or {}
++    cpu_delta=(cpu.get('cpu_usage') or {}).get('total_usage',0)-(pre.get('cpu_usage') or {}).get('total_usage',0)
++    system_delta=cpu.get('system_cpu_usage',0)-pre.get('system_cpu_usage',0)
++    cpus=cpu.get('online_cpus') or len((cpu.get('cpu_usage') or {}).get('percpu_usage') or []) or 1
++    mem=stats.get('memory_stats') or {};usage=mem.get('usage');limit=mem.get('limit')
++    networks=stats.get('networks') or {};io=(stats.get('blkio_stats') or {}).get('io_service_bytes_recursive') or []
++    return dict(cpu_percent=round(cpu_delta/system_delta*cpus*100,2) if system_delta>0 and cpu_delta>0 else 0.0,
++        memory_usage_bytes=usage,memory_limit_bytes=limit,
++        memory_percent=round(usage/limit*100,2) if isinstance(usage,(int,float)) and isinstance(limit,(int,float)) and limit>0 else None,
++        network_rx_bytes=sum(int(r.get('rx_bytes') or 0) for r in networks.values()) if networks else None,
++        network_tx_bytes=sum(int(r.get('tx_bytes') or 0) for r in networks.values()) if networks else None,
++        block_read_bytes=sum(int(r.get('value') or 0) for r in io if str(r.get('op','')).lower()=='read') if io else None,
++        block_write_bytes=sum(int(r.get('value') or 0) for r in io if str(r.get('op','')).lower()=='write') if io else None,
++        pids=(stats.get('pids_stats') or {}).get('current'))
++
++
++class DockerCapabilities:
++    def __init__(self,run=bounded_command,containers=None,project='homecontrol',stats=read_stats):
++        self.run=run;self.names=containers or CONTAINERS;self.project=project;self.stats=stats
++
++    def inventory(self):
++        raw=self.run(['docker','ps','-a','--filter','label=com.docker.compose.project='+self.project,
++                      '--format','{{json .}}'],timeout=3)
++        result=[]
++        for line in raw.splitlines():
++            row=json.loads(line);name=row.get('Names')
++            if name not in self.names.values():continue
++            key=next(k for k,v in self.names.items() if v==name)
++            result.append(dict(Id=row['ID'],Names=['/'+name],Image=row.get('Image',''),
++                State=row.get('State',''),Status=row.get('Status',''),
++                Labels={'com.docker.compose.service':key}))
++        return result
++
++    def target(self,ref):
++        # Exact allowlist key/name or the complete advertised ID; no prefix guessing.
++        if not isinstance(ref,str) or not re.fullmatch(r'[a-zA-Z0-9_-]{1,100}',ref):
++            raise ValueError('Invalid container target')
++        rows=self.inventory()
++        matches=[r for r in rows if ref in (r['Id'],r['Names'][0][1:],r['Labels']['com.docker.compose.service'])]
++        if len(matches)!=1:raise ValueError('Container is outside the allowed project/targets')
++        return matches[0]['Id']
++
++    def validate_restart(self,args):
++        if set(args)!={'container'}:raise ValueError('Unexpected restart fields')
++        target=self.target(args['container'])
++        row=next(r for r in self.inventory() if r['Id']==target)
++        if row['Names']==['/homecontrol-ai-server'] and ai_disabled():
++            raise ValueError('AI operations are disabled by deployment policy')
++        return target
++
++    def dispatch(self,op,args):
++        if op=='containers':
++            if args:raise ValueError('Unexpected inventory fields')
++            return self.inventory()
++        if op in ('stats','logs','restart'):
++            expected={'container','tail'} if op=='logs' else {'container'}
++            if set(args)!=expected:raise ValueError('Unexpected container operation fields')
++            target=self.target(args['container'])
++            if op=='restart':
++                self.validate_restart(args)
++                self.run(['docker','restart','--time','10',target],timeout=18)
++                return {'restart_requested':True}
++            if op=='logs':
++                n=args['tail']
++                if type(n) is not int or not 20<=n<=3000:raise ValueError('Invalid log bound')
++                return self.run(['docker','logs','--timestamps','--tail',str(n),target],timeout=5).decode(errors='replace')
++            return self.stats(target)
++        if op=='version':
++            if args:raise ValueError('Unexpected version fields')
++            return json.loads(self.run(['docker','version','--format','{{json .Server}}'],timeout=3))
++        if op=='images':
++            if args:raise ValueError('Unexpected image fields')
++            return [{'image':row['Image']} for row in self.inventory()]
++        raise ValueError('Unsupported Docker capability')
++
++
++class Executor:
++    def __init__(self,docker,backup):
++        self.docker=docker;self.backup=backup
++
++    def dispatch(self,op,args):
++        if op!='backup':return self.docker.dispatch(op,args)
++        if set(args)!={'method','values'} or not isinstance(args['values'],list):
++            raise ValueError('Invalid backup capability')
++        method=args['method'];values=args['values']
++        if method not in HostBackupService.READS | HostBackupService.PAYLOADS:
++            raise ValueError('Unsupported backup method')
++        arity={'payload':0,'settings':0,'latest_info':0,'archives':0,'activity':0,
++            'ai_shutdown_guard':0,'backup_plan':0,'update_settings_payload':1,
++            'create_payload':0,'full_ai_backup_payload':0,'gitea_status_payload':0,
++            'gitea_commit_payload':1,'gitea_restore_payload':1,'contents_payload':2,
++            'compare_payload':2,'restore_payload':1,'recover_restore_payload':1}
++        if len(values)!=arity[method]:raise ValueError('Unexpected backup arguments')
++        if method in ('update_settings_payload','gitea_commit_payload','gitea_restore_payload','restore_payload','recover_restore_payload'):
++            if type(values[0]) is not dict:raise ValueError('Backup object required')
++        if method=='update_settings_payload':self.validate_settings(values[0])
++        if method in ('contents_payload','compare_payload'):
++            if not isinstance(values[0],str) or Path(values[0]).name!=values[0]:raise ValueError('Invalid archive name')
++        if method=='gitea_commit_payload' and set(values[0])-{'message'}:raise ValueError('Unexpected git fields')
++        if method=='gitea_restore_payload':
++            data=values[0]
++            if set(data)-{'ref'} or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9._/-]{0,119}',str(data.get('ref','main'))):
++                raise ValueError('Invalid git ref')
++        if method=='restore_payload':
++            data=values[0]
++            if set(data)-{'backup','paths','mode','confirm'}:raise ValueError('Unexpected restore fields')
++            name=data.get('backup','')
++            if not isinstance(name,str) or Path(name).name!=name:raise ValueError('Invalid archive name')
++            if data.get('mode')=='in_place':
++                # API cannot write archives/receipts. Only host-verified input may
++                # overwrite executable source; unverified archives remain preview-only.
++                path=self.backup.safe_path(name)
++                receipt=read_json(str(path)+'.complete.json') or {}
++                if not receipt.get('completed') or receipt.get('sha256')!=verify_archive(path)['sha256']:
++                    raise ValueError('In-place restore requires a host-verified completed archive')
++        if method=='recover_restore_payload':
++            if set(values[0])-{'run_id','confirm'} or not re.fullmatch(r'[0-9a-f]{32}',str(values[0].get('run_id',''))):
++                raise ValueError('Invalid restore recovery identity')
++        context_methods={'update_settings_payload','create_payload','full_ai_backup_payload','gitea_commit_payload','restore_payload'}
++        if method in context_methods:values=[*values,lambda *a:{}]
++        return getattr(self.backup,method)(*values)
++
++    def validate_settings(self,data):
++        current=self.backup.settings()
++        for key,value in data.items():
++            if key not in self.backup.DEFAULT_SETTINGS:raise ValueError('Unknown backup setting')
++            default=self.backup.DEFAULT_SETTINGS[key]
++            if type(default) is bool:
++                if type(value) is not bool:raise ValueError('Boolean backup setting required')
++            elif type(default) is int:
++                if type(value) is not int or not 1<=value<=365:raise ValueError('Invalid backup retention')
++            elif key=='schedule_time':
++                if not isinstance(value,str) or not re.fullmatch(r'(?:[01][0-9]|2[0-3]):[0-5][0-9]',value):raise ValueError('Invalid backup time')
++            elif key=='ai_weekly_backup_schedule':
++                if not isinstance(value,str) or not re.fullmatch(r'(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) (?:[01][0-9]|2[0-3]):[0-5][0-9]',value):raise ValueError('Invalid weekly time')
++            elif value!=current.get(key):
++                raise ValueError('Host paths, credentials and destinations require host-side configuration: '+key)
+--- /dev/null
++++ b/scripts/hostops/installation_plan.py
+@@ -0,0 +1,71 @@
++#!/usr/bin/env python3
++"""HC-44 installation plan/validation. This tool has no apply mode."""
++import argparse,json,os,stat
++from pathlib import Path
++
++API_UID=10001
++API_GID=10001
++ALLOWED_WRITES={
++ '/srv/docker/homecontrol/backups/ai-control',
++ '/srv/docker/homecontrol/backups/homecontrol-backup.lock',
++ '/srv/docker/homecontrol/backups/ai-backup.lock',
++ '/srv/docker/homecontrol/infra/private'}
++
++
++def validate_backend(container):
++    problems=[];config=container.get('Config') or {};host=container.get('HostConfig') or {}
++    if config.get('User')!='10001:10001':problems.append('backend_must_use_10001_10001')
++    if not host.get('ReadonlyRootfs'):problems.append('backend_rootfs_must_be_read_only')
++    if host.get('Privileged'):problems.append('privileged_backend_forbidden')
++    if 'ALL' not in (host.get('CapDrop') or []):problems.append('all_backend_capabilities_must_be_dropped')
++    if not any(str(v).startswith('no-new-privileges') for v in host.get('SecurityOpt') or []):problems.append('no_new_privileges_required')
++    for mount in container.get('Mounts') or []:
++        destination=mount['Destination'];source=mount.get('Source','')
++        if source.endswith('/docker.sock') or destination in ('/var/run','/run','/','/var/run/docker.sock'):
++            problems.append('raw_host_socket_or_root_mount_forbidden')
++        if mount.get('RW') and mount.get('Type')!='tmpfs' and destination not in ALLOWED_WRITES:
++            problems.append('unexpected_backend_write_mount:'+destination)
++    return sorted(set(problems))
++
++
++def plan(release_root):
++    root=Path(release_root).resolve()
++    return dict(finding='HC-44',applied=False,release_root=str(root),
++      prerequisites=['Frozen reviewed release, verified backup and previous runtime/unit metadata',
++        'Old backend stopped and both common backup locks idle',
++        'All allowed operations passed isolated tests; no unverified in-place archives',
++        'HC-45 restore manifest must include hostops service and F6 drop-ins before deployment'],
++      service_template='scripts/systemd/hostops/homecontrol-hostops.service',
++      executor_entrypoint=str(root/'scripts/hostops/server.py'),
++      canonical_runner_template='scripts/hostops/canonical_backup_runner.py.in',
++      units=[str(p.relative_to(root)) for p in sorted((root/'scripts/systemd/hostops').rglob('*')) if p.is_file()],
++      permissions=[{'path':'backups/ai-control','uid':API_UID,'gid':API_GID,'mode':'0700','purpose':'AI state only'},
++        {'path':'infra/private','uid':API_UID,'gid':API_GID,'mode':'0700','purpose':'Rover JSON data only'},
++        {'path':'backups/ai-backup.lock','gid':API_GID,'mode':'0660','preserve_inode':True},
++        {'path':'backups/homecontrol-backup.lock','gid':API_GID,'mode':'0660','preserve_inode':True}],
++      protected=['backups archives/receipts/settings','restore_staging journals','source trees','host job journal'],
++      steps=['Render service/drop-in ExecStart paths to the frozen release, not the mutable worktree',
++        'Snapshot existing units and file metadata; never unlink or replace a held lock inode',
++        'Create missing data directories and lock files, reject symlinks and unsafe API ownership of protected parents',
++        'With old backend/F6 consumers stopped and locks idle, preserve and validate the existing AI coordination state; transfer it to ai-control and reconcile pending intents instead of starting from an empty state',
++        'Atomically replace the canonical scripts/backup_runner.py with the frozen launcher; all existing CLI wrappers must use it',
++        'Install hostops unit and all five F6 drop-ins together, daemon-reload, start host executor',
++        'Start only the new non-root backend; check UID, mounts, RPC status and allowed/denied operations',
++        'Verify AI-offline/winter policies and backups; preserve interrupted job states without automatic replay'],
++      rollback=['Stop new backend and executor; reconcile any running backup/restore or uncertain job',
++        'Restore exact previous backend image, units and original permission metadata',
++        'Reconcile the current scoped AI state with the restored coordinator path; never restore an old shutdown intent or generation blindly',
++        'Keep archive, staging and job data; do not resurrect old AI/actuator intents'])
++
++
++def main():
++    parser=argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--release-root',type=Path,default=Path(__file__).resolve().parents[2])
++    parser.add_argument('--container-inspect',type=Path)
++    args=parser.parse_args()
++    if args.container_inspect:
++        value=json.loads(args.container_inspect.read_text());print(json.dumps(validate_backend(value),indent=2))
++    else:print(json.dumps(plan(args.release_root),indent=2))
++
++
++if __name__=='__main__':main()
+--- /dev/null
++++ b/scripts/hostops/server.py
+@@ -0,0 +1,157 @@
++#!/usr/bin/env python3
++"""HC-44 bounded Unix capability endpoint. No listener or changes on import."""
++import argparse,hashlib,json,os,re,socket,socketserver,struct,sys,threading,time
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'infra/backend'))
++from backup_protocol import atomic_json,read_json,now
++from host_operations_client import REQUEST_LIMIT,RESPONSE_LIMIT,OPERATIONS
++from executor import DockerCapabilities,Executor
++
++
++class OperationJournal:
++    def __init__(self,root):
++        self.root=Path(root);self.root.mkdir(parents=True,exist_ok=True,mode=0o700)
++        self.lock=threading.Lock()
++        self.restart_slots=threading.BoundedSemaphore(2)
++
++    def lookup(self,identity):
++        if not re.fullmatch(r'[0-9a-f]{32}',str(identity)):raise ValueError('Invalid job identity')
++        row=read_json(self.root/(identity+'.json'),RESPONSE_LIMIT)
++        if not row:raise ValueError('Unknown host job')
++        return row
++
++    def recover_abandoned(self):
++        count=0
++        for path in self.root.glob('*.json'):
++            row=read_json(path,RESPONSE_LIMIT)
++            if row and row.get('state') in ('queued','running'):
++                row.update(state='uncertain',error='executor restarted; reconcile before retry',finished_at=now())
++                atomic_json(path,row,0o600);count+=1
++        return count
++
++    def perform(self,identity,digest,operation,callback):
++        with self.lock:
++            path=self.root/(identity+'.json')
++            previous=read_json(path,RESPONSE_LIMIT)
++            if previous:
++                if previous['digest']!=digest:raise ValueError('Host request identity reused with different content')
++                if previous['state']=='completed':return previous['value']
++                raise RuntimeError('Host job '+identity+' is '+previous['state']+'; no automatic replay')
++            if len(list(self.root.glob('*.json')))>=1000:raise RuntimeError('Host job journal is full; host maintenance required')
++            row=dict(version=1,request_id=identity,digest=digest,operation=operation,state='running',started_at=now())
++            atomic_json(path,row,0o600)
++        try:
++            value=callback()
++            encoded=json.dumps(value,default=str).encode()
++            if len(encoded)>RESPONSE_LIMIT-2048:raise RuntimeError('Host result too large')
++            row.update(state='completed',value=value,finished_at=now());atomic_json(path,row,0o600)
++            return value
++        except Exception as exc:
++            row.update(state='failed' if isinstance(exc,ValueError) else 'uncertain',error=type(exc).__name__,finished_at=now())
++            atomic_json(path,row,0o600);raise
++
++    def enqueue_restart(self,identity,digest,callback,target=None):
++        with self.lock:
++            path=self.root/(identity+'.json')
++            previous=read_json(path,RESPONSE_LIMIT)
++            if previous:
++                if previous['digest']!=digest:raise ValueError('Host request identity reused with different content')
++                return {'restart_requested':True,'host_job_id':identity,'state':previous['state']}
++            if len(list(self.root.glob('*.json')))>=1000:raise RuntimeError('Host job journal is full; host maintenance required')
++            if not self.restart_slots.acquire(False):raise RuntimeError('Host restart capacity exhausted')
++            row=dict(version=1,request_id=identity,digest=digest,operation='restart',target=target,state='queued',requested_at=now())
++            try:atomic_json(path,row,0o600)
++            except BaseException:self.restart_slots.release();raise
++        def run():
++            try:
++                time.sleep(.4)  # Allow the API to send its accepted response first.
++                row.update(state='running',started_at=now());atomic_json(path,row,0o600)
++                value=callback();row.update(state='completed',value=value,finished_at=now())
++            except Exception as exc:row.update(state='failed' if isinstance(exc,ValueError) else 'uncertain',error=type(exc).__name__,finished_at=now())
++            finally:
++                try:atomic_json(path,row,0o600)
++                finally:self.restart_slots.release()
++        threading.Thread(target=run,name='host-restart-'+identity,daemon=False).start()
++        return {'restart_requested':True,'host_job_id':identity,'state':'queued'}
++
++
++class CapabilityServer(socketserver.ThreadingUnixStreamServer):
++    daemon_threads=False
++    block_on_close=True
++    def __init__(self,path,executor,journal,allowed_uid=10001):
++        self.executor=executor;self.journal=journal;self.allowed_uid=allowed_uid
++        self.slots=threading.BoundedSemaphore(8)
++        super().__init__(str(path),Handler)
++
++    def process_request(self,request,client_address):
++        if not self.slots.acquire(False):request.close();return
++        try:super().process_request(request,client_address)
++        except BaseException:self.slots.release();raise
++
++    def process_request_thread(self,request,address):
++        try:super().process_request_thread(request,address)
++        finally:self.slots.release()
++
++
++class Handler(socketserver.StreamRequestHandler):
++    def handle(self):
++        identity=None
++        try:
++            _,uid,_=struct.unpack('3i',self.request.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,12))
++            if uid!=self.server.allowed_uid:raise ValueError('Host peer UID is not allowed')
++            self.request.settimeout(3)
++            raw=self.rfile.readline(REQUEST_LIMIT+1)
++            if len(raw)>REQUEST_LIMIT or not raw.endswith(b'\n'):raise ValueError('Invalid host request frame')
++            data=json.loads(raw)
++            if type(data) is not dict or set(data)!={'version','request_id','operation','args'} or data['version']!=1:
++                raise ValueError('Invalid host request schema')
++            identity=data['request_id'];op=data['operation'];args=data['args']
++            if not isinstance(identity,str) or not re.fullmatch(r'[0-9a-f]{32}',identity) or op not in OPERATIONS or type(args) is not dict:
++                raise ValueError('Invalid host capability')
++            digest=hashlib.sha256(json.dumps(data,sort_keys=True,separators=(',',':')).encode()).hexdigest()
++            if op=='restart':
++                # Validate the target before claiming acceptance or creating a job.
++                target=self.server.executor.docker.validate_restart(args)
++                value=self.server.journal.enqueue_restart(identity,digest,lambda:self.server.executor.dispatch(op,{'container':target}),target)
++            elif op=='job':
++                if set(args)!={'job_id'}:raise ValueError('Invalid job query')
++                value=self.server.journal.lookup(args['job_id'])
++            else:
++                read=op not in ('restart','backup') or (op=='backup' and args.get('method') in ('payload','settings','latest_info','archives','activity','ai_shutdown_guard','backup_plan','gitea_status_payload','contents_payload','compare_payload'))
++                callback=lambda:self.server.executor.dispatch(op,args)
++                value=callback() if read else self.server.journal.perform(identity,digest,op,callback)
++            response=dict(ok=True,request_id=identity,value=value)
++        except Exception as exc:
++            response=dict(ok=False,request_id=identity,kind='invalid' if isinstance(exc,ValueError) else 'unavailable',error=str(exc)[:500])
++        raw=json.dumps(response,default=str).encode()+b'\n'
++        if len(raw)>RESPONSE_LIMIT:raw=json.dumps(dict(ok=False,request_id=identity,error='Host reply exceeds bound')).encode()+b'\n'
++        try:self.request.settimeout(3);self.wfile.write(raw)
++        except OSError:pass
++
++
++def main():
++    parser=argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--socket',default='/run/homecontrol-hostops/operations.sock')
++    parser.add_argument('--journal',default='/var/lib/homecontrol-hostops/jobs')
++    parser.add_argument('--api-uid',type=int,default=10001)
++    parser.add_argument('--api-gid',type=int,default=10001)
++    options=parser.parse_args()
++    if os.geteuid()!=0:raise SystemExit('The host executor must be installed as root')
++    import backup_service
++    from scoped_ai_power_coordination import ScopedAiPowerCoordinator
++    backup_service.AiPowerCoordinator=ScopedAiPowerCoordinator
++    # No arbitrary Docker exec is needed for archive/staging operations.
++    def forbidden(*a,**k):raise ValueError('General Docker API/exec is not a host capability')
++    backup=backup_service.BackupService(forbidden,forbidden)
++    socket_path=Path(options.socket)
++    socket_path.parent.mkdir(parents=True,exist_ok=True,mode=0o755)
++    if socket_path.exists():raise SystemExit('Socket already exists; verify the previous executor before removing it')
++    journal=OperationJournal(options.journal)
++    journal.recover_abandoned()
++    with CapabilityServer(socket_path,Executor(DockerCapabilities(),backup),journal,options.api_uid) as server:
++        socket_path.chmod(0o660);os.chown(socket_path,0,options.api_gid)
++        try:server.serve_forever(poll_interval=.2)
++        finally:socket_path.unlink(missing_ok=True)
++
++
++if __name__=='__main__':main()
+--- /dev/null
++++ b/scripts/systemd/hostops/homecontrol-ai-weekly-backup.service.d/hc44.conf
+@@ -0,0 +1,3 @@
++[Service]
++ExecStart=
++ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/hostops/backup_runner.py --mode weekly
+--- /dev/null
++++ b/scripts/systemd/hostops/homecontrol-backup.service.d/hc44.conf
+@@ -0,0 +1,3 @@
++[Service]
++ExecStart=
++ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/hostops/backup_runner.py --mode local
+--- /dev/null
++++ b/scripts/systemd/hostops/homecontrol-full-ai-backup-request.service.d/hc44.conf
+@@ -0,0 +1,3 @@
++[Service]
++ExecStart=
++ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/hostops/backup_runner.py --drain
+--- /dev/null
++++ b/scripts/systemd/hostops/homecontrol-hostops.service
+@@ -0,0 +1,27 @@
++[Unit]
++Description=HomeControl fixed host operation capabilities
++After=docker.service
++Requires=docker.service
++
++[Service]
++Type=simple
++User=root
++Group=root
++UMask=0077
++RuntimeDirectory=homecontrol-hostops
++RuntimeDirectoryMode=0755
++StateDirectory=homecontrol-hostops
++StateDirectoryMode=0700
++WorkingDirectory=/srv/docker/homecontrol
++ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/hostops/server.py
++Restart=on-failure
++KillMode=mixed
++TimeoutStopSec=200
++NoNewPrivileges=true
++ProtectSystem=strict
++ProtectHome=read-only
++PrivateTmp=true
++ReadWritePaths=/run/homecontrol-hostops /var/lib/homecontrol-hostops /srv/docker/homecontrol/backups /srv/docker/homecontrol/restore_staging /srv/docker/homecontrol/apps /srv/docker/homecontrol/infra /srv/docker/homecontrol/scripts /srv/docker/homecontrol/homeassistant
++
++[Install]
++WantedBy=multi-user.target
+--- /dev/null
++++ b/scripts/systemd/hostops/homecontrol-log-maintenance.service.d/hc44.conf
+@@ -0,0 +1,3 @@
++[Service]
++ExecStart=
++ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/hostops/backup_runner.py --mode maintenance
+--- /dev/null
++++ b/scripts/systemd/hostops/homecontrol-restic-check.service.d/hc44.conf
+@@ -0,0 +1,3 @@
++[Service]
++ExecStart=
++ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/hostops/backup_runner.py --mode check

@@ -42,6 +42,11 @@ Tuya:
 - `tuya-domain.md`
 - `tuya-scenarios.md`
 
+Robot mower / RTK:
+
+- `mower-domain.md`
+- `mower-scenarios.md`
+
 Climate / Gree:
 
 - `climate-domain.md`
@@ -115,6 +120,7 @@ Covered by this AI context pack:
 - climate
 - power wall
 - Tuya
+- robot mower / RTK
 - performance/system status
 - scheduler
 - backup/restore
@@ -126,6 +132,7 @@ Not yet split into dedicated domain files:
 - repository/admin source inspection helper
 - startup service internals
 - MQTT monitor internals
+- combustion safety (`infra/backend/combustion_safety_service.py` and migration 043)
 - database helper internals
 
 These are currently covered by `homecontrol-agent-guide.md` and direct code

@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-29",
+  "findings": [
+    "HC-35",
+    "HC-36"
+  ],
+  "phase": "F5a",
+  "status": "checked_not_deployed",
+  "deployed": false,
+  "backend_unit_regression": {
+    "tests": 386,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "failed_ids": [],
+    "modules": [
+      "process_binding_service",
+      "read_runtime_repair",
+      "ai_proxy_service",
+      "ai_images",
+      "ai_node_power",
+      "read_model_cache",
+      "context_service_contract",
+      "command_service",
+      "api_route_modules",
+      "robot_service",
+      "scheduler_feedback",
+      "scheduler_bridge_samples",
+      "scheduler_service",
+      "startup_service",
+      "admin_bootstrap",
+      "schema_service",
+      "irrigation_service",
+      "irrigation_admission",
+      "irrigation_recovery",
+      "irrigation_stop_priority",
+      "climate_window_guard",
+      "power_wall_service",
+      "mqtt_monitor_service",
+      "deployment_policy",
+      "combustion_safety_service",
+      "combustion_safety_state",
+      "combustion_safety_delivery",
+      "combustion_opening_events"
+    ]
+  },
+  "postgres_integration": {
+    "tests": 19,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "frontend_tests": {
+    "tests": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "frontend_build": "passed",
+  "baseline_reproduced": true,
+  "existing_binding_roles_compatible": 11,
+  "production": {
+    "deployed": false,
+    "production_commands_sent": false,
+    "production_database_used_for_tests": false,
+    "live_containers_unchanged": 15,
+    "protected_host_files_unchanged": 37,
+    "process_bindings_unchanged": true,
+    "active_release": "hc-ingest-20261028-r9",
+    "active_override_unchanged": true,
+    "original_audit_unchanged": true,
+    "safety_source_unchanged": true,
+    "frontend_lock_unchanged": true,
+    "lab_removed": true
+  },
+  "migration_required": false,
+  "dependency_updates": false,
+  "source_sha256": {
+    "infra/backend/process_binding_service.py": "678d33d5a2cc3c82296fe058bac08093eb93da1f9c8250ac9ce76f3689bb3c9f",
+    "infra/backend/climate_fan_coordination.py": "cb3dfd00c83056269d0c8f097c4ed06b98a5bc86098d40c7dee0033e5ede5f33",
+    "infra/backend/power_wall_service.py": "37932faaa661eb9938983cef9fe5b3f8938367119446c19ea6336e9c2624efeb",
+    "infra/backend/app.py": "cfca0d79b2a9fa563cdbf0fe76409ed343d77a08cdbc7f328cc9ce5a4d22c93a",
+    "infra/backend/ai_node_service.py": "61e572f930b0c9e23691ef8a670a127f5c9a9c085e4c28919231b4c6c3b5eb7b",
+    "infra/backend/climate_service.py": "7d3feea8e4f4b204583b6487bb3aa40377c55dede0922f4384f13e275e907f09",
+    "infra/backend/energy_device_service.py": "5e095288b3901059867d8b67277a74b3bdea112e1fe4d0601b996062475e603a",
+    "infra/backend/irrigation_service.py": "c6fa573697a505092cf55b1a6f7d4479057a121b46ddc174214b0c89c8039fd2",
+    "infra/backend/tests/test_power_wall_service.py": "f4587ca990502c2bee50dcdbd7952149fae6ac13c0ac9ce8193da69fdb06b155",
+    "infra/backend/tests/test_process_binding_service.py": "085741dcbdb4a59636781dac02fda4013ca57734c957b4fc51d15def7be1eed1",
+    "infra/backend/tests/test_process_binding_postgres.py": "31900f0f61c504b933cf24399ef16f2b21d47698f4b585e53b4ac49047455f91",
+    "infra/frontend/src/features/admin/HcAdmin.jsx": "98ce205d8870a3a090efd231b1a6b02999248a4d7fc0c05f27dea1528fb6de69",
+    "infra/frontend/src/entityHelpers.js": "458e126eedb01656d5222412a34d9c8185fab3bb7697ab3978dc32d5a16785f3",
+    "infra/frontend/tests/process-bindings.test.mjs": "6f1aa33b24e3c5dfe12293b30903417fa5bfe8a4da1551a1c628b89df50bfca6"
+  },
+  "dependencies": [
+    "HC-35/36 backend, coordinator, wiring and frontend must ship together",
+    "Stop old backend before starting new lock protocol",
+    "Inventory and reconcile pending climate intents before deploy/rollback",
+    "HC-31 physical AI check remains deferred",
+    "Other audit findings unchanged"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "audit": "HC-08",
+  "status": "verified_locally_not_deployed",
+  "date": "2026-10-27",
+  "related_tests": 282,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "new_real_pg_hc08_tests": 25,
+  "real_history_recovered_chains": 3,
+  "real_history_publishes": 0,
+  "new_migrations": false,
+  "production_changed": false,
+  "deferred_dependencies": [
+    "HC-09/F3 transport and physical confirmation",
+    "HC-35/36 fan binding and pending fan intent; unchanged"
+  ],
+  "operational_note": "Read-only inventory found one historical physical_manual session; unchanged; reconcile before deployment",
+  "audit_status_counts": {
+    "Ellen\u0151rz\u00f6tt": 24,
+    "Nyitott": 23,
+    "Jav\u00edtva \u2013 ellen\u0151rz\u00e9sre v\u00e1r": 1
+  }
+}

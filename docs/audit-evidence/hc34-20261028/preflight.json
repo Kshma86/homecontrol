@@ -1,0 +1,11 @@
+{
+  "phase": "release",
+  "ready_to_apply": true,
+  "blockers": [],
+  "migration_pending": true,
+  "services_changed": [
+    "hc_ingest"
+  ],
+  "preserved_services": 8,
+  "production_changed": false
+}

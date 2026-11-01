@@ -1,0 +1,55 @@
+user hc_backend
+topic read zigbee/#
+topic read homecontrol/#
+topic write zigbee/+/set
+topic write zigbee/+/get
+topic write zigbee/bridge/request/#
+topic write homecontrol/cmd/irrigation/esp-irrigation-1/#
+topic write homecontrol/cmd/tuya/+/switch
+topic write homecontrol/xiaomi_x10/command/#
+topic write homecontrol/gree_climate/command
+topic write homecontrol/mower/cmd/#
+
+user hc_ingest
+topic read zigbee/#
+topic read homecontrol/tele/tuya/#
+topic read homecontrol/tele/growatt/#
+topic read homecontrol/tele/irrigation/+/pump_metrics
+topic read homecontrol/tele/irrigation/+/solar
+topic read homecontrol/stat/irrigation/+/availability
+topic read homecontrol/xiaomi_x10/#
+topic read homecontrol/gree_climate/#
+
+user hc_tuya
+topic read homecontrol/cmd/tuya/+/switch
+topic write homecontrol/tele/tuya/#
+
+user hc_x10
+topic read homecontrol/xiaomi_x10/command/#
+topic write homecontrol/xiaomi_x10/#
+
+user hc_x10_api
+topic read homecontrol/xiaomi_x10/#
+topic write homecontrol/xiaomi_x10/command/#
+
+user hc_climate
+topic read homecontrol/gree_climate/command
+topic write homecontrol/gree_climate/availability
+topic write homecontrol/gree_climate/state
+topic write homecontrol/gree_climate/error
+topic write homecontrol/gree_climate/command_result
+
+user hc_growatt
+topic write homecontrol/tele/growatt/cloud/#
+
+user hc_grott
+topic write homecontrol/tele/growatt/inverter/#
+
+user hc_dashboard
+topic read homecontrol/tele/irrigation/esp-irrigation-1/#
+topic read homecontrol/stat/irrigation/esp-irrigation-1/#
+topic write homecontrol/cmd/irrigation/esp-irrigation-1/#
+
+user hc_zigbee2mqtt
+topic readwrite zigbee/#
+

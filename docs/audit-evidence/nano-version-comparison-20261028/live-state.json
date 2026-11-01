@@ -1,0 +1,248 @@
+{
+  "keys": [
+    "_context",
+    "energy_daily",
+    "latest",
+    "live",
+    "manual_max_minutes",
+    "ok",
+    "pump_daily",
+    "scheduler_guard",
+    "schedules",
+    "season_profile",
+    "session_recovery",
+    "session_stats",
+    "sessions",
+    "soil_moisture_24h",
+    "solar_daily",
+    "solar_pump_scheduler",
+    "tank_daily",
+    "temp_daily"
+  ],
+  "latest": [
+    {
+      "entity_name": "Irrigation controller",
+      "key": "controller_temp_c",
+      "ts": "2026-10-25T22:24:43.160159+01:00",
+      "v_bool": null,
+      "v_num": 16.75,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "manual_valve_state",
+      "ts": "2026-10-25T22:24:43.173238+01:00",
+      "v_bool": null,
+      "v_num": null,
+      "v_text": "OPEN"
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "pump_current_a",
+      "ts": "2026-10-25T22:24:43.155261+01:00",
+      "v_bool": null,
+      "v_num": 0.0,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "pump_running",
+      "ts": "2026-10-25T22:24:43.153596+01:00",
+      "v_bool": false,
+      "v_num": null,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "solar_battery_voltage_v",
+      "ts": "2026-10-28T13:49:50.507059+01:00",
+      "v_bool": null,
+      "v_num": 13.6,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "solar_charge_current_a",
+      "ts": "2026-10-28T13:49:50.507802+01:00",
+      "v_bool": null,
+      "v_num": 0.23,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "solar_controller_temp_c",
+      "ts": "2026-10-28T13:50:50.513108+01:00",
+      "v_bool": null,
+      "v_num": 25.0,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "solar_pv_current_a",
+      "ts": "2026-10-28T13:49:50.508381+01:00",
+      "v_bool": null,
+      "v_num": 0.14,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "solar_pv_voltage_v",
+      "ts": "2026-10-28T13:50:20.514790+01:00",
+      "v_bool": null,
+      "v_num": 20.9,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "supply_voltage_12v",
+      "ts": "2026-10-25T22:24:43.157753+01:00",
+      "v_bool": null,
+      "v_num": 10.81,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "valve_code",
+      "ts": "2026-10-25T22:24:43.164886+01:00",
+      "v_bool": null,
+      "v_num": 0.0,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "valve_code_text",
+      "ts": "2026-10-25T22:24:43.167218+01:00",
+      "v_bool": null,
+      "v_num": null,
+      "v_text": "NONE"
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "valve_current_a",
+      "ts": "2026-10-25T22:24:43.169524+01:00",
+      "v_bool": null,
+      "v_num": 0.0,
+      "v_text": null
+    },
+    {
+      "entity_name": "Irrigation controller",
+      "key": "valve_state",
+      "ts": "2026-10-25T22:24:43.162440+01:00",
+      "v_bool": null,
+      "v_num": null,
+      "v_text": "UNKNOWN"
+    }
+  ],
+  "season_profile": {
+    "activated_at": "2026-10-18T14:01:54.097970+02:00",
+    "domain": "irrigation",
+    "profile": "winter",
+    "settings": {
+      "maintenance_controls": false,
+      "manual_watering": false,
+      "measurements_logging": true,
+      "scheduled_watering": false,
+      "solar_pump_automation": false
+    },
+    "updated_at": "2026-09-10T22:17:03.194037+02:00"
+  },
+  "mqtt_connected": true,
+  "subscriptions": [
+    "homecontrol/tele/irrigation/esp-irrigation-1/nano_status",
+    "homecontrol/tele/irrigation/esp-irrigation-1/diag",
+    "homecontrol/stat/irrigation/esp-irrigation-1/availability",
+    "homecontrol/tele/irrigation/esp-irrigation-1/nano_cfg",
+    "homecontrol/stat/irrigation/esp-irrigation-1/cmd_ack",
+    "homecontrol/tele/irrigation/esp-irrigation-1/solar",
+    "homecontrol/tele/irrigation/esp-irrigation-1/nano_event",
+    "homecontrol/tele/irrigation/esp-irrigation-1/pump_metrics",
+    "zigbee/0xa4c13880b130079c",
+    "zigbee/0xa4c13844a0908898",
+    "zigbee/0xa4c1387594b09c83",
+    "homecontrol/tele/irrigation/esp-irrigation-1/#",
+    "homecontrol/stat/irrigation/esp-irrigation-1/#"
+  ],
+  "last_error": "",
+  "topics": {
+    "cmd_ack": {
+      "topic": "homecontrol/stat/irrigation/esp-irrigation-1/cmd_ack",
+      "timestamp": 1793191685.9023829,
+      "age_sec": 285,
+      "retain": false,
+      "connection_generation": 1,
+      "data": {}
+    },
+    "esp_availability": {
+      "topic": "homecontrol/stat/irrigation/esp-irrigation-1/availability",
+      "timestamp": 1793123257.6120684,
+      "age_sec": 68713,
+      "retain": true,
+      "connection_generation": 1,
+      "data": "online"
+    },
+    "esp_diag": {
+      "topic": "homecontrol/tele/irrigation/esp-irrigation-1/diag",
+      "timestamp": 1793191680.713607,
+      "age_sec": 290,
+      "retain": false,
+      "connection_generation": 1,
+      "data": {
+        "nano_cmd_fail_count": 61863,
+        "nano_cmd_retry_count": 62166,
+        "nano_cmd_timeout_count": 61861,
+        "nano_code": 106,
+        "nano_code_text": "SUPPLY_LOW",
+        "nano_health": "FAULT",
+        "nano_last_ack_cmd": "PING",
+        "nano_last_err_cmd": "PING`��@51790",
+        "nano_last_err_reason": "UNKNOWN_CMD",
+        "nano_manual_valve": "CONFLICT",
+        "nano_mode": "REMOTE",
+        "nano_online": false,
+        "nano_serial_healthy": false,
+        "nano_temp_c": 12.63,
+        "nano_valve": "UNKNOWN",
+        "pump_metrics_last_tele_sec_ago": 300125,
+        "pump_metrics_valid": true,
+        "uptime_sec": 889439,
+        "wifi_rssi": -76
+      }
+    },
+    "esp_nano_status": null,
+    "moisture_sensor_02": {
+      "topic": "zigbee/0xa4c13844a0908898",
+      "timestamp": 1793191942.647545,
+      "age_sec": 28,
+      "retain": false,
+      "connection_generation": 1,
+      "data": {}
+    },
+    "moisture_sensor_03": null,
+    "nano_config": null,
+    "nano_event": null,
+    "pump_metrics": null,
+    "solar": {
+      "topic": "homecontrol/tele/irrigation/esp-irrigation-1/solar",
+      "timestamp": 1793191970.5125337,
+      "age_sec": 0,
+      "retain": false,
+      "connection_generation": 1,
+      "data": {}
+    },
+    "tank_level": {
+      "topic": "zigbee/0xa4c13880b130079c",
+      "timestamp": 1793191949.1317835,
+      "age_sec": 21,
+      "retain": false,
+      "connection_generation": 1,
+      "data": {}
+    }
+  },
+  "raw_topic_names": [
+    "homecontrol/stat/irrigation/esp-irrigation-1/cmd_ack",
+    "homecontrol/tele/irrigation/esp-irrigation-1/diag",
+    "homecontrol/tele/irrigation/esp-irrigation-1/solar",
+    "zigbee/0xa4c13844a0908898",
+    "zigbee/0xa4c13880b130079c"
+  ]
+}

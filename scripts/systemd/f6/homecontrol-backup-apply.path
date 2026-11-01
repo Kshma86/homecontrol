@@ -1,0 +1,21 @@
+[Unit]
+Description=Watch HomeControl F6 backup schedules
+
+[Path]
+PathChanged=/srv/docker/homecontrol/backups/backup_settings.json
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-ai-weekly-backup.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-ai-weekly-backup.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-backup-apply.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-backup.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-backup.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-full-ai-backup-request.path
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-full-ai-backup-request.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-log-maintenance.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-log-maintenance.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-restic-check.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-restic-check.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/f6/homecontrol-backup-apply.path
+Unit=homecontrol-backup-apply.service
+
+[Install]
+WantedBy=multi-user.target

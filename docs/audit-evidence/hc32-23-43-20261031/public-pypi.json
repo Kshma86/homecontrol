@@ -1,0 +1,205 @@
+{
+  "flask": {
+    "version": "3.1.3",
+    "requires_python": ">=3.9",
+    "requires_dist": [
+      "blinker>=1.9.0",
+      "click>=8.1.3",
+      "importlib-metadata>=3.6.0; python_version < \"3.10\"",
+      "itsdangerous>=2.2.0",
+      "jinja2>=3.1.2",
+      "markupsafe>=2.1.1",
+      "werkzeug>=3.1.0",
+      "asgiref>=3.2; extra == \"async\"",
+      "python-dotenv; extra == \"dotenv\""
+    ]
+  },
+  "urllib3": {
+    "version": "2.8.0",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "brotli>=1.2.0; platform_python_implementation == \"CPython\" and extra == \"brotli\"",
+      "brotlicffi>=1.2.0.0; platform_python_implementation != \"CPython\" and extra == \"brotli\"",
+      "h2<5,>=4; extra == \"h2\"",
+      "pysocks!=1.5.7,<2.0,>=1.5.6; extra == \"socks\"",
+      "backports-zstd>=1.0.0; python_version < \"3.14\" and extra == \"zstd\""
+    ]
+  },
+  "requests": {
+    "version": "2.34.2",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "charset_normalizer<4,>=2",
+      "idna<4,>=2.5",
+      "urllib3<3,>=1.26",
+      "certifi>=2023.5.7",
+      "PySocks!=1.5.7,>=1.5.6; extra == \"socks\"",
+      "chardet<8,>=3.0.2; extra == \"use-chardet-on-py3\""
+    ]
+  },
+  "pip": {
+    "version": "26.2.2",
+    "requires_python": ">=3.10",
+    "requires_dist": null
+  },
+  "setuptools": {
+    "version": "84.2.1",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "pytest!=8.1.*,>=6; extra == \"test\"",
+      "virtualenv>=13.0.0; extra == \"test\"",
+      "wheel>=0.44.0; extra == \"test\"",
+      "pip>=19.1; extra == \"test\"",
+      "packaging>=26.3; extra == \"test\"",
+      "jaraco.envs>=2.2; extra == \"test\"",
+      "pytest-xdist>=3; extra == \"test\"",
+      "jaraco.path>=3.7.2; extra == \"test\"",
+      "build[virtualenv]>=1.0.3; extra == \"test\"",
+      "filelock>=3.4.0; extra == \"test\"",
+      "ini2toml[lite]>=0.14; extra == \"test\"",
+      "tomli-w>=1.0.0; extra == \"test\"",
+      "pytest-timeout; extra == \"test\"",
+      "pytest-perf; sys_platform != \"cygwin\" and extra == \"test\"",
+      "jaraco.develop>=7.21; (python_version >= \"3.9\" and sys_platform != \"cygwin\") and extra == \"test\"",
+      "pytest-home>=0.5; extra == \"test\"",
+      "pytest-subprocess; extra == \"test\"",
+      "pyproject-hooks!=1.1; extra == \"test\"",
+      "jaraco.test>=5.5; extra == \"test\"",
+      "sphinx>=3.5; extra == \"doc\"",
+      "jaraco.packaging>=9.3; extra == \"doc\"",
+      "rst.linker>=1.9; extra == \"doc\"",
+      "furo; extra == \"doc\"",
+      "sphinx-lint; extra == \"doc\"",
+      "jaraco.tidelift>=1.4; extra == \"doc\"",
+      "pygments-github-lexers==0.0.5; extra == \"doc\"",
+      "sphinx-favicon; extra == \"doc\"",
+      "sphinx-inline-tabs; extra == \"doc\"",
+      "sphinx-reredirects; extra == \"doc\"",
+      "sphinxcontrib-towncrier; extra == \"doc\"",
+      "sphinx-notfound-page<2,>=1; extra == \"doc\"",
+      "pyproject-hooks!=1.1; extra == \"doc\"",
+      "towncrier<24.7; extra == \"doc\"",
+      "packaging>=26.3; extra == \"core\"",
+      "more_itertools>=8.8; extra == \"core\"",
+      "jaraco.text>=3.7; extra == \"core\"",
+      "importlib_metadata>=6; python_version < \"3.10\" and extra == \"core\"",
+      "tomli>=2.0.1; python_version < \"3.11\" and extra == \"core\"",
+      "wheel>=0.43.0; extra == \"core\"",
+      "jaraco.functools>=4; extra == \"core\"",
+      "more_itertools; extra == \"core\"",
+      "pytest-checkdocs>=2.14; extra == \"check\"",
+      "pytest-ruff>=0.2.1; sys_platform != \"cygwin\" and extra == \"check\"",
+      "ruff>=0.13.0; sys_platform != \"cygwin\" and extra == \"check\"",
+      "pytest-cov; extra == \"cover\"",
+      "pytest-enabler>=3.4; extra == \"enabler\"",
+      "pytest-mypy>=1.0.1; platform_python_implementation != \"PyPy\" and extra == \"type\"",
+      "mypy==1.18.*; extra == \"type\"",
+      "importlib_metadata>=7.0.2; python_version < \"3.10\" and extra == \"type\"",
+      "jaraco.develop>=7.21; sys_platform != \"cygwin\" and extra == \"type\""
+    ]
+  },
+  "werkzeug": {
+    "version": "3.1.9",
+    "requires_python": ">=3.9",
+    "requires_dist": [
+      "markupsafe>=2.1.1",
+      "watchdog>=2.3; extra == \"watchdog\""
+    ]
+  },
+  "pillow": {
+    "version": "13.0.0",
+    "requires_python": ">=3.11",
+    "requires_dist": [
+      "furo; extra == \"docs\"",
+      "olefile; extra == \"docs\"",
+      "sphinx>=8.2; extra == \"docs\"",
+      "sphinx-autobuild; extra == \"docs\"",
+      "sphinx-copybutton; extra == \"docs\"",
+      "sphinx-inline-tabs; extra == \"docs\"",
+      "sphinxext-opengraph; extra == \"docs\"",
+      "olefile; extra == \"fpx\"",
+      "olefile; extra == \"mic\"",
+      "arro3-compute; extra == \"test-arrow\"",
+      "arro3-core; extra == \"test-arrow\"",
+      "nanoarrow; extra == \"test-arrow\"",
+      "pyarrow; extra == \"test-arrow\"",
+      "coverage>=7.4.2; extra == \"tests\"",
+      "defusedxml; extra == \"tests\"",
+      "markdown2; extra == \"tests\"",
+      "olefile; extra == \"tests\"",
+      "packaging; extra == \"tests\"",
+      "psutil; (sys_platform == \"linux\" or sys_platform == \"darwin\") and extra == \"tests\"",
+      "pytest; extra == \"tests\"",
+      "pytest-cov; extra == \"tests\"",
+      "pytest-timeout; extra == \"tests\"",
+      "pytest-xdist; extra == \"tests\"",
+      "setuptools; extra == \"tests\"",
+      "trove-classifiers>=2024.10.12; extra == \"tests\"",
+      "defusedxml; extra == \"xmp\""
+    ]
+  },
+  "gunicorn": {
+    "version": "26.2.0",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "gevent>=24.10.1; extra == \"gevent\"",
+      "packaging; extra == \"gevent\"",
+      "tornado>=6.5.7; extra == \"tornado\"",
+      "setproctitle; extra == \"setproctitle\"",
+      "h2>=4.4.1; extra == \"http2\"",
+      "gunicorn_h1c>=0.6.9; extra == \"fast\"",
+      "gevent>=24.10.1; extra == \"testing\"",
+      "h2>=4.4.1; extra == \"testing\"",
+      "coverage; extra == \"testing\"",
+      "packaging; extra == \"testing\"",
+      "pytest>=9.0.3; extra == \"testing\"",
+      "pytest-cov; extra == \"testing\"",
+      "pytest-asyncio; extra == \"testing\"",
+      "uvloop>=0.19.0; extra == \"testing\"",
+      "httpx[http2]>=0.23.0; extra == \"testing\"",
+      "inotify>=0.2.10; sys_platform == \"linux\" and extra == \"testing\""
+    ]
+  },
+  "tinytuya": {
+    "version": "1.20.0",
+    "requires_python": null,
+    "requires_dist": [
+      "requests",
+      "colorama",
+      "cryptography"
+    ]
+  },
+  "greeclimate": {
+    "version": "4.1.0",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "ifaddr~=0.2.0",
+      "pycryptodome~=3.24"
+    ]
+  },
+  "python-miio": {
+    "version": "0.5.12",
+    "requires_python": ">=3.7,<4.0",
+    "requires_dist": [
+      "PyYAML (>=5,<7)",
+      "android_backup (>=0,<1)",
+      "appdirs (>=1,<2)",
+      "attrs",
+      "click (>=8)",
+      "construct (>=2.10.56,<3.0.0)",
+      "croniter (>=1)",
+      "cryptography (>=35)",
+      "defusedxml (>=0,<1)",
+      "importlib_metadata (>=1,<2); python_version <= \"3.7\"",
+      "micloud",
+      "netifaces (>=0,<1)",
+      "pytz",
+      "sphinx (>=4.2); extra == \"docs\"",
+      "sphinx_click; extra == \"docs\"",
+      "sphinx_rtd_theme (>=0,<1); extra == \"docs\"",
+      "sphinxcontrib-apidoc (>=0,<1); extra == \"docs\"",
+      "tqdm (>=4,<5)",
+      "zeroconf (>=0,<1)"
+    ]
+  }
+}

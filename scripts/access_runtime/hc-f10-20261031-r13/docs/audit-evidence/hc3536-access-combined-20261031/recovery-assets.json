@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "offline_image_count": 21,
+  "all_blob_sha256_verified": true,
+  "blob_count": 241,
+  "linux_amd64_complete_for_all_requested_images": true,
+  "upstream_other_platform_or_attestation_descriptors_omitted": 50,
+  "image_archive_bytes": 650291715,
+  "image_archive_sha256": "cc05451dd8757d75cd755c739ac6a182f4ffc63dff419bf4c3797a4c67f7fabd",
+  "actual_age_decryption_verified": true,
+  "encrypted_bundle_esp_confirmed": true,
+  "esp_ip": "192.168.1.179",
+  "production_bundle_installed": false
+}

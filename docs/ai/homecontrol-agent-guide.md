@@ -39,7 +39,11 @@ Routes should stay thin.
 - `infra/backend/command_service.py`: command-to-context invalidation mapping.
 - `infra/backend/scheduler_service.py`: unified scheduler, V2 event/plan/
   execution audit and execution orchestration.
-- `infra/backend/schema_service.py`: backend schema bootstrap helpers.
+- `infra/backend/schema_service.py`: pilot compatibility check and remaining
+  power-wall DDL helper. The HC-07 source change is not deployed over `r1` yet;
+  `migrate_hc07.py`, `startup_schema_contract.py`, and migrations 059/060 define
+  the explicit upgrade path. Never put inventory/configuration DML back into
+  application startup. See `docs/hc07-schema-migrations.md` (HC-38 dependency).
 - `infra/db/*.sql`: migrations and durable schema/data changes.
 - `infra/backend/tests/`: Python unit tests.
 

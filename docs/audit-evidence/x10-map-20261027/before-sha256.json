@@ -1,0 +1,9 @@
+{
+  "apps/xiaomi-x10/xiaomi_x10_bridge.py": "b9ecb0b9171a9bf2648efa52132fe9e0e430aa8e1d6e1eeffb90475833282fba",
+  "apps/xiaomi-x10/xiaomi_x10_map.py": "61c21ab33ef86c1eb26c8e606957a4625292a929595a038492c1d95166dcbc61",
+  "apps/xiaomi-x10/config.py": "10b8e9cd018aaa46ba8e1d7d23e4577300210d151da1ed7b43edfc931414c04e",
+  "apps/xiaomi-x10/Dockerfile": "edb47d7b29422a8c7df73a4b3d20841b57766d6ea9ab05139a603efbae64aa27",
+  "infra/docker-compose.yml": "9d45a2102fd7dbb0ebcef6a59b4c2ba8a133c72035377d556e4a29db25effacf",
+  "AUDIT_REPAIR.md": "e1ed9360c29ca21cb8be3e0bb3037c9c913ea42772332991b2f8ed5056a761f7",
+  "DEPLOYMENT_PREP.md": "7d6022d27d4531f4d9b5e6b9acccbf56eae0a1aa542640fb668516d272949d6d"
+}

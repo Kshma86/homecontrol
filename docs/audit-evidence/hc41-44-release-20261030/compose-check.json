@@ -1,0 +1,9 @@
+{
+  "compose_valid": true,
+  "services": 14,
+  "pinned_images_no_build": true,
+  "backend_nonroot_readonly_no_socket": true,
+  "backend_writes_exact_four": true,
+  "authenticated_port_loopback_only": true,
+  "hc35_36_excluded": true
+}

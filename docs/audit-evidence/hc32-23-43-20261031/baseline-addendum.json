@@ -1,0 +1,9 @@
+{
+  "component": "local-ai-gateway",
+  "source": "unchanged immutable active image and sealed r10 Dockerfile",
+  "image": "sha256:3ec17f374edaaee9a5fe02c53a5b0636a02578ec337acac2203faff689ea01a0",
+  "sha256": {
+    "Dockerfile": "4a116393956df27dbcac7c90ab3231f889d7b0abe647e9d0794f943a125de648",
+    "ai_server.py": "015b55af9ca8fe89691f499a8ccbd2093d0861adc270edc267412410257d3f38"
+  }
+}

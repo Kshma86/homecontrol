@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-30",
+  "finding": "HC-41",
+  "scope": "Read-only MQTT Explorer profile preparation",
+  "deployed": false,
+  "unit": {
+    "tests": 15,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "broker": {
+    "passed": [
+      "all_11_role_credentials_accepted",
+      "anonymous_and_wrong_password_rejected_on_1884",
+      "legacy_esp_telemetry_visible_to_authenticated_backend",
+      "authenticated_backend_stop_reaches_legacy_esp",
+      "legacy_ack_visible",
+      "legacy_foreign_topics_and_command_publish_denied",
+      "legacy_cannot_read_other_domains",
+      "ingest_retained_read_and_write_denial",
+      "bridge_domain_writes_and_cross_domain_denials",
+      "tuya_x10_climate_commands_delivered",
+      "optional_dashboard_irrigation_scope_only",
+      "mqtt5_explorer_retained_reads_and_all_publish_denials",
+      "real_backend_monitor_and_postboot_probe_authenticate",
+      "authenticated_lwt_published",
+      "legacy_reconnect_preserves_route"
+    ],
+    "checks": 15,
+    "production_messages": 0,
+    "network": "none; shared laboratory namespace",
+    "network_ip_filter_tested": false,
+    "physical_devices_tested": false
+  },
+  "ssh": {
+    "host_lan_addresses": [
+      "192.168.1.133"
+    ],
+    "expected_host_address_present": true,
+    "ssh_configuration_valid": true,
+    "ssh_settings": {
+      "hostname": "192.168.1.133",
+      "user": "a",
+      "localforward": "[127.0.0.1]:21884 [127.0.0.1]:1884",
+      "exitonforwardfailure": "yes"
+    },
+    "ssh_connection_tested": false,
+    "live_broker_changed": false
+  },
+  "production": {
+    "broker_identity_image_start_restarts_unchanged": true,
+    "protected_host_count": 37,
+    "changed_protected_files": [],
+    "mqtt_config_unchanged": true,
+    "active_override": "/srv/docker/homecontrol/backups/releases/hc-ingest-20261028-r9/release.override.json",
+    "remaining_lab_containers": [],
+    "deployed": false
+  },
+  "username": "hc_explorer",
+  "private_profile": "/srv/docker/homecontrol/backups/mqtt-access/hc41-20261030-explorer/mqtt-explorer.connection.json",
+  "profile_mode": "0600",
+  "package_mode": "0700",
+  "password_database_hashed": true,
+  "source_sha256": {
+    "scripts/prepare_mqtt_access.py": "b9db80e1e610109f09254a535ab89551da0d02c7d1ad45527b22e914ccda2dc6",
+    "infra/backend/tests/test_mqtt_credentials.py": "c4156d0348b4f653f3f6cfee46977a74f6b5f282daed7ef9678c97928d9e5384"
+  },
+  "limitations": [
+    "Explorer GUI and dev-PC SSH connection not tested",
+    "HC-41 stage deployment prerequisites remain unchanged"
+  ],
+  "credentials_in_public_evidence": false
+}

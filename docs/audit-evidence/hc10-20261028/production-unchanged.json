@@ -1,0 +1,26 @@
+{
+  "checked_utc": "2026-10-28T15:31:59.729334+00:00",
+  "unchanged_live_containers": 9,
+  "unchanged_active_host_files": 37,
+  "audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "active_override": "/srv/docker/homecontrol/backups/releases/hc-scheduler-x10-20261027-r7/release.override.json",
+  "health": {
+    "/health": {
+      "db_ok": true,
+      "error": null,
+      "mqtt_ok": true,
+      "ok": true
+    },
+    "/api/deployment/status": {
+      "ai_enabled": false,
+      "local_backup_only": true,
+      "message": "Az AI-szerver SSD-probléma miatt ideiglenesen ki van hagyva; csak helyi mentés érhető el.",
+      "policy_valid": true,
+      "profile": "ai-offline",
+      "remote_backup_enabled": false,
+      "restore_in_place_enabled": false,
+      "restricted": true
+    }
+  },
+  "production_changed": false
+}

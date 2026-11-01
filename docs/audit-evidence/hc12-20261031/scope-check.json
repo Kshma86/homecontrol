@@ -1,0 +1,6 @@
+{
+  "mqtt_publish": true,
+  "mqtt_publish_changed": true,
+  "parse_partial": true,
+  "mqtt_publish_device": true
+}

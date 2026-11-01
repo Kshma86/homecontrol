@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "python_clients": 6,
+  "zigbee_environment_override": true,
+  "authenticated_host_port_loopback_only": true,
+  "applied": false,
+  "uses_worktree_only_for_parser_validation": true
+}

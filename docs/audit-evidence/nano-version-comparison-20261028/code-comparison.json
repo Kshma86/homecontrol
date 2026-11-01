@@ -1,0 +1,50 @@
+{
+  "preaudit": {
+    "sha256": {
+      "irrigation_service.py": "2479b7804e3ef49c89d144e1c3ebdd037f6c721b1a4800cc47111f98dc0d74ac",
+      "app.py": "815cc217b138ec3e5f071e3179c9c413cf2488ddb8b7f8003d620bf3d3772db1",
+      "mqtt_monitor_service.py": "4abff0ca2879af137d2beda72308de2b753283475aa912a8bbb0b543ff5d1621",
+      "settings.py": "511276f86173f93cbdbb457b75df23b29bc102eb221adce18b8ca0feee5c9042",
+      "topic_contract.py": "faa6dbcb6f8c8ec0376a2e07273e9525444296e2064a09694e208b6da34b7c71"
+    },
+    "live_valve_state_ast_sha256": "b7ff46f862dbce3a20baf5e7fc373e9b283540306df7b66d1a5e4a1ca10b743e",
+    "mqtt_monitor_init_ast": "Assign(targets=[Name(id='mqtt_monitor', ctx=Store())], value=Call(func=Name(id='IrrigationMqttMonitorState', ctx=Load()), args=[Name(id='MQTT_HOST', ctx=Load()), Name(id='MQTT_PORT', ctx=Load()), Name(id='IRRIGATION_DEVICE_ID', ctx=Load()), Name(id='IRRIGATION_TOPICS', ctx=Load())], keywords=[keyword(arg='observe_topic', value=Lambda(args=arguments(posonlyargs=[], args=[arg(arg='topic')], kwonlyargs=[], kw_defaults=[], defaults=[]), body=Call(func=Attribute(value=Call(func=Name(id='get_command_service', ctx=Load()), args=[], keywords=[]), attr='observe_mqtt_topic', ctx=Load()), args=[Name(id='topic', ctx=Load())], keywords=[])))]))",
+    "device_id_setting": "irrigation_device_id: str = os.environ.get('IRRIGATION_DEVICE_ID', 'esp-irrigation-1')"
+  },
+  "r2": {
+    "sha256": {
+      "irrigation_service.py": "a8f6067ea7469a2ddaa39600d9d443bb19cf72523bea6d03b9c821853c9ca15c",
+      "app.py": "efd87740e3088c1a53df4d56cca5f7d2a67b2dd0529e6b81872db4dd50e287ee",
+      "mqtt_monitor_service.py": "b9c78bd49f96ae584a5c9494127bbb404cd83ac9dfccb3ce1aa8480f0985dca5",
+      "settings.py": "80d4980a49a5f34f84fa6661976d40476724318006f8e2ad0664b7e394963263",
+      "topic_contract.py": "faa6dbcb6f8c8ec0376a2e07273e9525444296e2064a09694e208b6da34b7c71"
+    },
+    "live_valve_state_ast_sha256": "5559ed71f1c44ae1f9802c81f006b95729158cf8bccc124b90dcdc3488f656ed",
+    "mqtt_monitor_init_ast": "Assign(targets=[Name(id='mqtt_monitor', ctx=Store())], value=Call(func=Name(id='IrrigationMqttMonitorState', ctx=Load()), args=[Name(id='MQTT_HOST', ctx=Load()), Name(id='MQTT_PORT', ctx=Load()), Name(id='IRRIGATION_DEVICE_ID', ctx=Load()), Name(id='IRRIGATION_TOPICS', ctx=Load())], keywords=[keyword(arg='observe_topic', value=Lambda(args=arguments(posonlyargs=[], args=[arg(arg='topic')], kwonlyargs=[], kw_defaults=[], defaults=[]), body=Call(func=Attribute(value=Call(func=Name(id='get_command_service', ctx=Load()), args=[], keywords=[]), attr='observe_mqtt_topic', ctx=Load()), args=[Name(id='topic', ctx=Load())], keywords=[])))]))",
+    "device_id_setting": "irrigation_device_id: str = os.environ.get('IRRIGATION_DEVICE_ID', 'esp-irrigation-1')"
+  },
+  "r4": {
+    "sha256": {
+      "irrigation_service.py": "a8f6067ea7469a2ddaa39600d9d443bb19cf72523bea6d03b9c821853c9ca15c",
+      "app.py": "efd87740e3088c1a53df4d56cca5f7d2a67b2dd0529e6b81872db4dd50e287ee",
+      "mqtt_monitor_service.py": "b9c78bd49f96ae584a5c9494127bbb404cd83ac9dfccb3ce1aa8480f0985dca5",
+      "settings.py": "80d4980a49a5f34f84fa6661976d40476724318006f8e2ad0664b7e394963263",
+      "topic_contract.py": "faa6dbcb6f8c8ec0376a2e07273e9525444296e2064a09694e208b6da34b7c71"
+    },
+    "live_valve_state_ast_sha256": "5559ed71f1c44ae1f9802c81f006b95729158cf8bccc124b90dcdc3488f656ed",
+    "mqtt_monitor_init_ast": "Assign(targets=[Name(id='mqtt_monitor', ctx=Store())], value=Call(func=Name(id='IrrigationMqttMonitorState', ctx=Load()), args=[Name(id='MQTT_HOST', ctx=Load()), Name(id='MQTT_PORT', ctx=Load()), Name(id='IRRIGATION_DEVICE_ID', ctx=Load()), Name(id='IRRIGATION_TOPICS', ctx=Load())], keywords=[keyword(arg='observe_topic', value=Lambda(args=arguments(posonlyargs=[], args=[arg(arg='topic')], kwonlyargs=[], kw_defaults=[], defaults=[]), body=Call(func=Attribute(value=Call(func=Name(id='get_command_service', ctx=Load()), args=[], keywords=[]), attr='observe_mqtt_topic', ctx=Load()), args=[Name(id='topic', ctx=Load())], keywords=[])))]))",
+    "device_id_setting": "irrigation_device_id: str = os.environ.get('IRRIGATION_DEVICE_ID', 'esp-irrigation-1')"
+  },
+  "live": {
+    "sha256": {
+      "irrigation_service.py": "096a733f344f66a350f336a77bb8ef3fc4fe1ba43b09be8bc8fc394f7a2a8b21",
+      "app.py": "a6e5b7e7c4fa2101eaa3c641a8ce69618a0974df007a2ae46661f50095abcd14",
+      "mqtt_monitor_service.py": "e55e395b8d182523f99e908a4e5b06b3ffaca624899f0c63ff25ab3889bd96b3",
+      "settings.py": "fb529e8cbe5fa6bed4a32fb87b5fdfbf0209791576f509044dcac1442c352253",
+      "topic_contract.py": "faa6dbcb6f8c8ec0376a2e07273e9525444296e2064a09694e208b6da34b7c71"
+    },
+    "live_valve_state_ast_sha256": "5559ed71f1c44ae1f9802c81f006b95729158cf8bccc124b90dcdc3488f656ed",
+    "mqtt_monitor_init_ast": "Assign(targets=[Name(id='mqtt_monitor', ctx=Store())], value=Call(func=Name(id='IrrigationMqttMonitorState', ctx=Load()), args=[Name(id='MQTT_HOST', ctx=Load()), Name(id='MQTT_PORT', ctx=Load()), Name(id='IRRIGATION_DEVICE_ID', ctx=Load()), Name(id='IRRIGATION_TOPICS', ctx=Load())], keywords=[keyword(arg='observe_topic', value=Lambda(args=arguments(posonlyargs=[], args=[arg(arg='topic')], kwonlyargs=[], kw_defaults=[], defaults=[]), body=Call(func=Attribute(value=Call(func=Name(id='get_command_service', ctx=Load()), args=[], keywords=[]), attr='observe_mqtt_topic', ctx=Load()), args=[Name(id='topic', ctx=Load())], keywords=[])))]))",
+    "device_id_setting": "irrigation_device_id: str = os.environ.get('IRRIGATION_DEVICE_ID', 'esp-irrigation-1')"
+  }
+}

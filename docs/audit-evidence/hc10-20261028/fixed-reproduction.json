@@ -1,0 +1,42 @@
+{
+  "context": {
+    "returned_value": 1,
+    "next_read_value": 1,
+    "builder_versions": [
+      0,
+      1
+    ]
+  },
+  "api": {
+    "returned_value": 1,
+    "next_read_value": 1,
+    "builder_versions": [
+      0,
+      1
+    ]
+  },
+  "irrigation_snapshot": {
+    "returned_value": 1,
+    "next_read_value": 1,
+    "builder_versions": [
+      0,
+      1
+    ]
+  },
+  "irrigation_pilot": {
+    "returned_value": 1,
+    "next_read_value": 1,
+    "builder_versions": [
+      0,
+      1
+    ]
+  },
+  "irrigation_weather": {
+    "returned_value": 1,
+    "next_read_value": 1,
+    "builder_versions": [
+      0,
+      1
+    ]
+  }
+}

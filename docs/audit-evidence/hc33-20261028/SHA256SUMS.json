@@ -1,0 +1,13 @@
+{
+  "baseline-reproduction.json": "72b7f612aac5f548b3536427eb3d40693c20578307ea946a8502b1766970cd71",
+  "live-before.json": "eb84916657316bd670bcf74c067a8ab67e696278d68a8582082b00a41ae2e721",
+  "postgres-integration.json": "9b01354b3478222c070ece8c6eaa4211ea01946f107bd2ba8da00bc28da71395",
+  "postgres-integration.log": "ca5bc47adac748a835a9f4a42360583e8503464c459b9ebfa54e6b638865b1de",
+  "production-unchanged.json": "af009b5c4ea12ad90da011d9f3ef4f2f09a6c712f04a40c44a6a8a86af858486",
+  "repair.patch": "3d2a21aef3dd3f0452831e6aeaed17535c95b2306a1c7a3bf9cd4ceb305598ef",
+  "reproduce.py": "99e12108c5b6f4c414fb379eb1b99207da08bdbecf6cc3108781bb409bcc3a33",
+  "run_lab.py": "9a2a5bebe40f8200f13435433b59222ebd8c511385e94f25c6944382b8471de3",
+  "scope.json": "321ab2a945b601ecd009f1950c6ee10ae717cb74b30cb53aa7d4393b8335fdec",
+  "summary.json": "12d2fa4dd50b0d365e466418ade735b92b113af9bbf97dbc529c8a01357f4a72",
+  "tests.log": "d95cfeb998add9814f2fe1d94d3be5e2f777bb32a6c7b00abde8160586b76ba8"
+}

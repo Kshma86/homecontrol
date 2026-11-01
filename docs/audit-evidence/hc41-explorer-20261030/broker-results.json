@@ -1,0 +1,24 @@
+{
+  "passed": [
+    "all_11_role_credentials_accepted",
+    "anonymous_and_wrong_password_rejected_on_1884",
+    "legacy_esp_telemetry_visible_to_authenticated_backend",
+    "authenticated_backend_stop_reaches_legacy_esp",
+    "legacy_ack_visible",
+    "legacy_foreign_topics_and_command_publish_denied",
+    "legacy_cannot_read_other_domains",
+    "ingest_retained_read_and_write_denial",
+    "bridge_domain_writes_and_cross_domain_denials",
+    "tuya_x10_climate_commands_delivered",
+    "optional_dashboard_irrigation_scope_only",
+    "mqtt5_explorer_retained_reads_and_all_publish_denials",
+    "real_backend_monitor_and_postboot_probe_authenticate",
+    "authenticated_lwt_published",
+    "legacy_reconnect_preserves_route"
+  ],
+  "checks": 15,
+  "production_messages": 0,
+  "network": "none; shared laboratory namespace",
+  "network_ip_filter_tested": false,
+  "physical_devices_tested": false
+}

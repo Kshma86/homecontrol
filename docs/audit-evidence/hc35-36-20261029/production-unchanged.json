@@ -1,0 +1,14 @@
+{
+  "deployed": false,
+  "production_commands_sent": false,
+  "production_database_used_for_tests": false,
+  "live_containers_unchanged": 15,
+  "protected_host_files_unchanged": 37,
+  "process_bindings_unchanged": true,
+  "active_release": "hc-ingest-20261028-r9",
+  "active_override_unchanged": true,
+  "original_audit_unchanged": true,
+  "safety_source_unchanged": true,
+  "frontend_lock_unchanged": true,
+  "lab_removed": true
+}

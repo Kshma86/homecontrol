@@ -1,0 +1,7 @@
+{
+  "http_probe_exit": 0,
+  "network": "none",
+  "published_ports": 0,
+  "production_changed": false,
+  "backend_dns": "synthetic loopback alias; API not called"
+}

@@ -1,0 +1,15 @@
+{
+  "host_lan_addresses": [
+    "192.168.1.133"
+  ],
+  "expected_host_address_present": true,
+  "ssh_configuration_valid": true,
+  "ssh_settings": {
+    "hostname": "192.168.1.133",
+    "user": "a",
+    "localforward": "[127.0.0.1]:21884 [127.0.0.1]:1884",
+    "exitonforwardfailure": "yes"
+  },
+  "ssh_connection_tested": false,
+  "live_broker_changed": false
+}

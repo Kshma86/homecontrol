@@ -1,6 +1,6 @@
 {
   "current_map_id": 3,
-  "source_file": "/app/x10_maps/map_object_c03c081a1967e8513a358d2488317050.json",
+  "source_file": "/app/x10_maps/map_object_a8aee35caafd5bab98ace01d3208dadd.json",
   "maps": [
     {
       "id_from_json": 2,
@@ -24,7 +24,7 @@
         "height": 151,
         "left": -4150,
         "top": -6400,
-        "raw_size": 26636
+        "raw_size": 26615
       },
       "rooms": [
         {
@@ -34,7 +34,11 @@
           "roomID": "48001100024",
           "neighbors": [
             5
-          ]
+          ],
+          "center_px": {
+            "x": 127.03,
+            "y": 47.67
+          }
         },
         {
           "segment_id": 2,
@@ -43,7 +47,11 @@
           "roomID": "48001097076",
           "neighbors": [
             5
-          ]
+          ],
+          "center_px": {
+            "x": 103.11,
+            "y": 101.86
+          }
         },
         {
           "segment_id": 5,
@@ -51,10 +59,14 @@
           "type": 0,
           "roomID": "48001100025",
           "neighbors": [
+            1,
             2,
-            3,
             4
-          ]
+          ],
+          "center_px": {
+            "x": 131.31,
+            "y": 122.25
+          }
         },
         {
           "segment_id": 1,
@@ -62,18 +74,12 @@
           "type": null,
           "roomID": null,
           "neighbors": [
-            3
-          ]
-        },
-        {
-          "segment_id": 3,
-          "name": null,
-          "type": null,
-          "roomID": null,
-          "neighbors": [
-            1,
             5
-          ]
+          ],
+          "center_px": {
+            "x": 41.97,
+            "y": 107.7
+          }
         }
       ],
       "meta_keys": [
@@ -114,7 +120,11 @@
           "roomID": "48001098232",
           "neighbors": [
             2
-          ]
+          ],
+          "center_px": {
+            "x": 93.32,
+            "y": 209.28
+          }
         },
         {
           "segment_id": 3,
@@ -123,7 +133,11 @@
           "roomID": "48001098233",
           "neighbors": [
             2
-          ]
+          ],
+          "center_px": {
+            "x": 95.47,
+            "y": 63.28
+          }
         },
         {
           "segment_id": 2,
@@ -133,7 +147,11 @@
           "neighbors": [
             1,
             3
-          ]
+          ],
+          "center_px": {
+            "x": 89.97,
+            "y": 147.59
+          }
         }
       ],
       "meta_keys": [
@@ -156,9 +174,9 @@
         "robot_x": 0,
         "robot_y": 0,
         "robot_angle": 0,
-        "dock_x": 474,
-        "dock_y": -53,
-        "dock_angle": 177,
+        "dock_x": 471,
+        "dock_y": -54,
+        "dock_angle": 180,
         "grid_size": 50,
         "width": 99,
         "height": 247,
@@ -175,7 +193,11 @@
           "neighbors": [
             2,
             3
-          ]
+          ],
+          "center_px": {
+            "x": 69.04,
+            "y": 40.68
+          }
         },
         {
           "segment_id": 7,
@@ -184,7 +206,11 @@
           "roomID": "48001097078",
           "neighbors": [
             2
-          ]
+          ],
+          "center_px": {
+            "x": 17.06,
+            "y": 70.79
+          }
         },
         {
           "segment_id": 3,
@@ -194,7 +220,11 @@
           "neighbors": [
             2,
             4
-          ]
+          ],
+          "center_px": {
+            "x": 30.12,
+            "y": 47.37
+          }
         },
         {
           "segment_id": 1,
@@ -204,7 +234,11 @@
           "neighbors": [
             2,
             5
-          ]
+          ],
+          "center_px": {
+            "x": 58.63,
+            "y": 196.08
+          }
         },
         {
           "segment_id": 2,
@@ -216,7 +250,11 @@
             3,
             4,
             7
-          ]
+          ],
+          "center_px": {
+            "x": 50.34,
+            "y": 114.91
+          }
         },
         {
           "segment_id": 5,
@@ -225,7 +263,11 @@
           "roomID": null,
           "neighbors": [
             1
-          ]
+          ],
+          "center_px": {
+            "x": 23.37,
+            "y": 191.49
+          }
         }
       ],
       "meta_keys": [

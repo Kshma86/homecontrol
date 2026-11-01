@@ -1,0 +1,10 @@
+{
+  "scheduler_runs": 295,
+  "incomplete_chains": 3,
+  "duplicate_scheduler_plans": 0,
+  "duplicate_scheduler_executions": 0,
+  "climate_pending": 0,
+  "open_irrigation_sessions": 1,
+  "read_only": true,
+  "production_changed": false
+}

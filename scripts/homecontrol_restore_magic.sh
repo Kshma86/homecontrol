@@ -106,6 +106,9 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+if [ "$MODE" = full ] && [ "$TARGET_BASE" != /srv/docker/homecontrol ]; then
+  fail "Full restore only supports /srv/docker/homecontrol; no changes made"
+fi
 [ "$(id -u)" -eq 0 ] || fail "Futtasd sudo-val/rootkent."
 [ -s "$AGE_KEY_FILE" ] || fail "Age private key hianyzik vagy ures: $AGE_KEY_FILE"
 [ -n "$REPO_URL" ] || fail "Repo URL ures"

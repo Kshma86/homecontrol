@@ -1,0 +1,98 @@
+.mower-v3-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.mower-v3-overview .card { min-width: 0; }
+.mower-v3-overview .card > strong { font-size: clamp(18px, 2vw, 28px); overflow-wrap: anywhere; }
+.mower-v3-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.mower-v3-grid > .panel { min-width: 0; }
+.mower-v3-grid .panel-head { flex-wrap: wrap; gap: 8px; }
+.mower-v3-grid p, .mower-v3-diagnostics p { color: var(--muted); line-height: 1.6; }
+.mower-v3-grid .mower-data-row { gap: 12px; }
+.mower-v3-grid .mower-data-row strong { overflow-wrap: anywhere; text-align: right; }
+.mower-v3-stage { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); }
+.mower-v3-stage > svg { color: var(--tone-green); flex-shrink: 0; }
+.mower-v3-stage > div { display: grid; gap: 4px; flex: 1; }
+.mower-v3-stage span { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.mower-v3-stage a { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; }
+.mower-v3-capability { color: var(--muted); font-size: 11px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; }
+.mower-v3-capability.supported { color: var(--tone-green); }
+.mower-v3-progress { width: 100%; height: 8px; margin-top: 14px; accent-color: var(--tone-green); }
+.mower-v3-diagnostics summary { cursor: pointer; font-weight: 700; }
+.mower-v3-diagnostics pre { max-height: 420px; overflow: auto; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); font-size: 12px; }
+.mower-v3-legacy { display: grid; justify-items: start; gap: 12px; }
+.mower-v3-legacy > svg { color: var(--tone-amber); }
+.mower-v3-legacy p { color: var(--muted); line-height: 1.6; }
+.mower-v3-legacy a { color: var(--tone-green); }
+.mower-legacy-preview .mower-legacy-map-placeholder { display: grid; place-content: center; padding: 24px; color: var(--muted); text-align: center; }
+.mower-legacy-preview :is(button, input, textarea):disabled { cursor: not-allowed; }
+.mower-firmware-preflight > p { color: var(--muted); line-height: 1.6; }
+.mower-firmware-preflight-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.mower-firmware-preflight-inputs label { display: grid; gap: 8px; min-width: 0; }
+.mower-firmware-preflight-inputs label:last-child { grid-column: 1 / -1; }
+.mower-firmware-preflight-inputs input, .mower-firmware-preflight-inputs select { width: 100%; min-width: 0; }
+.mower-firmware-preflight-inputs small { color: var(--muted); font-size: 12px; }
+.mower-firmware-preflight .mower-firmware-preflight-warning { color: var(--tone-amber); }
+.mower-firmware-preflight-report { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 10px; }
+.mower-firmware-preflight-report .mower-data-row strong { white-space: normal; overflow-wrap: anywhere; }
+.mower-firmware-storage { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.mower-firmware-storage p { color: var(--muted); line-height: 1.6; overflow-wrap: anywhere; }
+.mower-firmware-job-list { display: grid; gap: 10px; list-style: none; padding: 0; }
+.mower-firmware-job-list li { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; overflow-wrap: anywhere; }
+.mower-firmware-job-list span, .mower-firmware-job-list time { color: var(--muted); font-size: 12px; }
+.mower-firmware-session h3 { display: flex; align-items: center; gap: 8px; }
+.mower-firmware-session label { display: grid; gap: 8px; margin: 12px 0; }
+.mower-firmware-session select { width: 100%; min-width: 0; }
+@media (max-width: 620px) { .mower-firmware-preflight-inputs { grid-template-columns: 1fr; } }
+.mower-v3-command-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.mower-v3-login, .mower-v3-heading { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
+.mower-v3-login label, .mower-v3-heading label { display: grid; gap: 6px; color: var(--muted); }
+.mower-v3-heading { margin-top: 16px; }
+.mower-v3-results { display: grid; gap: 8px; margin-top: 18px; }
+.mower-v3-results > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
+.mower-v3-results span { flex: 1; color: var(--tone-amber); }
+.mower-v3-results .applied { color: var(--tone-green); }
+.mower-v3-results small { flex-basis: 100%; color: var(--tone-amber); }
+.mower-v3-manual-inputs { display: grid; gap: 14px; margin: 16px 0; }
+.mower-v3-manual-inputs label { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.mower-v3-manual-inputs label span, .mower-v3-manual-inputs output { color: var(--muted); font-size: 12px; }
+.mower-v3-manual-inputs input { grid-column: 1 / -1; width: 100%; accent-color: var(--tone-green); }
+.mower-v3-deadman { width: 100%; min-height: 72px; margin-bottom: 12px; font-weight: 800; border: 2px solid var(--tone-green); border-radius: 12px; color: var(--tone-green); background: var(--soft); touch-action: none; user-select: none; }
+.mower-v3-deadman.held { color: var(--panel); background: var(--tone-green); }
+.mower-v3-command-panel .mower-stop:disabled { opacity: .45; cursor: not-allowed; }
+.mower-v3-parameters > p { color: var(--muted); line-height: 1.6; }
+.mower-param-target { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.mower-param-target label { display: grid; gap: 6px; }
+.mower-param-target > span { color: var(--muted); font-size: 12px; padding: 8px 0; }
+.mower-param-status { padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); line-height: 1.5; }
+.mower-param-status.warning, .mower-param-error { color: var(--tone-amber); }
+.mower-param-validation { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px; }
+.mower-param-validation span, .mower-param-validation small { font-size: 12px; color: var(--muted); }
+.mower-param-validation code { overflow-wrap: anywhere; }
+.mower-param-groups { display: grid; gap: 10px; margin-top: 20px; }
+.mower-param-groups details, .mower-param-history { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.mower-param-groups summary, .mower-param-history summary { cursor: pointer; font-weight: 700; }
+.mower-param-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding-top: 16px; }
+.mower-param-field { min-width: 0; display: grid; align-content: start; gap: 6px; }
+.mower-param-field > code, .mower-param-field small { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.mower-param-label { display: flex; gap: 8px; align-items: start; justify-content: space-between; font-size: 13px; }
+.mower-param-label span { color: var(--muted); font-size: 11px; }
+.mower-param-field input, .mower-param-field select { width: 100%; min-width: 0; }
+.mower-param-array { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+.mower-param-array > div { display: grid; gap: 4px; }
+.mower-param-history { margin-top: 18px; }
+.mower-param-history > div { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 12px; font-size: 12px; }
+.mower-param-history > div > span { flex: 1; }
+.mower-param-history a, .mower-param-export { color: var(--tone-green); }
+.mower-param-export { display: inline-flex; align-items: center; gap: 6px; padding: 8px; font-size: 13px; }
+.mower-param-pending code { overflow-wrap: anywhere; }
+.mower-param-diff { width: 100%; table-layout: fixed; margin-top: 12px; border-collapse: collapse; font-size: 12px; }
+.mower-param-diff th, .mower-param-diff td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+@media (max-width: 620px) { .mower-param-fields { grid-template-columns: 1fr; } }
+@media (max-width: 860px) {
+  .mower-v3-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mower-v3-grid { grid-template-columns: 1fr; }
+  .mower-v3-stage { align-items: flex-start; flex-wrap: wrap; }
+  .mower-v3-stage a { margin-left: 31px; }
+}
+
+/* A closed control gate is unavailable, not a running operation. */
+.mower-v3-page button:disabled { cursor: not-allowed; }
+.mower-v3-page button[aria-busy="true"] { cursor: wait; }

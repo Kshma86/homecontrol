@@ -12,9 +12,11 @@ class EnergyDeviceService:
         solar_topic_base: str = "homecontrol/tele/growatt/cloud",
         process_binding_payload: Callable[[str], Any] = None,
         process_binding_entity_id: Callable[[str], Any] = None,
+        cached_api_payload: Callable[..., Any] = None,
     ):
         self.fetch_all = fetch_all
         self.fetch_one = fetch_one
+        self.cached_api_payload = cached_api_payload or (lambda key, ttl, builder: builder())
         self.api_cache_get = api_cache_get
         self.api_cache_set = api_cache_set
         self.json_ready = json_ready
@@ -34,9 +36,9 @@ class EnergyDeviceService:
         return value
 
     def tuya_state_payload(self):
-        cached = self.api_cache_get("tuya_state")
-        if cached is not None:
-            return cached
+        return self.cached_api_payload("tuya_state", 8, self._build_tuya_state_payload)
+
+    def _build_tuya_state_payload(self):
         devices = self.fetch_all(
             """
             select
@@ -63,11 +65,7 @@ class EnergyDeviceService:
         )
         entity_ids = [row["entity_id"] for row in devices]
         if not entity_ids:
-            return self.api_cache_set(
-                "tuya_state",
-                {"devices": [], "state_rows": [], "recent_measurements": [], "summary": {"total": 0, "online": 0, "degraded": 0, "offline": 0}},
-                8,
-            )
+            return {"devices": [], "state_rows": [], "recent_measurements": [], "summary": {"total": 0, "online": 0, "degraded": 0, "offline": 0}}
 
         state_rows = self.fetch_all(
             """
@@ -127,7 +125,8 @@ class EnergyDeviceService:
             "offline": sum(1 for status in statuses if status == "offline"),
             "unknown": sum(1 for status in statuses if status not in {"online", "degraded", "offline"}),
         }
-        return self.api_cache_set("tuya_state", {"devices": devices, "state_rows": state_rows, "recent_measurements": recent_measurements, "summary": summary}, 8)
+        return {"devices": devices, "state_rows": state_rows, "recent_measurements": recent_measurements, "summary": summary}
+
 
     def solar_state_payload(self):
         entity = self.fetch_one(
@@ -259,7 +258,7 @@ class EnergyDeviceService:
               join hc.entity e on e.id = m.entity_id
               join hc.device d on d.id = e.device_id
               where d.platform = 'growatt'
-                and m.key in ('system_power_w', 'output_power_w', 'plant_output_power_w')
+                and m.key = 'output_power_w'
                 and m.ts >= date_trunc('hour', now()) - interval '23 hours'
                 and m.v_num is not null
               group by date_trunc('hour', m.ts)
@@ -284,13 +283,12 @@ class EnergyDeviceService:
                 interval '1 day'
               )::date as day
             ),
-            production as (
+            samples as (
               select
                 date_trunc('day', m.ts)::date as day,
-                max(m.v_num) filter (where m.key = 'energy_today_kwh') as energy_today_kwh,
-                max(m.v_num) filter (where m.key = 'plant_energy_today_kwh') as plant_energy_today_kwh,
-                max(m.v_num) filter (where m.key = 'solar_energy_today_kwh') as solar_energy_today_kwh,
-                count(*) as sample_count
+                m.key,
+                m.ts,
+                m.v_num
               from hc.measurement m
               join hc.entity e on e.id = m.entity_id
               join hc.device d on d.id = e.device_id
@@ -298,11 +296,30 @@ class EnergyDeviceService:
                 and m.key in ('energy_today_kwh', 'plant_energy_today_kwh', 'solar_energy_today_kwh')
                 and m.ts >= date_trunc('day', now()) - interval '29 days'
                 and m.v_num is not null
-              group by date_trunc('day', m.ts)::date
+            ),
+            resets as (
+              select
+                day,
+                key,
+                min(ts) filter (where v_num <= 0.1) as reset_ts
+              from samples
+              group by day, key
+            ),
+            production as (
+              select
+                s.day,
+                max(s.v_num) filter (where s.key = 'energy_today_kwh') as energy_today_kwh,
+                max(s.v_num) filter (where s.key = 'plant_energy_today_kwh') as plant_energy_today_kwh,
+                max(s.v_num) filter (where s.key = 'solar_energy_today_kwh') as solar_energy_today_kwh,
+                count(*) as sample_count
+              from samples s
+              join resets r on r.day = s.day and r.key = s.key
+              where r.reset_ts is null or s.ts >= r.reset_ts
+              group by s.day
             )
             select
               d.day,
-              coalesce(p.energy_today_kwh, p.plant_energy_today_kwh, p.solar_energy_today_kwh, 0) as production_kwh,
+              coalesce(p.plant_energy_today_kwh, p.energy_today_kwh, p.solar_energy_today_kwh, 0) as production_kwh,
               p.energy_today_kwh,
               p.plant_energy_today_kwh,
               p.solar_energy_today_kwh,
@@ -315,15 +332,12 @@ class EnergyDeviceService:
 
         production_month = self.fetch_one(
             """
-            with daily as (
+            with samples as (
               select
                 date_trunc('day', m.ts)::date as day,
-                coalesce(
-                  max(m.v_num) filter (where m.key = 'energy_today_kwh'),
-                  max(m.v_num) filter (where m.key = 'plant_energy_today_kwh'),
-                  max(m.v_num) filter (where m.key = 'solar_energy_today_kwh'),
-                  0
-                ) as production_kwh
+                m.key,
+                m.ts,
+                m.v_num
               from hc.measurement m
               join hc.entity e on e.id = m.entity_id
               join hc.device d on d.id = e.device_id
@@ -331,7 +345,28 @@ class EnergyDeviceService:
                 and m.key in ('energy_today_kwh', 'plant_energy_today_kwh', 'solar_energy_today_kwh')
                 and m.ts >= date_trunc('month', now())
                 and m.v_num is not null
-              group by date_trunc('day', m.ts)::date
+            ),
+            resets as (
+              select
+                day,
+                key,
+                min(ts) filter (where v_num <= 0.1) as reset_ts
+              from samples
+              group by day, key
+            ),
+            daily as (
+              select
+                s.day,
+                coalesce(
+                  max(s.v_num) filter (where s.key = 'plant_energy_today_kwh'),
+                  max(s.v_num) filter (where s.key = 'energy_today_kwh'),
+                  max(s.v_num) filter (where s.key = 'solar_energy_today_kwh'),
+                  0
+                ) as production_kwh
+              from samples s
+              join resets r on r.day = s.day and r.key = s.key
+              where r.reset_ts is null or s.ts >= r.reset_ts
+              group by s.day
             )
             select
               coalesce(round(sum(production_kwh)::numeric, 1), 0) as production_month_kwh,
@@ -378,6 +413,8 @@ class EnergyDeviceService:
 
     def server_power_history_payload(self):
         binding_entity_id = self.process_binding_entity_id("hc_server_power_meter") if self.process_binding_entity_id else None
+        if self.process_binding_entity_id and binding_entity_id is None:
+            return {"ok": False, "error": "HC server power meter binding unavailable", "power_24h": [], "daily_30d": []}
         row = self.fetch_one(
             """
             select
@@ -494,7 +531,7 @@ class EnergyDeviceService:
 
         today = daily_rows[-1] if daily_rows else {}
         power_values = [item.get("power_w") for item in power_rows if item.get("power_w") is not None]
-        return {
+        payload = {
             "ok": True,
             "device": row,
             "process_bindings": {
@@ -514,5 +551,72 @@ class EnergyDeviceService:
                 "total_energy_kwh": state.get("energy_kwh"),
                 "status": row.get("status") or "unknown",
                 "updated_at": max((ts for ts in state_ts.values() if ts), default=row.get("last_seen_ts")),
+            },
+        }
+        payload["ai_server"] = self._bound_power_history_payload("ai_node_power_plug", "AI szerver")
+        return payload
+
+    def _bound_power_history_payload(self, process_key: str, fallback_label: str):
+        entity_id = self.process_binding_entity_id(process_key) if self.process_binding_entity_id else None
+        if entity_id is None:
+            return {"ok": False, "error": f"{fallback_label} power meter binding not found", "power_24h": [], "daily_30d": []}
+
+        row = self.fetch_one(
+            """
+            select e.id as entity_id, e.name as entity_name, e.topic_base,
+                   d.name as device_name, coalesce(wp.display_name, e.name) as display_name,
+                   p.status, p.last_seen_ts
+            from hc.entity e
+            join hc.device d on d.id = e.device_id
+            left join hc.power_wall_policy wp on wp.entity_id = e.id
+            left join hc.entity_presence p on p.entity_id = e.id
+            where e.id = %s and e.is_active = true and d.is_active = true
+            """,
+            (entity_id,),
+        )
+        if not row:
+            return {"ok": False, "error": f"{fallback_label} power meter entity not found", "power_24h": [], "daily_30d": []}
+
+        state_rows = self.fetch_all(
+            """select key, ts, v_num, v_bool, v_text, v_json from hc.entity_state
+               where entity_id = %s and key in ('power_w', 'power', 'energy_kwh')""",
+            (entity_id,),
+        )
+        state = {item["key"]: self.state_value(item) for item in state_rows}
+        power_rows = self.fetch_all(
+            """select ts, v_num as power_w from hc.measurement
+               where entity_id = %s and key in ('power_w', 'power')
+                 and ts >= now() - interval '24 hours' and v_num is not null order by ts""",
+            (entity_id,),
+        )
+        daily_rows = self.fetch_all(
+            """
+            with days as (
+              select generate_series(date_trunc('day', now()) - interval '29 days', date_trunc('day', now()), interval '1 day')::date as day
+            ), energy as (
+              select date_trunc('day', ts)::date as day,
+                     greatest(coalesce(max(v_num) - min(v_num), 0), 0) as energy_kwh,
+                     count(*) as sample_count
+              from hc.measurement where entity_id = %s and key = 'energy_kwh'
+                and ts >= date_trunc('day', now()) - interval '29 days' and v_num is not null group by 1
+            )
+            select d.day, coalesce(e.energy_kwh, 0) as energy_kwh, coalesce(e.sample_count, 0) as sample_count
+            from days d left join energy e on e.day = d.day order by d.day
+            """,
+            (entity_id,),
+        )
+        power_values = [item.get("power_w") for item in power_rows if item.get("power_w") is not None]
+        return {
+            "ok": True,
+            "device": row,
+            "power_24h": power_rows,
+            "daily_30d": daily_rows,
+            "summary": {
+                "current_power_w": state.get("power_w", state.get("power")),
+                "today_energy_kwh": daily_rows[-1].get("energy_kwh") if daily_rows else None,
+                "total_energy_kwh": state.get("energy_kwh"),
+                "avg_power_w_24h": round(sum(power_values) / len(power_values), 2) if power_values else None,
+                "max_power_w": max(power_values, default=0),
+                "power_samples": len(power_rows),
             },
         }

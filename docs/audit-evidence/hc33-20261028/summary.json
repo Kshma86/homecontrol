@@ -1,0 +1,58 @@
+{
+  "audit_point": "HC-33",
+  "date": "2026-10-28",
+  "status": "verified locally, not deployed",
+  "unit_and_regression_tests": 44,
+  "real_postgres_mqtt_integration_tests": 15,
+  "failed_tests": 0,
+  "new_migration": "062_hc33_ingest_sample_identity.sql",
+  "migration_applied_to_production": false,
+  "required_for_activation": [
+    "local HC-11 + HC-33 ingest image",
+    "explicit admin migration 062",
+    "fresh backup and controlled index-build window"
+  ],
+  "loss_policy": "new MQTT messages dropped during DB outage; bounded idempotent retry of already accepted history samples; no durable spool",
+  "limits": {
+    "messages": 1000,
+    "bytes": 8388608,
+    "age_seconds": 30,
+    "attempts": 3
+  },
+  "production_unchanged": true,
+  "dependencies_left_open": [
+    "HC-12",
+    "HC-32",
+    "HC-34",
+    "HC-43"
+  ],
+  "scope": {
+    "changed_existing_functions": [
+      "should_write",
+      "persist_metric",
+      "warm_last_saved_from_entity_state",
+      "upsert_entity_state",
+      "queue_measurement",
+      "flush_measurements",
+      "verify_runtime_role",
+      "main"
+    ],
+    "removed_obsolete_function": [
+      "insert_measurement_one"
+    ],
+    "unchanged_existing_functions_and_classes": 38,
+    "hc34_mapper_unchanged": true
+  },
+  "source_sha256": {
+    "apps/hc_ingest/mqtt_ingest_multi.py": "406dddd2997ae0587351f962e5efc5ba659339a4ac1b98988566d2402d35cfdb",
+    "apps/hc_ingest/measurement_batch.py": "9f1dd41905b6679e77b18bf8b8fd6f93140cfe4ec7183a878c8591130e9afa6e",
+    "apps/hc_ingest/ingest_runtime.py": "4201e1c0d45dbe29d51fa587ca475cfa25e036711418af08f884dca63e840ca9",
+    "apps/hc_ingest/Dockerfile": "dfd2f538325885914d5b967d0703e4f495bf299ce6ac75375155c3d662aea9af",
+    "apps/hc_ingest/test_measurement_batch.py": "caf0d824f0c985143eeedb5f8f4ae0f45ca9483759e0ee2f81d04e22a5255aaa",
+    "apps/hc_ingest/test_measurement_batch_postgres.py": "e2bb992bcf56d967dfe3e8eba085cd4e017f952fa4ce6d1d440ed4a11ec585eb",
+    "apps/hc_ingest/test_ingest_recovery_postgres.py": "ea584f002ce3e740e5f74a6296bbc3f85d95f65e894d29fe3f85134d02676e56",
+    "apps/hc_ingest/test_safety_events_postgres.py": "7c538b50fa3325d92371b2b31efe5759984e48cfa5a285878651f53b8f3e0c05",
+    "apps/hc_ingest/test_live_feedback.py": "a7fa3d606e766c9680e60fe96dfc35f006a6bfcdd6501d2499cf72f9849cd775",
+    "infra/db/062_hc33_ingest_sample_identity.sql": "5c3e54df6dd64f0c71352e60df8bf605fa9e2c240356b187b8c868deb980f56f"
+  }
+}

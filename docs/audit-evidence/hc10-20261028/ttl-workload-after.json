@@ -1,0 +1,17 @@
+{
+  "request_seconds": [
+    0,
+    5,
+    9,
+    10,
+    15,
+    20
+  ],
+  "domain_builder_seconds": [
+    0,
+    10,
+    20
+  ],
+  "domain_builder_count": 3,
+  "invalidation_events": 0
+}

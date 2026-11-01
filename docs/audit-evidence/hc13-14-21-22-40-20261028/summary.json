@@ -1,0 +1,248 @@
+{
+  "date": "2026-10-28",
+  "audit_points": [
+    "HC-13",
+    "HC-14",
+    "HC-21",
+    "HC-22",
+    "HC-40"
+  ],
+  "status": "locally_verified_not_deployed",
+  "backend": {
+    "tests": 377,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "failed_ids": [],
+    "modules": [
+      "read_runtime_repair",
+      "ai_proxy_service",
+      "ai_images",
+      "ai_node_power",
+      "read_model_cache",
+      "context_service_contract",
+      "command_service",
+      "api_route_modules",
+      "robot_service",
+      "scheduler_feedback",
+      "scheduler_bridge_samples",
+      "scheduler_service",
+      "startup_service",
+      "admin_bootstrap",
+      "schema_service",
+      "irrigation_service",
+      "irrigation_admission",
+      "irrigation_recovery",
+      "irrigation_stop_priority",
+      "climate_window_guard",
+      "power_wall_service",
+      "mqtt_monitor_service",
+      "deployment_policy",
+      "combustion_safety_service",
+      "combustion_safety_state",
+      "combustion_safety_delivery",
+      "combustion_opening_events"
+    ]
+  },
+  "frontend": {
+    "tests": 109,
+    "passed": 109,
+    "failed": 0,
+    "skipped": 0,
+    "build": "passed",
+    "new_tests": 11
+  },
+  "new_backend_tests": 23,
+  "postgres": {
+    "measurement_rows": 6840083,
+    "equivalence": [
+      {
+        "view": "irrigation_daily_energy",
+        "days": 14,
+        "rows": 11,
+        "equal": true
+      },
+      {
+        "view": "irrigation_pump_daily",
+        "days": 14,
+        "rows": 11,
+        "equal": true
+      },
+      {
+        "view": "irrigation_solar_daily",
+        "days": 14,
+        "rows": 13,
+        "equal": true
+      },
+      {
+        "view": "irrigation_controller_temp_daily",
+        "days": 14,
+        "rows": 11,
+        "equal": true
+      },
+      {
+        "view": "irrigation_tank_daily",
+        "days": 14,
+        "rows": 13,
+        "equal": true
+      },
+      {
+        "view": "irrigation_daily_energy",
+        "days": 35,
+        "rows": 32,
+        "equal": true
+      },
+      {
+        "view": "irrigation_pump_daily",
+        "days": 35,
+        "rows": 32,
+        "equal": true
+      },
+      {
+        "view": "irrigation_solar_daily",
+        "days": 35,
+        "rows": 34,
+        "equal": true
+      },
+      {
+        "view": "irrigation_controller_temp_daily",
+        "days": 35,
+        "rows": 32,
+        "equal": true
+      },
+      {
+        "view": "irrigation_tank_daily",
+        "days": 35,
+        "rows": 34,
+        "equal": true
+      },
+      {
+        "view": "irrigation_daily_energy",
+        "days": 200,
+        "rows": 122,
+        "equal": true
+      },
+      {
+        "view": "irrigation_pump_daily",
+        "days": 200,
+        "rows": 122,
+        "equal": true
+      },
+      {
+        "view": "irrigation_solar_daily",
+        "days": 200,
+        "rows": 122,
+        "equal": true
+      },
+      {
+        "view": "irrigation_controller_temp_daily",
+        "days": 200,
+        "rows": 122,
+        "equal": true
+      },
+      {
+        "view": "irrigation_tank_daily",
+        "days": 200,
+        "rows": 124,
+        "equal": true
+      }
+    ],
+    "boundary_cases": {
+      "timezones": [
+        "UTC",
+        "Europe/Budapest"
+      ],
+      "spring_and_autumn_dst": true,
+      "carry_in_and_cap": true,
+      "late_arrival": true,
+      "cases": 30
+    },
+    "before": {
+      "requests": 20,
+      "cold_ms": 31214.69,
+      "warm_p95_ms": 22.24,
+      "queries": 381,
+      "diagnostic_updates": 20,
+      "summary_upserts": 5,
+      "wal_bytes": 264352
+    },
+    "after": {
+      "requests": 20,
+      "cold_ms": 8.0,
+      "warm_p95_ms": 8.22,
+      "queries": 360,
+      "diagnostic_updates": 0,
+      "summary_upserts": 0,
+      "wal_bytes": 0
+    },
+    "payload_equal_sections": [
+      "energy_daily",
+      "pump_daily",
+      "solar_daily",
+      "tank_daily",
+      "temp_daily",
+      "schedules",
+      "sessions",
+      "latest"
+    ],
+    "readonly_builders": [
+      "build_snapshot",
+      "statistics_payload",
+      "evaluate_solar_pump_scheduler"
+    ],
+    "negative_control_old_evaluation_writes": true,
+    "background_refresh_ms": 30327.9
+  },
+  "capacity": {
+    "websocket_clients": 2,
+    "slow_ai_backup_diagnostic": 3,
+    "control_requests": 64,
+    "control_all_200": true,
+    "control_p95_ms": 7.72,
+    "control_batch_sec": 0.045,
+    "extra_websocket_503": true,
+    "extra_ai_503": true,
+    "silent_pump_disconnect_frees_capacity": true
+  },
+  "static": {
+    "unchanged_irrigation_methods": [
+      "start_solar_pump_batch",
+      "stop_solar_pump_batch",
+      "solar_pump_scheduler_tick",
+      "log_pilot_decision"
+    ],
+    "decision_formula_unchanged_except_removed_update": true,
+    "unchanged_migration_files": 64,
+    "audit_unchanged": true,
+    "python_ast": true
+  },
+  "production": {
+    "live_containers_unchanged": 9,
+    "protected_host_files_unchanged": 37,
+    "active_release": "hc-scheduler-x10-20261027-r7",
+    "active_override_unchanged": true,
+    "safety_source_unchanged": true,
+    "npm_lockfile_unchanged": true,
+    "production_commands_sent": false,
+    "deployed": false,
+    "container_health": {
+      "/homecontrol-backend": "running",
+      "/homecontrol-frontend": "running",
+      "/homecontrol-gree-climate": "running",
+      "/homecontrol-xiaomi-x10": "running",
+      "/homecontrol-postgres": "healthy",
+      "/homecontrol-mqtt": "running",
+      "/homecontrol-pgbouncer": "healthy",
+      "/homecontrol-ingest": "running",
+      "/homecontrol-tuya-poller": "running"
+    }
+  },
+  "limits": [
+    "Synthetic HTTP load; device callbacks replaced",
+    "No remote AI/provider/hardware trial; offline policy unchanged",
+    "PostgreSQL measurements use a fresh isolated restore with 1 GiB / 2 CPU limit; not live latency",
+    "No browser-engine or long-running production soak",
+    "No general cancellation guarantee for arbitrary blocked Python or OS I/O"
+  ],
+  "test_resources_removed": true
+}

@@ -1,0 +1,90 @@
+{
+  "applied": false,
+  "ready_to_apply": false,
+  "esp_ip": "192.168.1.179",
+  "broker_container_ip": "172.19.0.9",
+  "commands_for_review_only": [
+    [
+      "iptables",
+      "-N",
+      "HC41_LEGACY"
+    ],
+    [
+      "iptables",
+      "-A",
+      "HC41_LEGACY",
+      "-s",
+      "192.168.1.179",
+      "-j",
+      "ACCEPT"
+    ],
+    [
+      "iptables",
+      "-A",
+      "HC41_LEGACY",
+      "-j",
+      "DROP"
+    ],
+    [
+      "iptables",
+      "-I",
+      "DOCKER-USER",
+      "1",
+      "-p",
+      "tcp",
+      "-d",
+      "172.19.0.9",
+      "--dport",
+      "1883",
+      "-j",
+      "HC41_LEGACY"
+    ],
+    [
+      "iptables",
+      "-I",
+      "OUTPUT",
+      "1",
+      "-p",
+      "tcp",
+      "-d",
+      "172.19.0.9",
+      "--dport",
+      "1883",
+      "-j",
+      "DROP"
+    ],
+    [
+      "ip6tables",
+      "-I",
+      "INPUT",
+      "1",
+      "-p",
+      "tcp",
+      "--dport",
+      "1883",
+      "-j",
+      "DROP"
+    ],
+    [
+      "ip6tables",
+      "-I",
+      "DOCKER-USER",
+      "1",
+      "-p",
+      "tcp",
+      "--dport",
+      "1883",
+      "-j",
+      "DROP"
+    ]
+  ],
+  "requirements": [
+    "Confirm ESP identity and DHCP reservation",
+    "Verify iptables backend, bridge netfilter and IPv6/proxy paths on the actual host",
+    "Verify broker container address after recreation; regenerate rules on IP change",
+    "Install persistent idempotent owner rules and exact inverse rollback; do not flush other rules",
+    "Prove unrelated LAN, IPv6, host and Docker peers cannot access legacy MQTT",
+    "Preserve the original ESP source address; NAT/proxy masking must fail closed",
+    "Keep legacy access closed until rules and supervised STOP/ack route are verified"
+  ]
+}

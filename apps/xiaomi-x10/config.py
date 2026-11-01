@@ -40,6 +40,7 @@ APP_DEBUG = env_str("X10_APP_DEBUG", "0").lower() in {"1", "true", "yes", "on"}
 POLL_IDLE_SEC = env_int("X10_POLL_IDLE_SEC", 60)
 POLL_CLEANING_SEC = env_int("X10_POLL_CLEANING_SEC", 10)
 MAP_CHECK_CLEANING_SEC = env_int("X10_MAP_CHECK_CLEANING_SEC", 20)
+MAP_CHECK_IDLE_SEC = env_int("X10_MAP_CHECK_IDLE_SEC", 60)
 SCHEDULER_WATCH_SEC = env_int("X10_SCHEDULER_WATCH_SEC", 10)
 CAPTURE_STATUS_SEC = env_int("X10_CAPTURE_STATUS_SEC", 5)
 CAPTURE_MAP_SEC = env_int("X10_CAPTURE_MAP_SEC", 20)
@@ -51,3 +52,16 @@ ROOM_CLEAN_SUCTION = env_int("X10_ROOM_CLEAN_SUCTION", 3)
 ROOM_CLEAN_PARAM = env_int("X10_ROOM_CLEAN_PARAM", 3)
 SET_MAP_SIID = env_int("X10_SET_MAP_SIID", 6)
 SET_MAP_AIID = env_int("X10_SET_MAP_AIID", 2)
+
+# Shared by the bridge and the map subprocess; never remove a held lock file.
+MIIO_LOCK_FILE = env_path("X10_MIIO_LOCK_FILE", "/tmp/homecontrol-x10-miio.lock")
+MIIO_TIMEOUT_SEC = env_int("X10_MIIO_TIMEOUT_SEC", 20)
+MIIO_LOCK_TIMEOUT_SEC = env_int("X10_MIIO_LOCK_TIMEOUT_SEC", 30)
+WATCHDOG_TIMEOUT_SEC = env_int("X10_WATCHDOG_TIMEOUT_SEC", 300)
+WATCHDOG_CHECK_SEC = env_int("X10_WATCHDOG_CHECK_SEC", 5)
+if min(MIIO_TIMEOUT_SEC, MIIO_LOCK_TIMEOUT_SEC, WATCHDOG_TIMEOUT_SEC, WATCHDOG_CHECK_SEC) <= 0:
+    raise ValueError("X10 time limits must be positive seconds")
+if WATCHDOG_CHECK_SEC >= WATCHDOG_TIMEOUT_SEC:
+    raise ValueError("X10 watchdog check interval must be shorter than its timeout")
+if WATCHDOG_TIMEOUT_SEC <= max(POLL_IDLE_SEC, POLL_CLEANING_SEC) + MIIO_LOCK_TIMEOUT_SEC + MIIO_TIMEOUT_SEC:
+    raise ValueError("X10 watchdog timeout must exceed a poll interval plus a MIIO wait/command budget")

@@ -1,0 +1,19 @@
+{
+  "finding": "HC-41",
+  "full_finding_fixed": false,
+  "authentication": "deferred_by_user",
+  "broker_changed": false,
+  "passwords_changed": false,
+  "firewall_changed": false,
+  "network_plan_ready": false,
+  "blockers": [
+    "all_published_host_addresses_must_be_inventoried",
+    "approved_remote_client_inventory_missing"
+  ],
+  "commands_for_review_only": [],
+  "limits": [
+    "Requires verified Docker iptables backend and both IP families",
+    "Review order/idempotency and every local bind address before applying",
+    "IP filtering does not authenticate clients or provide topic ACLs"
+  ]
+}

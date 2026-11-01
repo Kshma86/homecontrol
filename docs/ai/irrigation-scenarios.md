@@ -57,13 +57,14 @@ Expected:
 
 Given:
 
-- No `running` or `starting` irrigation session exists.
+- No `running`, `starting` or unresolved `stop_failed` irrigation session exists.
 - User requests `duration_minutes = 20`.
 - Valve open confirmation succeeds.
 
 Expected:
 
-- Insert a session with status `starting`.
+- Atomically recheck active sessions and insert a session with status `starting`.
+- Commit the reservation before any physical OPEN or confirmation wait.
 - Publish open command with `source: homecontrol-admin`.
 - Update session to `running`.
 - Store confirmation details in `start_payload`.
@@ -76,7 +77,7 @@ Expected:
 
 Given:
 
-- A session exists with status `running` or `starting`.
+- A session exists with status `running`, `starting` or unresolved `stop_failed`.
 - User requests another manual start.
 
 Expected:
@@ -107,11 +108,58 @@ Given:
 
 Expected:
 
-- Session is updated to `start_failed`.
-- `stopped_at` is set.
+- Session remains uncertain as `stop_failed`, with pending recovery and the
+  original failed-start confirmation. `stopped_at` stays null.
 - `error` includes the valve confirmation failure.
 - Return HTTP `502`.
 - Invalidate `irrigation`.
+
+### Concurrent Start Admission (HC-04)
+
+Expected:
+
+- Parallel manual/manual, manual/V2 and V2/V2 requests share the same short DB
+  reservation transaction. At most one acquires an HC `starting` session.
+- A losing manual request returns `409`; a losing scheduler returns without
+  OPEN or schedule-day advancement. Retained legacy starts use the same gate.
+- Schedule eligibility and the daily marker are rechecked/updated atomically
+  with insertion, so a delayed prepared request cannot replay today's schedule
+  after the earlier session has closed.
+- An insert/commit failure rolls back the session and schedule day. A lost
+  commit response authorizes no OPEN; a committed orphan remains recoverable.
+- MQTT confirmation holds no admission transaction or session-table lock.
+- A concurrent stop can close a committed `starting` reservation before OPEN;
+  the earlier captured stop generation prevents that old request from opening.
+- Existing physical manual observations block HC admission without being
+  changed. Ingest can still record physical manual activity alongside HC rows.
+- Existing duplicates are not removed or silently superseded; they block starts
+  until physical/state reconciliation. No schema migration is needed.
+- `IrrigationAdmissionTest` covers service failure paths;
+  `IrrigationAdmissionPostgresTest` exercises the real SQL with independent
+  connections on an explicitly enabled, disposable `hc04_admission_test` DB.
+
+### Interrupted Or Unconfirmed Session Recovery (HC-03)
+
+Expected:
+
+- Startup classifies persisted HC `starting` rows before admitting new starts;
+  runtime supervision also catches expired grace/deadline. Young live starts
+  retain their configured confirmation window.
+- Recovery issues only CLOSE, reserves each automatic slot before publish,
+  and preserves its per-session budget/backoff across restarts and DB failures.
+- Default: three additional automatic slots, one publication per slot and at
+  most one physical recovery attempt per safety pass, with 60-second backoff.
+- An interrupted start becomes terminal `start_failed` only after fresh CLOSED
+  proof; a recovered failed stop becomes `auto_stopped`. Retained/stale state
+  does not prove closure. Late start results cannot resurrect terminal rows.
+- Exhaustion remains visible and blocks starts; fresh later CLOSED or an
+  explicit manual close can settle it. Manual close preserves the reserved
+  count and records confirmed/pending state consistently.
+- `physical_manual` rows are unchanged. Recovery is independent of schedule
+  day, V2 enablement and seasonal start permission, and never replays OPEN.
+- `IrrigationRecoveryTest` covers fault/restart/budget behavior;
+  `IrrigationRecoveryPostgresTest` verifies actual JSON/CAS SQL on a strictly
+  isolated, opt-in test database. Physical valve/failsafe tests remain separate.
 
 ### Manual Stop Without Session
 
@@ -181,7 +229,8 @@ Given:
 
 - A session has status `running`.
 - It started at least 90 seconds ago.
-- Live telemetry reports both motorized and manual valves as closed.
+- Eligible, fresh Nano telemetry sampled after the session started reports
+  both motorized and manual valves as closed. Nano liveness is known online.
 
 Expected:
 
@@ -204,11 +253,23 @@ Given:
     "json": {
       "valve": "open",
       "manual_valve": "closed",
-      "valve_current": "0.12"
+      "valve_current": "0.12",
+      "last_tele_sec_ago": 0
+    }
+  },
+  "esp_nano_status": {
+    "json": {
+      "online": true,
+      "last_status_sec_ago": 0
     }
   }
 }
 ```
+
+The snapshot also includes `mqtt_connected=true` and a current
+`connection_generation`; both messages have non-retained receipt metadata
+(`timestamp`, `received_monotonic`, `connection_generation`) generated by the
+monitor. The Nano sample ages plus elapsed receipt time are within limits.
 
 Expected:
 
@@ -220,6 +281,31 @@ Expected:
 Current unit test:
 
 - `test_live_valve_state_reads_mqtt_monitor_payloads`
+
+### Freshness And Command Confirmation (HC-01)
+
+Regression tests in `IrrigationConfirmationTest` cover:
+
+- Retained or pre-command CLOSED/OPEN cannot confirm a new command.
+- A new MQTT publication with an older Nano source sample cannot confirm.
+- A second-resolution age-zero message within the first second is not proof
+  of post-command sampling; fresh later feedback can confirm.
+- TELE/STATUS age is the respective `*_sec_ago` value plus monotonic receipt
+  elapsed time, with separate configurable 25/70-second initial limits.
+- Nano online is a separate, expiring `nano_status.online` observation;
+  pump/diag flags cannot override an offline or unknown status flag.
+- STATUS alone can confirm when periodic TELE is absent; freshest eligible
+  Nano sample wins across topics, even when MQTT receipt order differs.
+- Disconnect, reconnect with old cached observations, invalid sample-age
+  metadata and malformed positions do not give false confirmation.
+- Close is still published without usable feedback; failed confirmation is
+  stored as `stop_failed` through existing session handling.
+- Stale/pre-session observations cannot mark a session `failed_no_watering`.
+
+`IrrigationMonitorReceiptTest` checks receipt timestamps, retained metadata and
+connection generations without a network connection. These tests exercise HC
+software behavior; physical valve travel and live telemetry-delay tuning need
+a separate supervised check.
 
 ### Manual Valve Blocks Scheduler
 
@@ -594,7 +680,8 @@ Weather fetch should also include `weather` in `context.read_after`.
 Add tests when touching these areas:
 
 - Manual start rejects a second active session.
-- Failed open confirmation marks `start_failed`.
+- Failed open confirmation stays `stop_failed` until recovery proves CLOSED;
+  only then does it become terminal `start_failed`.
 - Failed close confirmation marks `stop_failed`.
 - Pilot rule precedence and strict threshold equality.
 - Navigator mode logs recommendation but preserves scheduled duration.

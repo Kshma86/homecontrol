@@ -1,0 +1,12 @@
+{
+  "infra/backend/admin_service.py": "2009e574a01a46df3228bc4721cf07bb93355dbd4ff32edf454af4236682ee58",
+  "infra/backend/app.py": "cc6c973e07557cb84f4c69152a7d90f3c21992200974b5ea0d56eb2ccaf13ac2",
+  "infra/backend/command_service.py": "901ec5a4c79dbe0f15715d22e7e71ab71dcf604e164a8fbd9589ac660e3eb3a3",
+  "infra/backend/context_service.py": "8881f7f8ce1d7b96c71ffb87f00afddf0e6cee57a90c80044bd40a1aa4df55b8",
+  "infra/backend/energy_device_service.py": "64edf2bb9b65cb6a8b27d34c6046b5b192234640e39dca41ae78d36b1f4d15ab",
+  "infra/backend/irrigation_service.py": "812d1b13aa8f9a1940b433c60a26923a7673f0f1b3c41e0341d66de6d9aeaa95",
+  "infra/backend/power_wall_service.py": "2303fd32ee99e34abe5044a0255eec765ee46ee8d9bc33ac92d85ba988e85433",
+  "infra/backend/read_model_cache.py": "1b124844e90b62956fbece30bd70b71ec9e1a41b9093245a329dd84e9528bb10",
+  "infra/backend/runtime_utils.py": "92966e0e86918197dbd71313053e01b744fc691860d23ffe6d496960ccfb8ee6",
+  "infra/backend/tests/test_read_model_cache.py": "1474e5293756412819378317ac70944df53eb5c4963fbc0613eade52bf26b5f4"
+}

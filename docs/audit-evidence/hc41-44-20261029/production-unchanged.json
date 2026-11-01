@@ -1,0 +1,33 @@
+{
+  "checked_at": "2026-10-29T21:12:08.569709+00:00",
+  "deployed": false,
+  "container_count": 15,
+  "unchanged_container_count": 15,
+  "container_changes": [],
+  "protected_host_count": 37,
+  "changed_protected_host_files": [],
+  "unchanged_mqtt_and_bridge_sources": {
+    "infra/mqtt/config/mosquitto.conf": true,
+    "infra/backend/mqtt_monitor_service.py": true,
+    "apps/hc_ingest/mqtt_ingest_multi.py": true,
+    "apps/gree-climate/gree_climate_bridge.py": true,
+    "apps/xiaomi-x10/xiaomi_x10_bridge.py": true,
+    "apps/xiaomi-x10/xiaomi_x10_api.py": true,
+    "apps/ha-growatt-poller/ha_growatt_poller.py": true,
+    "apps/tuya-poller/tuya_poller.py": true
+  },
+  "backend_config_user": "",
+  "backend_runtime_user": "root",
+  "backend_runtime_user_unchanged": true,
+  "backend_mounts_unchanged": true,
+  "mqtt_bindings_unchanged": true,
+  "active_override": "/srv/docker/homecontrol/backups/releases/hc-ingest-20261028-r9/release.override.json",
+  "active_override_is_r9": true,
+  "audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "audit_unchanged": true,
+  "safety_sha256": "7334974829abd6c9497b6bda41190c25967751e2490b6e6824ba0fe28183a2c6",
+  "safety_unchanged": true,
+  "remaining_lab_containers": [],
+  "hostops_service_installed": false,
+  "production_hostops_socket_exists": false
+}
