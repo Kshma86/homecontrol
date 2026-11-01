@@ -1,0 +1,12 @@
+[Unit]
+Description=HomeControl MQTT legacy source restriction
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+Before=homecontrol-hostops.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r16/scripts/access_release/network.py --policy /srv/docker/homecontrol/infra/ssh/hc-router-backup-20261101-r16/network-policy.json --apply
+[Install]
+WantedBy=multi-user.target

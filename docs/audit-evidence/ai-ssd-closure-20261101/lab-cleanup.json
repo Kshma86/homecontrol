@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "guest_stopped": true,
+  "hc_guest_disk_removed": true,
+  "delegated_repository_git_and_age_key_copies_removed": true,
+  "production_keys_and_backups_unchanged": true,
+  "clean_os_base_retained_for_actual_r16_followup": true
+}

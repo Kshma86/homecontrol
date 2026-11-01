@@ -1,0 +1,7 @@
+[Unit]
+Description=Apply HomeControl F6 backup schedules in system scope
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/install_backup_f6.py --apply --wait-idle
+TimeoutStartSec=4h

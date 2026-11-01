@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "scope": "real r15 archive and external Git plus explicit recovery corrections",
+  "started_at": "2026-11-01T19:39:55.564836+00:00",
+  "remote_write_commands": 0,
+  "production_restore": false,
+  "ai_enabled": false,
+  "phase": "completed",
+  "fresh": {
+    "mode": "fresh",
+    "snapshot_id": "b381d1287149a95a1277d4724969677bd53c11736d7eb4365f307336463b49d6",
+    "git_commit": "014e1c2d663a746e9df6b632bc7d158d0584552a",
+    "external_git_commit": "d612e6e3db13e3bc836bacf7338ef879d9c50532",
+    "candidate_fixes_applied": true,
+    "started_at": "2026-11-01T19:39:56.107160+00:00",
+    "ok": true,
+    "returncode": 0,
+    "finished_at": "2026-11-01T19:48:07.649788+00:00"
+  },
+  "selected_dump_sha256": "ccbf9799f8dfe6d13967be3fe1f9a20bbb50628efbf8cca814b20155218c8f47",
+  "repeat": {
+    "mode": "repeat",
+    "snapshot_id": "b381d1287149a95a1277d4724969677bd53c11736d7eb4365f307336463b49d6",
+    "git_commit": "014e1c2d663a746e9df6b632bc7d158d0584552a",
+    "external_git_commit": "d612e6e3db13e3bc836bacf7338ef879d9c50532",
+    "candidate_fixes_applied": true,
+    "started_at": "2026-11-01T19:48:27.542106+00:00",
+    "ok": true,
+    "returncode": 0,
+    "finished_at": "2026-11-01T19:55:10.342359+00:00"
+  },
+  "reboot_verified": true,
+  "new_boot_id": true,
+  "repeated_unit_bytes_identical": true,
+  "unavailable_repository_preserves_live_state": true,
+  "offline_homeassistant_verified": true,
+  "root_ipc_verified": true,
+  "five_timers_verified": true,
+  "finished_at": "2026-11-01T19:56:02.049718+00:00"
+}

@@ -25,12 +25,52 @@ from scoped_ai_power_coordination import ScopedAiPowerCoordinator
 
 
 class AccessReleaseTest(unittest.TestCase):
-    def recovery_fixture(self, root):
+    def mount_fixture(self, root):
+        base=root/'project'
+        broker=base/'infra/ssh/hc-old/mqtt/broker';broker.mkdir(parents=True)
+        (broker/'mosquitto.conf').write_text('synthetic config')
+        credential=base/'infra/ssh/hc-new/mqtt/credentials/backend.password'
+        credential.parent.mkdir(parents=True);credential.write_text('synthetic')
+        untouched=base/'infra/ssh/hc-unreferenced/mqtt/broker'
+        untouched.mkdir(parents=True);(untouched/'keep').write_text('synthetic')
+        model={'services':{'mqtt':{'volumes':[{'type':'bind','source':str(broker),'target':'/mosquitto/config','read_only':True}]},
+                           'backend':{'volumes':[{'type':'bind','source':str(credential),'target':'/run/secrets/hc-mqtt.password','read_only':True}]}}}
+        return base,broker,credential,untouched,model
+
+    def test_cold_restore_fixes_actual_old_broker_mount_without_changing_other_releases(self):
+        self.assertEqual(os.geteuid(),0,'Run ownership tests in the isolated root test container')
+        with tempfile.TemporaryDirectory() as folder:
+            base,broker,credential,untouched,model=self.mount_fixture(Path(folder))
+            before=(untouched.stat().st_uid,stat.S_IMODE(untouched.stat().st_mode))
+            with patch.object(installer,'BASE',base):installer.restore_mount_permissions(model)
+            self.assertEqual((broker.stat().st_uid,stat.S_IMODE(broker.stat().st_mode)),(1883,0o700))
+            self.assertEqual(((broker/'mosquitto.conf').stat().st_uid,stat.S_IMODE((broker/'mosquitto.conf').stat().st_mode)),(1883,0o600))
+            self.assertEqual((credential.stat().st_uid,stat.S_IMODE(credential.stat().st_mode)),(10001,0o400))
+            self.assertEqual((untouched.stat().st_uid,stat.S_IMODE(untouched.stat().st_mode)),before)
+
+    def test_recovery_mount_escape_or_symlink_fails_before_any_chown(self):
+        for attack in ('escape','symlink'):
+            with tempfile.TemporaryDirectory() as folder:
+                root=Path(folder);base,broker,credential,untouched,model=self.mount_fixture(root)
+                if attack=='escape':model['services']['backend']['volumes'][0]['source']=str(root/'outside')
+                else:(broker/'forged').symlink_to(credential)
+                with patch.object(installer,'BASE',base),patch.object(installer.os,'chown') as chown:
+                    with self.assertRaises(ValueError):installer.restore_mount_permissions(model)
+                    chown.assert_not_called()
+
+    def recovery_fixture(self, root, ha=False, ha_metadata=None):
         payload=root/'payload';prefix=payload/'scripts/access_runtime'/backup_assets.NAME
         images=prefix/'images';images.mkdir(parents=True)
         image=images/'access-images.tar.gz';image.write_bytes(b'disposable-offline-image')
         postgres='sha256:'+'1'*64
-        (images/'manifest.json').write_text(json.dumps({'archive':image.name,'sha256':digest(image),'images':[postgres]}))
+        image_ids = [postgres]
+        if ha:
+            image_ids.append('sha256:'+'2'*64)
+            (payload/'homeassistant').mkdir()
+            (payload/'homeassistant/docker-compose.yml').write_text('services:\n  homeassistant:\n    image: '+restore_assets.HA_IMAGE+'\n')
+            (payload/'docker_images.txt').write_text(ha_metadata if ha_metadata is not None else
+                'REPOSITORY TAG IMAGE_ID CREATED SIZE\nghcr.io/home-assistant/home-assistant stable '+('2'*12)+' 2_days 1GB\n')
+        (images/'manifest.json').write_text(json.dumps({'archive':image.name,'sha256':digest(image),'images':image_ids}))
         (prefix/'runtime.compose.json').write_text(json.dumps({'services':{'postgres':{'image':postgres}}}))
         (payload/'infra').mkdir();(payload/'infra/access-release.json').write_text(json.dumps({'release':backup_assets.NAME,'image_archive_sha256':digest(image)}))
         jobs=payload/'infra/ssh'/backup_assets.NAME/'host-jobs';jobs.mkdir(parents=True)
@@ -40,6 +80,30 @@ class AccessReleaseTest(unittest.TestCase):
         archive=root/'fixture.tar.gz'
         with tarfile.open(archive,'w:gz') as out:out.add(payload,arcname='fixture')
         return archive,payload
+
+    def test_ha_alias_comes_from_verified_metadata_and_cached_image(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);archive,_=self.recovery_fixture(root,ha=True)
+            manifest=restore_assets.stage_assets(archive,root/'stage',base=root/'blank-host')
+            _,value=restore_assets.checked_stage(manifest)
+            self.assertEqual(value['image_aliases'],{restore_assets.HA_IMAGE:'sha256:'+'2'*64})
+            value['image_aliases'][restore_assets.HA_IMAGE]='sha256:'+'3'*64
+            manifest.write_text(json.dumps(value))
+            with self.assertRaises(ValueError):restore_assets.checked_stage(manifest)
+
+    def test_missing_ha_image_mapping_is_rejected_before_staging(self):
+        for metadata in ('', 'ghcr.io/home-assistant/home-assistant stable '+('3'*12)+' 2_days 1GB\n'):
+            with tempfile.TemporaryDirectory() as folder:
+                root=Path(folder);archive,_=self.recovery_fixture(root,ha=True,ha_metadata=metadata)
+                with self.assertRaises(ValueError):restore_assets.stage_assets(archive,root/'stage',base=root/'blank-host')
+                self.assertFalse((root/'stage').exists())
+
+    def test_docker_29_image_table_recovers_the_same_offline_alias(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            archive,_=self.recovery_fixture(root,ha=True,ha_metadata='IMAGE ID DISK_USAGE CONTENT_SIZE EXTRA\n'+restore_assets.HA_IMAGE+' '+('2'*12)+' 3GB 600MB U\n')
+            manifest=restore_assets.stage_assets(archive,root/'stage',base=root/'blank-host')
+            self.assertEqual(restore_assets.checked_stage(manifest)[1]['image_aliases'],{restore_assets.HA_IMAGE:'sha256:'+'2'*64})
 
     def test_recovery_assets_stage_is_verified_bounded_and_does_not_start_docker(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -150,7 +214,7 @@ class AccessReleaseTest(unittest.TestCase):
         values=units(ROOT)
         self.assertEqual(len([n for n in values if n.endswith('/hc44.conf')]),5)
         self.assertNotIn('ExecStop=',values['homecontrol-mqtt-access.service'])
-        self.assertIn('access_runtime/hc-access-20261030-r10',values['homecontrol-hostops.service'])
+        self.assertIn('access_runtime/'+backup_assets.NAME,values['homecontrol-hostops.service'])
         self.assertIn('restore_host.py',values['homecontrol-backup-apply.service.d/hc-access.conf'])
         self.assertIn('ExecStartPre=',values['docker.service.d/hc-access.conf'])
         self.assertIn('homecontrol-post-boot-health.timer',values)

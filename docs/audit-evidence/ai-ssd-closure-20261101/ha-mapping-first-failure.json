@@ -1,0 +1,11 @@
+{
+  "mode": "fresh",
+  "snapshot_id": "b381d1287149a95a1277d4724969677bd53c11736d7eb4365f307336463b49d6",
+  "git_commit": "9ef363060d376564fb7400ec7aab8b2a395e4f6f",
+  "external_git_commit": "d612e6e3db13e3bc836bacf7338ef879d9c50532",
+  "candidate_fixes_applied": true,
+  "started_at": "2026-11-01T18:59:17.251047+00:00",
+  "ok": false,
+  "returncode": 1,
+  "finished_at": "2026-11-01T19:01:33.115787+00:00"
+}

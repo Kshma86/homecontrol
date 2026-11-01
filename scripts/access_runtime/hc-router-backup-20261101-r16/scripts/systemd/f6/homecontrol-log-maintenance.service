@@ -1,0 +1,9 @@
+[Unit]
+Description=HomeControl F6 homecontrol-log-maintenance
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /srv/docker/homecontrol/scripts/backup_runner.py --mode maintenance
+KillMode=control-group
+TimeoutStartSec=4h

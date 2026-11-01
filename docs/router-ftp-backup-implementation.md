@@ -1,15 +1,13 @@
 # Routeres FTP-mentés – elkészült forrás és bevezetési lépések
 
-Állapot: 2026-11-01, az r14 kiadás éles. A kanonikus végrehajtó és a hostops
+Állapot: 2026-11-01, az r15 kiadás éles. A kanonikus végrehajtó és a hostops
 az új, fagyasztott runtime-ot használja, a backend/frontend és a meglévő timerek
-átálltak. Valódi routeres mentés, Git-feltöltés, archívum-visszaolvasás és izolált
-PostgreSQL-restore sikeres volt. **Azóta a teljes repository-check sok hiányzó
-packot jelzett. A routeres írás és időzítés felfüggesztve, a napi helyi mentés
-aktív, a Git-beállítások megmaradtak.** A későbbi éles próba korlátozott
-párhuzamossággal teljes visszaolvasást és sikeres adatbázis-restore-t igazolt;
-a javítás külön r15 csomagban vár helyi sudo-s élesítésre:
-[aktuális incidens](router-ftp-backup-incident-20261101.md). A teljes átadási állapot:
-[r14 éles átadás](../backups/deployments/hc-router-backup-20261101-r14/DEPLOYMENT.md).
+átálltak. Az új teljes routeres mentés, Git-feltöltés, retention, archívum-
+visszaolvasás és izolált PostgreSQL-restore sikeres. A napi/heti/havi ütemezők
+aktívak. Az r14 alatt észlelt listázási hibát az éles próbával igazolt,
+korlátozott párhuzamosságú kapcsolatkezelés megoldotta; a mentési incidens lezárva.
+[Incidens és bizonyítékok](router-ftp-backup-incident-20261101.md).
+[r15 éles átadás](../backups/deployments/hc-router-backup-20261101-r15/DEPLOYMENT.md).
 Routerjelszó nem került a kódba.
 
 ## Működés
@@ -39,6 +37,8 @@ minimum ezért a ténylegesen kipróbált rclone 1.75.2.
   szerinti csoportosítással az egyedi helyi archívumnevek nem hoznak létre
   minden alkalommal külön megőrzési csoportot.
 - Az integritásvizsgálat `restic check --read-data`: tényleges tartalomolvasás.
+- Az r15 a retention előtt és után teljes adatolvasást követel. A kipróbált
+  kapcsolatkezelés `--checkers 1 --transfers 1`, valamint `rclone.connections=2`.
 - A visszaállítás teljes snapshot-azonosítóhoz kötött, üres stagingbe történik.
 - Az új rclone-config és restic-jelszó bekerül a titkosított secrets manifestbe;
   az rclone-konfiguráció nyersen nem exportálható a publikus Git-snapshotba.

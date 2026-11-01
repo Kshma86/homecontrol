@@ -1,0 +1,369 @@
+{
+  "health": {
+    "db_ok": true,
+    "error": null,
+    "mqtt_ok": true,
+    "ok": true
+  },
+  "readiness": {
+    "bootstrap_ready": true,
+    "missing_workers": [],
+    "ok": true,
+    "stopping": false,
+    "unready_workers": []
+  },
+  "policy": {
+    "ai_enabled": false,
+    "local_backup_only": false,
+    "message": "Az AI-szerver letiltva; routeres ment\u00e9s \u00e9s k\u00fcls\u0151 Git enged\u00e9lyezett.",
+    "policy_valid": true,
+    "profile": "ai-offline",
+    "remote_backup_enabled": true,
+    "restore_in_place_enabled": false,
+    "restricted": true,
+    "router_backup_enabled": true
+  },
+  "release": "hc-router-backup-20261101-r15",
+  "containers": [
+    {
+      "Command": "\"qemu-system-x86_64 \u2026\"",
+      "CreatedAt": "2026-11-01 19:50:27 +0100 CET",
+      "ID": "c526bd5653ad",
+      "Image": "hc-router-restore-tools:20261101",
+      "Labels": "hc.audit=ai-ssd-closure-20261101",
+      "LocalVolumes": "0",
+      "Mounts": "/tmp/hc-router\u2026,/tmp/hc-router\u2026",
+      "Names": "hc-router-restore-lab-20261101",
+      "Networks": "none",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "",
+      "RunningFor": "17 minutes ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 17 minutes"
+    },
+    {
+      "Command": "\"/docker-entrypoint.\u2026\"",
+      "CreatedAt": "2026-11-01 18:28:52 +0100 CET",
+      "ID": "56c26e164df3",
+      "Image": "678086a09c3a",
+      "Labels": "com.docker.compose.config-hash=d42c4242b8ab15fff6f3d6f8755075cd9b206f2ef94a0e29e2eade3834401940,com.docker.compose.container-number=1,com.docker.compose.depends_on=backend:service_started:false,com.docker.compose.image=sha256:678086a09c3a6be9e84c80188b5ea804cd9ab2b3c59108c335460d579f68b114,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-frontend,com.docker.compose.service=frontend,com.docker.compose.version=5.0.2,maintainer=NGINX Docker Maintainers <docker-maint@nginx.com>",
+      "LocalVolumes": "0",
+      "Mounts": "",
+      "Names": "homecontrol-frontend",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "80/tcp, 0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp",
+      "RunningFor": "2 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 2 hours (healthy)"
+    },
+    {
+      "Command": "\"gunicorn --config g\u2026\"",
+      "CreatedAt": "2026-11-01 18:28:52 +0100 CET",
+      "ID": "aadca5f37616",
+      "Image": "67595b54e55a",
+      "Labels": "com.docker.compose.config-hash=e7ae5bde660ef3d78e4a0e0b15c3a4a3f0955341144ee12e0a4244892e7f0898,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:67595b54e55a313f7c602c3e8efd68191af5736b4e5f59319401dff8f2fc729d,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-backend,com.docker.compose.service=backend,com.docker.compose.version=5.0.2,hc.release=hc-audit-20261022-r1,hc.scope=HC-01-06,HC-48",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/run/homecontr\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026",
+      "Names": "homecontrol-backend",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "0.0.0.0:5000->5000/tcp, [::]:5000->5000/tcp",
+      "RunningFor": "2 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 2 hours (healthy)"
+    },
+    {
+      "Command": "\"python xiaomi_x10_b\u2026\"",
+      "CreatedAt": "2026-10-31 21:40:37 +0100 CET",
+      "ID": "bdb11dafcd6f",
+      "Image": "50252994d229",
+      "Labels": "com.docker.compose.config-hash=1b2aff2a0c6d25fb26887324c164f42f0b82b0c74b082e388b5a2360460f515f,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:50252994d2296cd189dd20ddfcccbf182c00b9bcc08a836f26db194354553a50,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-xiaomi-x10,com.docker.compose.service=homecontrol-xiaomi-x10,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026,/srv/docker/ho\u2026",
+      "Names": "homecontrol-xiaomi-x10",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "",
+      "RunningFor": "22 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 22 hours (healthy)"
+    },
+    {
+      "Command": "\"python -u /app/tuya\u2026\"",
+      "CreatedAt": "2026-10-31 21:27:42 +0100 CET",
+      "ID": "a34519cb2917",
+      "Image": "4ebc6b5367af",
+      "Labels": "com.docker.compose.config-hash=3703795db3b885bec3586c5a1fd904cb34273fbb607734c707230a288b81eb4d,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:4ebc6b5367aff665f0df2f6ea2e0e98054f98702c87c995d7a0d70becf9186c9,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-tuya-poller,com.docker.compose.service=homecontrol-tuya-poller,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026",
+      "Names": "homecontrol-tuya-poller",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "",
+      "RunningFor": "23 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 23 hours (healthy)"
+    },
+    {
+      "Command": "\"python gree_climate\u2026\"",
+      "CreatedAt": "2026-10-31 21:27:42 +0100 CET",
+      "ID": "91b3a28b68cd",
+      "Image": "2ea3fde755f1",
+      "Labels": "com.docker.compose.config-hash=e305ade1eb949bb4838513553542787b63ef0e8eff856e2a2f511a8d3e2fda99,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:2ea3fde755f1cf8a02b722fcaeb7807b94cee32d8d70d5f01d6f4208ba5404db,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-gree-climate,com.docker.compose.service=homecontrol-gree-climate,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "1",
+      "Mounts": "homecontrol_gr\u2026,/srv/docker/ho\u2026",
+      "Names": "homecontrol-gree-climate",
+      "Networks": "host",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "",
+      "RunningFor": "23 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 23 hours (healthy)"
+    },
+    {
+      "Command": "\"python mqtt_ingest_\u2026\"",
+      "CreatedAt": "2026-10-31 21:27:42 +0100 CET",
+      "ID": "33977e2440eb",
+      "Image": "b872923cb88f",
+      "Labels": "com.docker.compose.config-hash=e15115868ad727fdf4f74ebe2964d533fecc38f272cebea5ef65fe40975110f6,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:b872923cb88f42467e2bb982b56e6398f86560f3b2dada157ffb13ece8920c46,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-ingest,com.docker.compose.service=hc_ingest,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026",
+      "Names": "homecontrol-ingest",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "",
+      "RunningFor": "23 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 23 hours (healthy)"
+    },
+    {
+      "Command": "\"python ai_server.py\"",
+      "CreatedAt": "2026-10-31 21:27:42 +0100 CET",
+      "ID": "1f27ee1acf14",
+      "Image": "b7400a6a2bee",
+      "Labels": "com.docker.compose.config-hash=1570ddf64afc21f852f055446e73fc6cf40d5e42afe5be089f00076f3630ba49,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:b7400a6a2bee3d136bf288e0f4d705d366e22294d37cbb9363dc583a3a698ec6,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-ai-server,com.docker.compose.service=ai-server,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "1",
+      "Mounts": "homecontrol_ai\u2026",
+      "Names": "homecontrol-ai-server",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "127.0.0.1:8095->8088/tcp",
+      "RunningFor": "23 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 23 hours (healthy)"
+    },
+    {
+      "Command": "\"python ha_growatt_p\u2026\"",
+      "CreatedAt": "2026-10-31 21:27:42 +0100 CET",
+      "ID": "0621bfa05232",
+      "Image": "2e486db3ea27",
+      "Labels": "com.docker.compose.config-hash=e433de20a7a1f6778b97cdde74619357f8c3358a468be86ed7b05612f9cad678,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:2e486db3ea2764cf2f387d23276dc007e926b6a8929122cceae8ef6e18aeb890,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-ha-growatt-poller,com.docker.compose.service=homecontrol-ha-growatt-poller,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026",
+      "Names": "homecontrol-ha-growatt-poller",
+      "Networks": "host",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "",
+      "RunningFor": "23 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 23 hours (healthy)"
+    },
+    {
+      "Command": "\"/docker-entrypoint.\u2026\"",
+      "CreatedAt": "2026-10-31 15:12:42 +0100 CET",
+      "ID": "67fdae53b747",
+      "Image": "65645c7bb6a0",
+      "Labels": "com.docker.compose.config-hash=5aef3be5ba8326c47205ba4f63e6cb48fe76256316873c07f2b8a3bcedd96f71,com.docker.compose.container-number=1,com.docker.compose.depends_on=frontend:service_started:false,com.docker.compose.image=sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-proxy,com.docker.compose.service=proxy,com.docker.compose.version=5.0.2,maintainer=NGINX Docker Maintainers <docker-maint@nginx.com>",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026",
+      "Names": "homecontrol-proxy",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "0.0.0.0:80->80/tcp, [::]:80->80/tcp",
+      "RunningFor": "29 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 29 hours"
+    },
+    {
+      "Command": "\"/entrypoint.sh /usr\u2026\"",
+      "CreatedAt": "2026-10-31 15:12:31 +0100 CET",
+      "ID": "686f7033cdb4",
+      "Image": "7f39cf2f872c",
+      "Labels": "com.docker.compose.config-hash=60572c5bc7350473be3d96e7a704903a95a01542bdebe187f3910e63c469f96f,com.docker.compose.container-number=1,com.docker.compose.depends_on=postgres:service_healthy:false,com.docker.compose.image=sha256:7f39cf2f872c8d9a0bb0e6a5440c3bf5814036eccf284102870ab08e2603a2c7,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-pgbouncer,com.docker.compose.service=pgbouncer,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "0",
+      "Mounts": "",
+      "Names": "homecontrol-pgbouncer",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "127.0.0.1:6432->5432/tcp",
+      "RunningFor": "29 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 29 hours (healthy)"
+    },
+    {
+      "Command": "\"/docker-entrypoint.\u2026\"",
+      "CreatedAt": "2026-10-31 15:12:29 +0100 CET",
+      "ID": "4bcea8871470",
+      "Image": "077fe4ff4c49",
+      "Labels": "com.docker.compose.config-hash=b22fca9f73ea37e5b3182b872dbba1c95d2143c6be0730970a87c424e5b20afe,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:077fe4ff4c49df1e860c98335c77dda08360629e0e2a718147027e4db3eace9d,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-mqtt,com.docker.compose.service=mqtt,com.docker.compose.version=5.0.2,description=Eclipse Mosquitto MQTT Broker,maintainer=Roger Light <roger@atchoo.org>",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026,/srv/docker/ho\u2026,/srv/docker/ho\u2026",
+      "Names": "homecontrol-mqtt",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "0.0.0.0:1883->1883/tcp, [::]:1883->1883/tcp, 127.0.0.1:1884->1884/tcp",
+      "RunningFor": "29 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 29 hours"
+    },
+    {
+      "Command": "\"docker-entrypoint.s\u2026\"",
+      "CreatedAt": "2026-10-31 15:12:29 +0100 CET",
+      "ID": "a00ddc6bbdc1",
+      "Image": "f992505e18f1",
+      "Labels": "com.docker.compose.config-hash=1b4c6499662bc0d74f840d8628d1a3e856bec0eb6fefeeca1acec2979d5e24b6,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:f992505e18f114c1e5102ac4dcf00f791b44462f6a423d899320f0bbf80e386f,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-postgres,com.docker.compose.service=postgres,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026",
+      "Names": "homecontrol-postgres",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "127.0.0.1:5432->5432/tcp",
+      "RunningFor": "29 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 29 hours (healthy)"
+    },
+    {
+      "Command": "\"docker-entrypoint.s\u2026\"",
+      "CreatedAt": "2026-10-31 15:12:29 +0100 CET",
+      "ID": "5e5aa6a73660",
+      "Image": "89cf02f379aa",
+      "Labels": "com.docker.compose.config-hash=de749c9f3a856e3f9603d13e3b2de8c47e2e7b482c7762c8725eb4507e2dacba,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:89cf02f379aa743a68494388e3a26fba7b8c9101f8b452038cc07aeff3fc983c,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=zigbee2mqtt,com.docker.compose.service=zigbee2mqtt,com.docker.compose.version=5.0.2,org.opencontainers.image.authors=Koen Kanters,org.opencontainers.image.created=2026-02-01T14:01:37Z,org.opencontainers.image.description=Zigbee to MQTT bridge using Zigbee-herdsman,org.opencontainers.image.documentation=https://www.zigbee2mqtt.io/,org.opencontainers.image.licenses=GPL-3.0,org.opencontainers.image.source=https://github.com/Koenkk/zigbee2mqtt,org.opencontainers.image.title=Zigbee2MQTT,org.opencontainers.image.url=https://github.com/Koenkk/zigbee2mqtt,org.opencontainers.image.version=2.8.0",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026",
+      "Names": "zigbee2mqtt",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "0.0.0.0:8090->8080/tcp, [::]:8090->8080/tcp",
+      "RunningFor": "29 hours ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 29 hours"
+    },
+    {
+      "Command": "\"python -u /app/mdns\u2026\"",
+      "CreatedAt": "2026-07-30 22:20:04 +0200 CEST",
+      "ID": "3887fdf21c4c",
+      "Image": "homecontrol-mdns",
+      "Labels": "com.docker.compose.config-hash=a5548281f3c258dd41796dad997238b43678a6dbf87d52613b760e9530af5a9f,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:7411c2ca4fffa60cd350e0fe7a94e365166ce2cef697136722535cfe6ecc4569,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.replace=homecontrol-mdns,com.docker.compose.service=mdns,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "0",
+      "Mounts": "",
+      "Names": "homecontrol-mdns",
+      "Networks": "host",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "",
+      "RunningFor": "3 months ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 2 months"
+    },
+    {
+      "Command": "\"/init\"",
+      "CreatedAt": "2026-07-17 22:23:15 +0200 CEST",
+      "ID": "369bc91e17f9",
+      "Image": "ghcr.io/home-assistant/home-assistant:stable",
+      "Labels": "com.docker.compose.config-hash=1c1a370e81d79a24f4ec5bcaf6cb28f04d9f2c7e713eacd21f3da51a83be4e39,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:1476924357b46e80735c13e94232ba5c853cac052e9df4bb28d50fa56348097b,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/homeassistant/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/homeassistant,com.docker.compose.project=homeassistant,com.docker.compose.service=homeassistant,com.docker.compose.version=5.0.2,io.hass.arch=amd64,io.hass.base.arch=amd64,io.hass.base.image=ghcr.io/home-assistant/base:3.24,io.hass.base.name=python,io.hass.base.version=2026.06.1,io.hass.type=core,io.hass.version=2026.7.2,org.opencontainers.image.authors=The Home Assistant Authors,org.opencontainers.image.created=2026-07-10 21:20:17+00:00,org.opencontainers.image.description=Open-source home automation platform running on Python 3,org.opencontainers.image.documentation=https://www.home-assistant.io/docs/,org.opencontainers.image.licenses=Apache-2.0,org.opencontainers.image.source=https://github.com/home-assistant/core,org.opencontainers.image.title=Home Assistant,org.opencontainers.image.url=https://www.home-assistant.io/,org.opencontainers.image.version=2026.7.2",
+      "LocalVolumes": "0",
+      "Mounts": "/srv/docker/ho\u2026,/etc/localtime",
+      "Names": "homeassistant",
+      "Networks": "host",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "",
+      "RunningFor": "3 months ago",
+      "Size": "0B",
+      "State": "running",
+      "Status": "Up 2 months"
+    },
+    {
+      "Command": "\"entrypoint.sh docke\u2026\"",
+      "CreatedAt": "2026-02-22 21:00:41 +0100 CET",
+      "ID": "0ad15d9c2e81",
+      "Image": "adminer:4",
+      "Labels": "com.docker.compose.config-hash=37b4af4cfb8c43c3db03a2e731462da9361cd1355563397624449f27b518058b,com.docker.compose.container-number=1,com.docker.compose.depends_on=postgres:service_healthy:false,com.docker.compose.image=sha256:19f38bc71f743beb2ad28bf31dfeb352deb19eb167692d250a66cda40b25de93,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=/srv/docker/homecontrol/infra/docker-compose.yml,com.docker.compose.project.working_dir=/srv/docker/homecontrol/infra,com.docker.compose.project=homecontrol,com.docker.compose.service=adminer,com.docker.compose.version=5.0.2",
+      "LocalVolumes": "0",
+      "Mounts": "",
+      "Names": "homecontrol-adminer",
+      "Networks": "homecontrol_default",
+      "Platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "Ports": "",
+      "RunningFor": "8 months ago",
+      "Size": "0B",
+      "State": "exited",
+      "Status": "Exited (0) 2 months ago"
+    }
+  ]
+}

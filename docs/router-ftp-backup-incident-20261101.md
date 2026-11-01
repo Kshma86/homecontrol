@@ -1,5 +1,11 @@
 # Routeres mentés: integritási incidens, 2026-11-01
 
+**Lezárva: az r15 éles, az új mentés és retention teljes ellenőrzései, az
+archívum- és izolált PostgreSQL-visszaállítás sikeres.** A napi/heti/havi
+időzítők aktívak, a külső Git-feltöltés működik, az AI tiltása megmaradt.
+[Éles r15 átadás](../backups/deployments/hc-router-backup-20261101-r15/DEPLOYMENT.md).
+A további szakaszok az incidens kivizsgálásának korábbi állapotait rögzítik.
+
 Az r14 aktiválás első teljes mentése és az abból végzett archívum-/PostgreSQL-
 visszaállítás sikeres volt. Az időzítők indulásakor bepótolt második heti mentés
 feltöltése után a retention hibázott. A későbbi teljes check sok `pack ...:
@@ -91,7 +97,7 @@ Az eredeti kapcsolatkezelés ebben az összehasonlításban már a listázásná
 `RuntimeError` hibával megállt. A próba távoli írást nem végzett, az automatikus
 routeres mentés továbbra is kikapcsolt.
 
-## Előkészített javítás: r15
+## Élesített javítás: r15
 
 Az r15 a ténylegesen igazolt kapcsolatszámot használja, és a retention előtt
 és után teljes adatellenőrzést végez. Sikertelen első check után nem indul
@@ -99,8 +105,11 @@ törlés. A heti ütemezés csak az incidens előtti receipt szerint, az új kia
 saját teljes mentési/visszaállítási próbái után kapcsolódik vissza.
 
 [r15 csomag, indítás és bizonyítékok](../backups/releases/hc-router-backup-20261101-r15/README.md).
-Az r14 jelenlegi tárolójának adatai a teljes próbán ellenőrzöttek; az incidens
-feloldása az r15 élesítésének és új mentésének igazolásával zárható le.
+Az r15 új mentése `b105be08ce6943fdb3b10cdf835547ee` az összes kötelező céllal
+és a retentionnel együtt sikeres. A restore 4788 fájlchecksumot és valódi
+PostgreSQL-visszaállítást ellenőrzött. Az automatika visszakapcsolva, az
+incidens lezárva. Két r14-es, történeti systemd-service-hibajelzés külön helyi
+`reset-failed` paranccsal törölhető; ezek nem az új futás eredményei.
 
 Vak indexjavítás, a produkciós repository újrainicializálása vagy javítás célú
 snapshot-törlés nem történt. A teljes éles adatolvasás és visszaállítás szerint

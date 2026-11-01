@@ -1,0 +1,22 @@
+{
+  "ok": false,
+  "scope": "real r15 archive and external Git plus explicit recovery corrections",
+  "started_at": "2026-11-01T19:23:56.573441+00:00",
+  "remote_write_commands": 0,
+  "production_restore": false,
+  "ai_enabled": false,
+  "phase": "fresh_host_probe",
+  "fresh": {
+    "mode": "fresh",
+    "snapshot_id": "b381d1287149a95a1277d4724969677bd53c11736d7eb4365f307336463b49d6",
+    "git_commit": "0f03a16be461d08161c51336a555747b13de7a8e",
+    "external_git_commit": "d612e6e3db13e3bc836bacf7338ef879d9c50532",
+    "candidate_fixes_applied": true,
+    "started_at": "2026-11-01T19:23:57.034128+00:00",
+    "ok": true,
+    "returncode": 0,
+    "finished_at": "2026-11-01T19:32:12.535350+00:00"
+  },
+  "error_type": "CalledProcessError",
+  "finished_at": "2026-11-01T19:33:11.529444+00:00"
+}

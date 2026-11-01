@@ -221,7 +221,10 @@ env_value() {
   printf '%s\n' "$default"
 }
 
-clone_project() {
+clone_project() (
+  # The private work root remains 0700. Public checkout files must be readable
+  # by the non-root application even when the caller uses umask 077.
+  umask 022
   mkdir -p "$WORK_ROOT"
   if [ -d "$PROJECT_DIR/.git" ]; then
     log "Project staging mar letezik, frissites: $PROJECT_DIR"
@@ -233,7 +236,7 @@ clone_project() {
     git clone "$REPO_URL" "$PROJECT_DIR"
     git -C "$PROJECT_DIR" checkout "$REPO_REF"
   fi
-}
+)
 
 verify_bundle() {
   local bundle="$PROJECT_DIR/secrets/homecontrol-secrets-latest.tar.gz.age"
@@ -371,8 +374,8 @@ prepare_selected_archive() {
     python3 "$PROJECT_DIR/scripts/restore_archive.py" database "$SELECTED_ARCHIVE" "$WORK_ROOT/archive" "$SELECTION_FILE"
     SELECTED_DUMP="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["dump"])' "$SELECTION_FILE")"
     # Validate the selected dump format before stopping stacks or touching DBs.
-    RESTORE_ASSETS="$(python3 "$PROJECT_DIR/scripts/access_release/restore_assets.py" stage --archive "$SELECTED_ARCHIVE" --work "$WORK_ROOT")"
-    PG_RESTORE_IMAGE="$(python3 "$PROJECT_DIR/scripts/access_release/restore_assets.py" load --manifest "$RESTORE_ASSETS")"
+    RESTORE_ASSETS="$(python3 "$PROJECT_DIR/scripts/access_runtime/hc-router-backup-20261101-r16/scripts/access_release/restore_assets.py" stage --archive "$SELECTED_ARCHIVE" --work "$WORK_ROOT")"
+    PG_RESTORE_IMAGE="$(python3 "$PROJECT_DIR/scripts/access_runtime/hc-router-backup-20261101-r16/scripts/access_release/restore_assets.py" load --manifest "$RESTORE_ASSETS")"
     docker run --rm --pull never --network none -i "$PG_RESTORE_IMAGE" pg_restore --list < "$SELECTED_DUMP" > "$WORK_ROOT/dump-toc.txt"
   fi
 }
@@ -435,7 +438,7 @@ start_stacks() {
   fi
   if [ -f "$TARGET_BASE/homeassistant/docker-compose.yml" ]; then
     log "Docker compose stack inditas: homeassistant"
-    (cd "$TARGET_BASE/homeassistant" && docker compose up -d)
+    (cd "$TARGET_BASE/homeassistant" && docker compose up -d --no-build --pull never)
   fi
 }
 
@@ -489,26 +492,26 @@ main() {
   if [ "$APPLY" = "true" ]; then
     stop_existing_stacks_for_apply
     if [ -n "${RESTORE_ASSETS:-}" ]; then
-      python3 "$PROJECT_DIR/scripts/access_release/restore_assets.py" quiesce --manifest "$RESTORE_ASSETS"
+      python3 "$PROJECT_DIR/scripts/access_runtime/hc-router-backup-20261101-r16/scripts/access_release/restore_assets.py" quiesce --manifest "$RESTORE_ASSETS"
     fi
     apply_restic_files
     apply_project
     apply_secrets
     if [ -n "${RESTORE_ASSETS:-}" ]; then
-      python3 "$PROJECT_DIR/scripts/access_release/restore_assets.py" apply --manifest "$RESTORE_ASSETS"
+      python3 "$PROJECT_DIR/scripts/access_runtime/hc-router-backup-20261101-r16/scripts/access_release/restore_assets.py" apply --manifest "$RESTORE_ASSETS"
     fi
     python3 "$TARGET_BASE/scripts/restore_runtime.py" environment
   fi
 
   if [ "$APPLY" = true ] && [ "$START_STACK" = true ]; then
-    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r15/scripts/access_release/install.py" restore-prepare
+    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r16/scripts/access_release/install.py" restore-prepare
   fi
   if [ "$RESTORE_DB" = "true" ]; then
     restore_database
 
   fi
   if [ "$START_STACK" = true ]; then
-    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r15/scripts/access_release/install.py" start-runtime
+    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r16/scripts/access_release/install.py" start-runtime
   fi
   start_stacks
   if [ "$START_STACK" = true ]; then

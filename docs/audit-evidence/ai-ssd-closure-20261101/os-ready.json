@@ -1,0 +1,9 @@
+{
+  "os_ready": "OS provisioned without HC data or credentials",
+  "empty_hc": true,
+  "empty_images": true,
+  "docker": "Docker version 29.1.5, build 0e6fee6",
+  "compose": "Docker Compose version v5.0.2",
+  "pid1": "systemd",
+  "virt": "kvm"
+}

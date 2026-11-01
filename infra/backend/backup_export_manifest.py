@@ -12,7 +12,7 @@ DENIED_PARTS = frozenset(('.git', '.env', '__pycache__', '.cache', '.storage',
                           'node_modules', 'dist', 'build', 'deps', 'tts'))
 DENIED_PREFIXES = ('infra/ssh/', 'infra/postgres/data/', 'infra/mqtt/data/',
                    'infra/mqtt/log/', 'infra/zigbee2mqtt/data/',
-                   'apps/tuya-poller/logs/', 'apps/xiaomi-x10/x10_maps/captures/')
+                   'apps/tuya-poller/logs/', 'apps/xiaomi-x10/x10_maps/')
 DENIED_NAMES = ('.env*', '*.db', '*.db-*', '*.sqlite*', '*.log*', '*.tar.gz',
                 '*.dump', '*.key', '*.pem', '*-key.txt', '.ha_run.lock',
                 'xiaomi_cloud_auth*', 'multi_connector_config.json*', 'secrets.yaml*', 'secrets.yml*',

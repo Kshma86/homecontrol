@@ -71,7 +71,7 @@ fi
 git -C "$repo" config user.name 'HomeControl Backup'
 git -C "$repo" config user.email backup@homecontrol.local
 python3 "$CODE_DIR/export_config_snapshot.py" "$repo"
-git -C "$repo" add -A
+python3 "$CODE_DIR/export_config_snapshot.py" --stage-only "$repo"
 if ! git -C "$repo" diff --cached --quiet; then
   git -C "$repo" commit -m "${1:-${GITEA_COMMIT_MESSAGE:-Update HomeControl configuration snapshot}}" >/dev/null
 fi

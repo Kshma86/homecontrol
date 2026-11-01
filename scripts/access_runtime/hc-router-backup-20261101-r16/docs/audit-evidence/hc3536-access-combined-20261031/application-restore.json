@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "real_pg_dump_restore": true,
+  "candidate_binding_and_powerwall_modules": true,
+  "selected_binding_preserved": true,
+  "restored_old_on_cancelled_no_publish": true,
+  "production_used": false,
+  "dump_sha256": "a1caaa263ea2d72060928fa0217e826232a39a77103dc8e8fbba557673a38284"
+}

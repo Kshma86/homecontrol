@@ -1,0 +1,29 @@
+{
+  "git_commit": "014e1c2d663a746e9df6b632bc7d158d0584552a",
+  "external_git_commit": "d612e6e3db13e3bc836bacf7338ef879d9c50532",
+  "snapshot_id": "b381d1287149a95a1277d4724969677bd53c11736d7eb4365f307336463b49d6",
+  "correction_sha256": {
+    "infra/backend/backup_export.py": "f8302a81335f62e06b72d69756ed82dfbf483729c76e8599dfd4c0b87bcf3fcc",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/infra/backend/backup_export.py": "f8302a81335f62e06b72d69756ed82dfbf483729c76e8599dfd4c0b87bcf3fcc",
+    "infra/backend/backup_export_manifest.py": "08172ea8cab55933d81abd1ed171a4c7614e32f88b9da6c3dc8102f28191563f",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/infra/backend/backup_export_manifest.py": "08172ea8cab55933d81abd1ed171a4c7614e32f88b9da6c3dc8102f28191563f",
+    "scripts/export_config_snapshot.py": "34bf5d114b808e33057e07f3f5d65a33e1ea41b36bf4da42b0c4f0842af10bf5",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/scripts/export_config_snapshot.py": "34bf5d114b808e33057e07f3f5d65a33e1ea41b36bf4da42b0c4f0842af10bf5",
+    "scripts/backup_offsite_worker.sh": "11027045835a1a541146f03280e1114841d808c541deea1f78be32e356bca3ee",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/scripts/backup_offsite_worker.sh": "11027045835a1a541146f03280e1114841d808c541deea1f78be32e356bca3ee",
+    "scripts/backup_config_sync_worker.sh": "f6cc84a8baafa4aba0fad8d3603db623748b2061b1c0f4c7c3c7429c2b0a8b2c",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/scripts/backup_config_sync_worker.sh": "f6cc84a8baafa4aba0fad8d3603db623748b2061b1c0f4c7c3c7429c2b0a8b2c",
+    "scripts/access_release/restore_assets.py": "47d9399d88e99d7c92158b8ad063a20c787d61c1c29656f7468e7ac0aaa4ab14",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/scripts/access_release/restore_assets.py": "47d9399d88e99d7c92158b8ad063a20c787d61c1c29656f7468e7ac0aaa4ab14",
+    "scripts/access_release/install.py": "d75604842fe20d8d5530b9a7020df5ad07140e5a1dc38dec761d6341ab4fc83b",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/scripts/access_release/install.py": "d75604842fe20d8d5530b9a7020df5ad07140e5a1dc38dec761d6341ab4fc83b",
+    "infra/backend/tests/test_backup_restore_contract.py": "21db8071a26c376812fe67c2088e2cbf8cd5b4f2eccca4da3c9ef3fcd9643c9b",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/infra/backend/tests/test_backup_restore_contract.py": "21db8071a26c376812fe67c2088e2cbf8cd5b4f2eccca4da3c9ef3fcd9643c9b",
+    "infra/backend/tests/test_access_release.py": "7fa9f61fbeddeb338385959bb9c85c6d609578906976917e4e9e3292628c0a35",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/infra/backend/tests/test_access_release.py": "7fa9f61fbeddeb338385959bb9c85c6d609578906976917e4e9e3292628c0a35",
+    "scripts/bootstrap_restore_v0_1.sh": "545a1fba486426164ea567bcb8751409eb486952d75f0e6bf5a1f01ba740a231",
+    "scripts/access_runtime/hc-router-backup-20261101-r15/scripts/bootstrap_restore_v0_1.sh": "545a1fba486426164ea567bcb8751409eb486952d75f0e6bf5a1f01ba740a231"
+  },
+  "production_modified": false,
+  "encrypted_bundle_modified": false
+}

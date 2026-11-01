@@ -16,7 +16,7 @@ from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'scripts'))
 import backup_restore as restore
-from backup_export import export_snapshot, secrets_manifest
+from backup_export import export_snapshot, secrets_manifest, stage_snapshot
 from backup_export_manifest import git_paths
 from backup_protocol import seal
 from backup_service import BackupService
@@ -213,12 +213,39 @@ r.restore(a['archive'],['scripts'],'in_place','RESTORE',a['targets'],a['stage'],
         def fake(args,**kwargs):
             calls.append(args)
             return subprocess.CompletedProcess(args,0,json.dumps([{'id':'a'*64,'time':'2026','tags':['homecontrol']}]),'')
-        with patch.dict(os.environ,{'BACKUP_ROOT':str(self.locks)}):
+        # This is the legacy SFTP transport's empty-restore contract, independent
+        # of the installed deployment policy (which currently disables AI SFTP).
+        with patch.dict(os.environ,{'BACKUP_ROOT':str(self.locks)}), patch('restore_smoke.effective_backup_settings',side_effect=lambda settings:settings):
             with self.assertRaises(ValueError):smoke(self.root,archive,run=fake)
         self.assertIn('a'*64,calls[-1]);self.assertNotIn('latest',calls[-1]);self.assertFalse(json.loads((self.locks/'restore-smoke-result.json').read_text())['ok'])
 
 
 class ExportContractTest(unittest.TestCase):
+    def test_nested_gitignore_cannot_hide_manifest_source_and_runtime_maps_are_excluded(self):
+        self.write('apps/tool/.gitignore', '*.sql\n')
+        self.write('apps/tool/schema.sql', 'select 1;')
+        self.write('apps/xiaomi-x10/x10_maps/map_object_fixture.json', '{}')
+        self.write('apps/xiaomi-x10/x10_maps/floor.png', 'runtime-map')
+        self.write('apps/xiaomi-x10/x10_maps/xiaomi_cloud_auth.json', '{"ssecurity":"synthetic"}')
+        subprocess.run(['git', 'init', '-q', str(self.out)], check=True)
+        export_snapshot(self.base, self.out)
+        staged = stage_snapshot(self.out)
+        paths = set(subprocess.check_output(['git', '-C', str(self.out), 'ls-files', '-z']).decode().rstrip('\0').split('\0'))
+        manifest = json.loads((self.out/'EXPORT_MANIFEST.json').read_text())
+        self.assertEqual(paths, {row['path'] for row in manifest['files']} | {'.gitignore', 'EXPORT_MANIFEST.json'})
+        self.assertIn('apps/tool/schema.sql', paths)
+        self.assertFalse(any('/x10_maps/' in name for name in paths))
+        self.assertEqual(staged['staged_files'], len(paths))
+
+    def test_changed_export_is_rejected_before_git_staging(self):
+        self.write('scripts/tool.py', 'source')
+        subprocess.run(['git', 'init', '-q', str(self.out)], check=True)
+        export_snapshot(self.base, self.out)
+        (self.out/'scripts/tool.py').write_text('tampered')
+        with self.assertRaises(ValueError):
+            stage_snapshot(self.out)
+        self.assertEqual(subprocess.check_output(['git', '-C', str(self.out), 'ls-files']), b'')
+
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.base=self.root/'project';self.base.mkdir();self.out=self.root/'export'

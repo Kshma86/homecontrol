@@ -68,7 +68,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:67595b54e55a313f7c602c3e8efd68191af5736b4e5f59319401dff8f2fc729d",
+      "image": "sha256:c2155c65584458f2f3b0fb3cb6e4d4e06ce36245f572eee06ba68b7da1cce324",
       "logging": {
         "driver": "json-file",
         "options": {
@@ -173,7 +173,7 @@
         },
         {
           "type": "bind",
-          "source": "/srv/docker/homecontrol/infra/ssh/hc-router-backup-20261101-r15/mqtt/credentials/backend.password",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-router-backup-20261101-r16/mqtt/credentials/backend.password",
           "target": "/run/secrets/hc-mqtt.password",
           "read_only": true
         }
@@ -181,7 +181,7 @@
       "pull_policy": "never",
       "env_file": [
         {
-          "path": "/srv/docker/homecontrol/infra/ssh/hc-router-backup-20261101-r15/compose-env/backend.env",
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-router-backup-20261101-r16/compose-env/backend.env",
           "format": "raw"
         }
       ],
@@ -207,7 +207,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:678086a09c3a6be9e84c80188b5ea804cd9ab2b3c59108c335460d579f68b114",
+      "image": "sha256:9a0c26bb21cac75ec57910ae7f39fa2b5276ac3f7717c2494b66d636ff552385",
       "logging": {
         "driver": "json-file",
         "options": {

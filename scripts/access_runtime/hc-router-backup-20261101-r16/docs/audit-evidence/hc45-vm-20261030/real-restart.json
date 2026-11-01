@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "real_nonroot_ipc": true,
+  "real_guest_docker_daemon": true,
+  "target": "homecontrol-backend",
+  "host_job_state": "completed",
+  "no_production_restart": true
+}

@@ -7,6 +7,8 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
+import re
 import subprocess
 import sys
 import time
@@ -68,6 +70,35 @@ def permissions():
         no_symlinks(path);os.chown(path,1883,1883);path.chmod(0o700 if path.is_dir() else 0o600)
     os.chown(PRIVATE/'mqtt/broker',1883,1883);(PRIVATE/'mqtt/broker').chmod(0o700)
     password=PRIVATE/'mqtt/credentials/backend.password';os.chown(password,10001,10001);password.chmod(0o400)
+
+
+def restore_mount_permissions(model):
+    """Cold restore may retain platform mounts from an older release namespace."""
+    def selected(service, destination, suffix):
+        mounts=[v for v in model['services'][service].get('volumes', [])
+                if isinstance(v, dict) and v.get('target') == destination]
+        if len(mounts) != 1 or mounts[0].get('type') != 'bind':
+            raise ValueError('Missing reviewed recovery credential mount')
+        path=Path(mounts[0]['source']);no_symlinks(path)
+        try:parts=path.relative_to(BASE/'infra/ssh').parts
+        except ValueError:raise ValueError('Recovery credentials outside private release directory')
+        if len(parts) != len(suffix)+1 or not re.fullmatch(r'hc-[a-z0-9-]+',parts[0]) or parts[1:] != suffix:
+            raise ValueError('Unexpected recovery credential path')
+        return path
+    broker=selected('mqtt','/mosquitto/config',('mqtt','broker'))
+    credential=selected('backend','/run/secrets/hc-mqtt.password',('mqtt','credentials','backend.password'))
+    if not broker.is_dir() or not credential.is_file():raise ValueError('Missing recovered credentials')
+    broker_paths=[broker,*broker.rglob('*')]
+    # Validate every entry before changing any ownership or permissions.
+    for path in [*broker_paths,credential]:
+        no_symlinks(path);info=path.lstat()
+        if not (stat.S_ISREG(info.st_mode) or path in broker_paths and stat.S_ISDIR(info.st_mode)):
+            raise ValueError('Special file in recovered credentials')
+        if stat.S_ISREG(info.st_mode) and info.st_nlink != 1:
+            raise ValueError('Hardlinked recovered credential')
+    for path in broker_paths:
+        os.chown(path,1883,1883);path.chmod(0o700 if path.is_dir() else 0o600)
+    os.chown(credential,10001,10001);credential.chmod(0o400)
 
 
 def transfer_state(source,target,reason):
@@ -305,7 +336,7 @@ def restore_prepare():
         path=BASE/'backups'/name;no_symlinks(path);path.parent.mkdir(exist_ok=True);path.touch(exist_ok=True)
     recovered=PRIVATE/'host-jobs'
     restore_jobs(recovered,Path('/var/lib/homecontrol-hostops/jobs'))
-    permissions();install_units()
+    permissions();restore_mount_permissions(model);install_units()
 
 
 def start_runtime():

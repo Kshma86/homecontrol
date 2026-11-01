@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import shutil
 import stat
+import subprocess
 import tempfile
 
 from backup_export_manifest import SOURCE_PATHS, allowed_path
@@ -103,6 +104,29 @@ def export_snapshot(base, target):
         for child in stage.iterdir():
             shutil.move(str(child), target/child.name)
     return {'files': len(rows), 'sources': list(SOURCE_PATHS), 'manifest': str(target/'EXPORT_MANIFEST.json')}
+
+
+def stage_snapshot(target):
+    """Stage the validated export, including source files hidden by nested ignores."""
+    target = Path(target)
+    manifest = json.loads((target / 'EXPORT_MANIFEST.json').read_text())
+    expected = {'.gitignore', 'EXPORT_MANIFEST.json'}
+    for row in manifest['files']:
+        relative = row['path']
+        path = target / relative
+        if not allowed_path(relative) or path.is_symlink() or not path.is_file():
+            raise ValueError('Invalid public export entry')
+        if sha256(path) != row['sha256']:
+            raise ValueError('Public export changed before Git staging')
+        check_public_file(path)
+        expected.add(relative)
+    # Export has already cleared this dedicated checkout and rejected credentials.
+    # Force is local staging only, never a force push.
+    subprocess.run(['git', '-C', str(target), 'add', '--all', '--force', '--', '.'], check=True)
+    actual = set(subprocess.check_output(['git', '-C', str(target), 'ls-files', '-z']).decode().rstrip('\0').split('\0'))
+    if actual != expected:
+        raise ValueError('Git index differs from the validated export manifest')
+    return {'staged_files': len(actual)}
 
 
 def secrets_manifest(base, output):

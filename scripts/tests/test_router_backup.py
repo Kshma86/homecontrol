@@ -249,10 +249,9 @@ class RouterWorkers(unittest.TestCase):
                  'backup_maintenance_worker.sh')
         for name in names:
             shutil.copyfile(BASE / 'scripts' / name, self.project / 'scripts' / name)
-        (self.project / 'scripts/export_config_snapshot.py').write_text(
-            "import pathlib,sys,shutil\nbase=pathlib.Path(__file__).parents[1]\n"
-            "if '--secrets-manifest' in sys.argv: pathlib.Path(sys.argv[-1]).write_text('fixture')\n"
-            "else: shutil.copyfile(base/'apps/config.txt',pathlib.Path(sys.argv[1])/'config.txt')\n")
+        shutil.copyfile(BASE / 'scripts/export_config_snapshot.py', self.project / 'scripts/export_config_snapshot.py')
+        (self.project / 'secrets').mkdir()
+        (self.project / 'secrets/manifest.txt').write_text('apps/config.txt\n')
         helper = self.project / 'scripts/create_secrets_bundle.sh'
         helper.write_text('#!/bin/sh\n[ -z "$HC_TEST_FAIL_SECRETS" ]\n'); helper.chmod(0o700)
         self.backups = self.root / 'backups'

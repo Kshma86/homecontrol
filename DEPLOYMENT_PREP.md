@@ -1,24 +1,24 @@
 # HomeControl – aktuális éles kiadás
 
-**Aktív: `hc-router-backup-20261101-r14`, élesítve 2026-11-01.**
-A teljes helyi + titkosított routeres mentés, a külső Git-feltöltés, az archívum
-visszaolvasása és az izolált PostgreSQL-visszaállítás sikeres. Backend ready,
-AI továbbra is letiltott. **Routeres mentési incidens:** a 16:06–16:09 CET között
-lefutott teljes check sok hiányzó packot jelez. A routeres tároló jelenleg nem
-tekinthető megbízható mentésnek. A támogatott API-val a restic és a heti router/Git
-ütemezés felfüggesztve; az időzítők ténylegesen inaktívak. A napi helyi mentés
-02:15-kor továbbra is aktív, a Git-cél és a Git engedélyezése megmaradt.
-Az éles, korlátozott párhuzamosságú teljes próba 2026-11-01 17:55–18:01 CET
-között sikeres: 1408 pack teljes visszaolvasása, 4007 archívumfájl ellenőrzése
-és izolált PostgreSQL-visszaállítás igazolt. Az eredeti kapcsolatkezelés ugyanebben
-a próbában hibázott. **Az r15 javítás külön csomagban előkészítve, még nem éles:**
-azonos, igazolt kapcsolatszám; teljes check a retention előtt és után; sikeres
-új mentés/restore után az incidens miatt felfüggesztett ütemezés visszakapcsolása.
-[r15 indítás és bizonyítékok](backups/releases/hc-router-backup-20261101-r15/README.md).
-Az incidens során retention,
-újrainicializálás vagy repositoryjavítás nem történt a hibás check után.
-[Incidens és következő lépés](docs/router-ftp-backup-incident-20261101.md).
-[r14 éles állapot, nyitott teendő és rollback](backups/deployments/hc-router-backup-20261101-r14/DEPLOYMENT.md).
+**Aktív: `hc-router-backup-20261101-r15`, élesítve és ellenőrizve 2026-11-01.**
+Az új teljes helyi + titkosított routeres mentés, a külső Git-feltöltés,
+a retention előtti és utáni teljes adatolvasás, az archívum 4788 checksumja
+és az izolált PostgreSQL-visszaállítás sikeres. A routeres mentési incidens
+megoldva. Backend/frontend healthy, worker-readiness sikeres; a platform
+változatlan, a 706 telepített forráshash egyezik. AI továbbra is letiltott.
+Napi mentés 02:15, heti teljes router/Git mentés vasárnap 03:30; mindhárom
+mentési timer aktív és engedélyezett. A két régi r14-es service-hibajelzés már
+megszűnt; az aktuális systemd failed-lista üres.
+[Éles r15 átadás, bizonyítékok és rollback](backups/deployments/hc-router-backup-20261101-r15/DEPLOYMENT.md).
+[Lezárt incidens](docs/router-ftp-backup-incident-20261101.md).
+
+**Következő csomag: `hc-router-backup-20261101-r16`, nincs élesítve.**
+A friss gépes routeres restore és Git-leltár vizsgálata öt konkrét javítást
+eredményezett. A tiszta és ismételt teljes VM-restore, az FTP-kiesés és a reboot
+átvétele sikeres. A 711 fájlos csomag lezárva, az előellenőrzés rendben;
+helyi sudo-val élesíthető. Az éles rendszer továbbra is r15.
+[R16 csomag](backups/releases/hc-router-backup-20261101-r16/README.md),
+[auditmunka és bizonyítékok](docs/ai-ssd-backup-closure-20261101.md).
 
 A következő bekezdés az előző r13 kiadás feljegyzése.
 

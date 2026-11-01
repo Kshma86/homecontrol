@@ -1,0 +1,8 @@
+[Unit]
+Description=HomeControl weekly AI HDD backup
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/srv/docker/homecontrol/scripts/weekly_ai_backup.sh

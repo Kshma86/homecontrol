@@ -1,0 +1,6 @@
+{
+  "os_ready_sha256": "8f62cd14ad3bdf44976489ba44a620cf5f9f7256cd145162eb544dfd3283f59b",
+  "hc_data_in_base": false,
+  "disposable_vm_from_clean_os": true,
+  "previous_failed_vm_removed": true
+}

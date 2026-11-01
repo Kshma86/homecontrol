@@ -18,6 +18,35 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from backup_protocol import verify_archive
 from backup_restore import archive_index
 
+HA_IMAGE = 'ghcr.io/home-assistant/home-assistant:stable'
+
+
+def recovery_aliases(index, archive, images):
+    """Recover the HA tag from checksum-verified Docker metadata, never the network."""
+    compose = index.get('homeassistant/docker-compose.yml')
+    if compose is None:
+        return {}
+    if not compose.isfile() or compose.size > 1024 * 1024:
+        raise ValueError('Invalid archived Home Assistant Compose')
+    text = archive.extractfile(compose).read().decode()
+    if not re.search(r'^\s*image:\s*[\"\']?' + re.escape(HA_IMAGE) + r'[\"\']?\s*$', text, re.M):
+        raise ValueError('Unsupported Home Assistant recovery image')
+    metadata = index.get('docker_images.txt')
+    if metadata is None or not metadata.isfile() or metadata.size > 4 * 1024 * 1024:
+        raise ValueError('Missing archived Docker image metadata for Home Assistant')
+    aliases = set()
+    for line in archive.extractfile(metadata).read().decode().splitlines():
+        parts = line.split()
+        identifier = (parts[1] if len(parts) >= 2 and parts[0] == HA_IMAGE else
+                      parts[2] if len(parts) >= 3 and parts[:2] == ['ghcr.io/home-assistant/home-assistant', 'stable'] else None)
+        if identifier is not None:
+            if not re.fullmatch(r'[0-9a-f]{12,64}', identifier):
+                raise ValueError('Invalid archived Home Assistant image ID')
+            aliases.update(image for image in images if image.startswith('sha256:' + identifier))
+    if len(aliases) != 1:
+        raise ValueError('Home Assistant image is missing or ambiguous in the offline cache')
+    return {HA_IMAGE: aliases.pop()}
+
 
 def stage_assets(archive_path, work, base=BASE):
     checked=verify_archive(archive_path)
@@ -37,6 +66,7 @@ def stage_assets(archive_path, work, base=BASE):
         postgres=model['services']['postgres']['image']
         if not re.fullmatch(r'sha256:[0-9a-f]{64}',postgres) or postgres not in info['images']:
             raise ValueError('Missing pinned PostgreSQL recovery image')
+        aliases = recovery_aliases(index, archive, info['images'])
         work=Path(work);work.mkdir(parents=True,exist_ok=True)
         root=Path(tempfile.mkdtemp(prefix='access-assets-',dir=work));root.chmod(0o700)
         names={prefix+'manifest.json':'images/manifest.json',prefix+info['archive']:'images/'+info['archive']}
@@ -69,7 +99,7 @@ def stage_assets(archive_path, work, base=BASE):
                         json.loads(old_policy.read_text()).get('owned_chain') is True and old_policy.stat().st_uid==0)
     manifest=root/'staged.json'
     write_json(manifest,dict(archive_sha256=checked['sha256'],files=hashes,
-        postgres_image=postgres,previous_owned=previous_owned))
+        postgres_image=postgres,image_aliases=aliases,previous_owned=previous_owned))
     return manifest
 
 
@@ -80,6 +110,10 @@ def checked_stage(manifest):
             raise ValueError('Invalid staged asset path')
         path=manifest.parent/relative;no_symlinks(path)
         if digest(path)!=sha:raise ValueError('Staged recovery assets changed')
+    images = json.loads((manifest.parent/'images/manifest.json').read_text())['images']
+    for alias,image in value.get('image_aliases', {}).items():
+        if alias != HA_IMAGE or image not in images or not re.fullmatch(r'sha256:[0-9a-f]{64}', image):
+            raise ValueError('Invalid offline recovery image alias')
     return manifest.parent,value
 
 
@@ -130,6 +164,8 @@ if __name__=='__main__':
         root,value=checked_stage(args.manifest)
         if args.action=='load':
             subprocess.run(['docker','load','-i',str(root/'images/access-images.tar.gz')],check=True,stdout=subprocess.DEVNULL)
+            for alias,image in value.get('image_aliases', {}).items():
+                subprocess.run(['docker','tag',image,alias],check=True,stdout=subprocess.DEVNULL)
             print(value['postgres_image'])
         elif args.action=='apply':apply_assets(args.manifest)
         else:quiesce(args.manifest)

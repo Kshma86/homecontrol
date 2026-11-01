@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "standalone_settings_removed_before_restore": true,
+  "settings_recovered_from_verified_archive": true,
+  "restored_schedule": "04:27",
+  "unit_files_identical": true,
+  "source": "real_nonroot_ipc_systemd_backup",
+  "archive_sha256": "6ae0cb9794b706ef58372d2a865c7b5a4e9687ade28df2edfb4344d10882ce7b"
+}

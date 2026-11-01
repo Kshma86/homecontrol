@@ -1,0 +1,12 @@
+{
+  "release": "hc-router-backup-20261101-r15",
+  "sealed_files": 706,
+  "changed": {
+    "kit": [],
+    "runtime": []
+  },
+  "original_audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "full_restore_completed": false,
+  "pending": "Operator sudo export of protected recovery key",
+  "ai_must_remain_disabled": true
+}

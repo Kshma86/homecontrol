@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "release": "hc-router-backup-20261101-r16",
+  "ready_for_root_deploy": true,
+  "deployed": false,
+  "current_release": "hc-router-backup-20261101-r15",
+  "sealed_files": 711,
+  "baseline_containers_unchanged": 16,
+  "old_r15_sealed_files_unchanged": 706,
+  "original_audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "systemd_failed": [],
+  "readiness": {
+    "bootstrap_ready": true,
+    "missing_workers": [],
+    "ok": true,
+    "stopping": false,
+    "unready_workers": []
+  },
+  "policy": {
+    "ai_enabled": false,
+    "local_backup_only": false,
+    "message": "Az AI-szerver letiltva; routeres ment\u00e9s \u00e9s k\u00fcls\u0151 Git enged\u00e9lyezett.",
+    "policy_valid": true,
+    "profile": "ai-offline",
+    "remote_backup_enabled": true,
+    "restore_in_place_enabled": false,
+    "restricted": true,
+    "router_backup_enabled": true
+  }
+}

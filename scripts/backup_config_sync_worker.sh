@@ -103,7 +103,7 @@ if ! python3 "$BASE/scripts/export_config_snapshot.py" "$REPO"; then
   [ "$GIT_OFFSITE_ENABLED" != true ] || state target git_offsite failed "Configuration export failed"
   exit 1
 fi
-git -C "$REPO" add -A
+python3 "$BASE/scripts/export_config_snapshot.py" --stage-only "$REPO"
 if ! git -C "$REPO" diff --cached --quiet; then
   git -C "$REPO" commit -m "$COMMIT_MESSAGE"
 fi
