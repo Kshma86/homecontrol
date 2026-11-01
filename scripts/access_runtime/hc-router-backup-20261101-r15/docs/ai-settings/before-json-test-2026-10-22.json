@@ -1,0 +1,12 @@
+{
+  "saved_at": "2026-10-22T07:44:54.759348+00:00",
+  "purpose": "Tesztidőszak előtti visszaállítási értékek",
+  "values": {
+    "think": false,
+    "temperature": 0.2,
+    "num_predict": 1536,
+    "format": null,
+    "stream": false,
+    "num_ctx": 16384
+  }
+}

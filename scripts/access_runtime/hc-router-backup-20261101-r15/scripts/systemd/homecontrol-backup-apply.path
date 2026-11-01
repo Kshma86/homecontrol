@@ -1,0 +1,18 @@
+[Unit]
+Description=Watch HomeControl backup timer source files
+
+[Path]
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-backup.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-backup.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-ai-weekly-backup.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-ai-weekly-backup.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-restic-check.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-restic-check.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-full-ai-backup-request.path
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-full-ai-backup-request.service
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-post-boot-health.timer
+PathChanged=/srv/docker/homecontrol/scripts/systemd/homecontrol-post-boot-health.service
+Unit=homecontrol-backup-apply.service
+
+[Install]
+WantedBy=multi-user.target

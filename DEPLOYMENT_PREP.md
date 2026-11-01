@@ -1,10 +1,28 @@
 # HomeControl – aktuális éles kiadás
 
-**Aktív: `hc-f10-20261031-r13`, élesítve, szoftveresen ellenőrizve.**
-**Következő, engedélyezett kiadás:** `hc-router-backup-20261101-r14` elkészült,
-lezárt és ellenőrzött csomag; a tényleges indításhoz helyi sudo-jelszó szükséges.
-Az FTP-jelszót az indító helyben kéri, ha még nincs tárolva. A régi r13 változatlanul fut.
-[r14 indítás és próbák](backups/releases/hc-router-backup-20261101-r14/README.md).
+**Aktív: `hc-router-backup-20261101-r14`, élesítve 2026-11-01.**
+A teljes helyi + titkosított routeres mentés, a külső Git-feltöltés, az archívum
+visszaolvasása és az izolált PostgreSQL-visszaállítás sikeres. Backend ready,
+AI továbbra is letiltott. **Routeres mentési incidens:** a 16:06–16:09 CET között
+lefutott teljes check sok hiányzó packot jelez. A routeres tároló jelenleg nem
+tekinthető megbízható mentésnek. A támogatott API-val a restic és a heti router/Git
+ütemezés felfüggesztve; az időzítők ténylegesen inaktívak. A napi helyi mentés
+02:15-kor továbbra is aktív, a Git-cél és a Git engedélyezése megmaradt.
+Az éles, korlátozott párhuzamosságú teljes próba 2026-11-01 17:55–18:01 CET
+között sikeres: 1408 pack teljes visszaolvasása, 4007 archívumfájl ellenőrzése
+és izolált PostgreSQL-visszaállítás igazolt. Az eredeti kapcsolatkezelés ugyanebben
+a próbában hibázott. **Az r15 javítás külön csomagban előkészítve, még nem éles:**
+azonos, igazolt kapcsolatszám; teljes check a retention előtt és után; sikeres
+új mentés/restore után az incidens miatt felfüggesztett ütemezés visszakapcsolása.
+[r15 indítás és bizonyítékok](backups/releases/hc-router-backup-20261101-r15/README.md).
+Az incidens során retention,
+újrainicializálás vagy repositoryjavítás nem történt a hibás check után.
+[Incidens és következő lépés](docs/router-ftp-backup-incident-20261101.md).
+[r14 éles állapot, nyitott teendő és rollback](backups/deployments/hc-router-backup-20261101-r14/DEPLOYMENT.md).
+
+A következő bekezdés az előző r13 kiadás feljegyzése.
+
+**Korábbi aktív kiadás: `hc-f10-20261031-r13`.**
 Az r12 HC-12/32 és HC-23/43 részjavításai, valamint az X10 indulási online-jelzés
 korrekciója éles. Nyolc alkalmazás a várt image-en healthy, restart0; DB/MQTT
 és minden backend health/worker/readiness sikeres. X10 online=1 és friss

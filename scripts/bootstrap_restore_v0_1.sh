@@ -501,14 +501,14 @@ main() {
   fi
 
   if [ "$APPLY" = true ] && [ "$START_STACK" = true ]; then
-    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r14/scripts/access_release/install.py" restore-prepare
+    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r15/scripts/access_release/install.py" restore-prepare
   fi
   if [ "$RESTORE_DB" = "true" ]; then
     restore_database
 
   fi
   if [ "$START_STACK" = true ]; then
-    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r14/scripts/access_release/install.py" start-runtime
+    python3 "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r15/scripts/access_release/install.py" start-runtime
   fi
   start_stacks
   if [ "$START_STACK" = true ]; then

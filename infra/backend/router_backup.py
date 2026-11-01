@@ -103,7 +103,8 @@ class RouterRepository:
             self.env['RESTIC_CACHE_DIR'] = str(cache)
             self.env['RCLONE_CACHE_DIR'] = str(Path(cache) / 'rclone')
         self.command = ['restic', '-o', 'rclone.args=serve restic --stdio --log-level ERROR '
-                        '--contimeout 10s --timeout 30s --retries 1 --low-level-retries 1']
+                        '--contimeout 10s --timeout 30s --retries 1 --low-level-retries 1 '
+                        '--checkers 1 --transfers 1', '-o', 'rclone.connections=2']
 
     def call(self, args, *, timeout=10800):
         # Capture diagnostics privately: raw server errors/config paths never enter web output.
@@ -199,7 +200,11 @@ class RouterRepository:
             if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= 365:
                 raise ValueError('Invalid restic retention')
             args += ['--keep-' + kind, str(count)]
+        # Router FTP listing under parallel load previously reported existing packs
+        # as missing. Never forget snapshots unless the complete data read passed.
+        self.check()
         self.call(args + ['--prune'])
+        self.check()
 
     def restore(self, snapshot_id, target, *, include=None):
         if not re.fullmatch(r'[0-9a-f]{64}', snapshot_id):

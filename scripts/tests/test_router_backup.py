@@ -183,9 +183,40 @@ class RouterContracts(unittest.TestCase):
             calls.append(args)
             return subprocess.CompletedProcess(args, 0, '', '')
         repo = RouterRepository(self.settings, run=run)
-        repo.retention()
+        with patch.object(repo, 'check'):
+            repo.retention()
         self.assertIn('host,tags', calls[0])
         self.assertIn('homecontrol,router-hdd', calls[0])
+
+    def test_router_transport_uses_the_live_verified_parallelism(self):
+        repo = RouterRepository(self.settings)
+        self.assertIn('rclone.connections=2', repo.command)
+        options = next(arg for arg in repo.command if arg.startswith('rclone.args='))
+        self.assertIn('--checkers 1 --transfers 1', options)
+
+    def test_retention_requires_full_data_check_before_forgetting(self):
+        repo = RouterRepository(self.settings)
+        with patch.object(repo, 'check', side_effect=RuntimeError('Missing pack')), \
+                patch.object(repo, 'call') as call:
+            with self.assertRaises(RuntimeError):
+                repo.retention()
+            call.assert_not_called()
+
+    def test_retention_checks_before_and_after_prune(self):
+        repo = RouterRepository(self.settings)
+        order = []
+        with patch.object(repo, 'check', side_effect=lambda: order.append('full_check')), \
+                patch.object(repo, 'call', side_effect=lambda args: order.append(args[0])):
+            repo.retention()
+        self.assertEqual(order, ['full_check', 'forget', 'full_check'])
+
+    def test_retention_does_not_hide_failed_post_prune_verification(self):
+        repo = RouterRepository(self.settings)
+        with patch.object(repo, 'check', side_effect=[None, RuntimeError('Pack unreadable')]), \
+                patch.object(repo, 'call') as call:
+            with self.assertRaises(RuntimeError):
+                repo.retention()
+            call.assert_called_once()
 
     def test_staging_restore_rejects_nonempty_target_and_ambiguous_id(self):
         repo = RouterRepository(self.settings)
@@ -435,6 +466,25 @@ class RealFTP(unittest.TestCase):
             data = pack.read_bytes()
             pack.write_bytes(bytes([data[0] ^ 1]) + data[1:])
             with self.assertRaises(RuntimeError): repo.check()
+
+    def test_two_snapshot_retention_preserves_a_verified_latest_restore(self):
+        with self.environment() as (root, disk, settings):
+            from hashlib import sha256
+            repo = RouterRepository(settings, cache=root / 'cache')
+            repo.init()
+            source = root / 'payload.bin'
+            source.write_bytes(os.urandom(2 * 1024 * 1024))
+            first = repo.backup([source])
+            source.write_bytes(os.urandom(2 * 1024 * 1024))
+            expected = sha256(source.read_bytes()).hexdigest()
+            latest = repo.backup([source])
+            repo.retention()
+            retained = {row['id'] for row in repo.snapshots()}
+            self.assertIn(latest, retained)
+            self.assertNotIn(first, retained)
+            staging = root / 'restore'; staging.mkdir()
+            repo.restore(latest, staging)
+            self.assertEqual(sha256((staging / source.relative_to('/')).read_bytes()).hexdigest(), expected)
 
     def test_missing_disk_and_config_mismatch_fail_before_init(self):
         with self.environment() as (root, disk, settings):

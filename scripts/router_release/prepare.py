@@ -128,7 +128,7 @@ def build():
     for name in ('router_backup.py', 'deployment_policy.py', 'deployment_policy.json',
                  'backup_service.py', 'backup_export.py', 'backup_export_manifest.py'):
         shutil.copyfile(KIT / 'source/infra/backend' / name, modules / name)
-    base_tag = 'hc-router-backend-base:r13'
+    base_tag = 'hc-router-backend-base:' + OLD.rsplit('-', 1)[-1]
     call(['docker', 'image', 'tag', manifest['images']['backend'], base_tag])
     (backend / 'Dockerfile').write_text('FROM ' + base_tag + '\nCOPY modules/ /app/\n')
     frontend = contexts / 'frontend'; frontend.mkdir()
@@ -136,13 +136,13 @@ def build():
     if not (dist / 'index.html').is_file():
         raise ValueError('Tested frontend build is missing')
     shutil.copytree(dist, frontend / 'dist')
-    base_tag = 'hc-router-frontend-base:r13'
+    base_tag = 'hc-router-frontend-base:' + OLD.rsplit('-', 1)[-1]
     call(['docker', 'image', 'tag', manifest['images']['frontend'], base_tag])
     (frontend / 'Dockerfile').write_text('FROM ' + base_tag + '\nCOPY dist/ /usr/share/nginx/html/\n')
     model_path = KIT / 'source/runtime.compose.json'
     model = json.loads(model_path.read_text())
     for service, context in (('backend', backend), ('frontend', frontend)):
-        tag = 'hc-router-' + service + ':20261101-r14'
+        tag = 'hc-router-' + service + ':20261101-' + NAME.rsplit('-', 1)[-1]
         call(['docker', 'build', '--pull=false', '--network=none', '-t', tag, str(context)])
         image = subprocess.check_output(['docker', 'image', 'inspect', tag, '--format', '{{.Id}}'], text=True).strip()
         manifest['images'][service] = image
@@ -175,7 +175,8 @@ def seal():
         if name == 'offline-load.log' and 'Loaded image' not in text:
             raise ValueError('Offline images not loaded successfully')
     report = {'ok': True, 'release': NAME, 'scope': manifest['scope'],
-              'router_runtime_test': 'pending local FTP password', 'deployed': False,
+              'router_runtime_test': ('verified serialized transport; deployment proof pending local sudo'
+                                      if manifest.get('live_transport_proof') else 'pending local FTP password'), 'deployed': False,
               'evidence_sha256': {str(path.relative_to(KIT / 'evidence')): digest(path)
                                   for path in (KIT / 'evidence').rglob('*') if path.is_file() and path.name != 'acceptance.json'}}
     (KIT / 'evidence/acceptance.json').write_text(json.dumps(report, indent=2) + '\n')
@@ -184,7 +185,8 @@ def seal():
     manifest.update(source_sha256={str(path.relative_to(KIT / 'source')): digest(path)
                                    for path in (KIT / 'source').rglob('*') if path.is_file()},
                     acceptance_sha256=digest(KIT / 'evidence/acceptance.json'), ready_for_root_deploy=True,
-                    status='router_release_ready_local_sudo_and_ftp_password_required')
+                    status=('router_transport_fix_ready_local_sudo_required' if manifest.get('live_transport_proof')
+                            else 'router_release_ready_local_sudo_and_ftp_password_required'))
     (KIT / 'release.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps({'release': NAME, 'ready': True, 'deployed': False}))
 

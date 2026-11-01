@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "compose_services": 14,
+  "fixed_endpoints": 11,
+  "pinned_images_no_build": true,
+  "r10_not_deployed": true
+}

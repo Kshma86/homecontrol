@@ -1,8 +1,16 @@
 # Routeres FTP-mentés – elkészült forrás és bevezetési lépések
 
-Állapot: fejlesztői forrás, 2026-11-01. Az éles r13 kiadás, annak fagyasztott
-runtime-ja, a kanonikus `scripts/backup_runner.py`, az élő mentési beállítások
-és a telepített timerek nem lettek átállítva. Routerjelszó nem került a kódba.
+Állapot: 2026-11-01, az r14 kiadás éles. A kanonikus végrehajtó és a hostops
+az új, fagyasztott runtime-ot használja, a backend/frontend és a meglévő timerek
+átálltak. Valódi routeres mentés, Git-feltöltés, archívum-visszaolvasás és izolált
+PostgreSQL-restore sikeres volt. **Azóta a teljes repository-check sok hiányzó
+packot jelzett. A routeres írás és időzítés felfüggesztve, a napi helyi mentés
+aktív, a Git-beállítások megmaradtak.** A későbbi éles próba korlátozott
+párhuzamossággal teljes visszaolvasást és sikeres adatbázis-restore-t igazolt;
+a javítás külön r15 csomagban vár helyi sudo-s élesítésre:
+[aktuális incidens](router-ftp-backup-incident-20261101.md). A teljes átadási állapot:
+[r14 éles átadás](../backups/deployments/hc-router-backup-20261101-r14/DEPLOYMENT.md).
+Routerjelszó nem került a kódba.
 
 ## Működés
 
@@ -39,7 +47,8 @@ Az AI-offline policy alapértelmezése továbbra is `local-only`. A bevezetendő
 kiadás policyjába külön `"backup_profile": "router-ftp"` engedély kell.
 Ez a routeres mentést és a külső Git-feltöltést engedélyezi, az AI-műveleteket,
 az AI-s Gitea olvasó/visszaállító műveleteit és az éles fájlrestore-t nem.
-A jelenlegi policy fájl nem lett módosítva.
+Az éles r14 policy ezt a képességet engedélyezi; a fejlesztői alapértelmezés
+megmaradt `local-only` értéken.
 
 ## Belépési pontok
 
@@ -61,7 +70,8 @@ a webes felületen; az a hoston, privát fájlban marad.
 
 ## Első valódi restic-próba a routerrel
 
-Ezek operátori lépések, még nem futottak le a BE550-en. A meglévő FTP-próbák
+Az r14 aktiválója ezeket a lépéseket már elvégezte a BE550-en; a parancsok
+itt referencia céljára szerepelnek, nem kell újrafuttatni őket. A korábbi FTP-próbák
 16 és 256 MiB-bal sikeresek voltak; az [eredeti terv](router-ftp-backup-plan.md)
 tartalmazza a mért sebességeket.
 
@@ -108,6 +118,8 @@ törlés. Hálózati/jelszóhiba esetén ne indíts újabb initet ugyanarra a re
 
 ## Éles átállítás a sikeres routeres smoke után
 
+Az alábbi lépéssor az r14-ben már végrehajtott átállítás referenciája.
+
 1. A jelenlegi mentési beállításokból készülő jelöltben meg kell tartani a
    kiválasztott tartalmakat, időzítést és a tényleges külső Git URL/ág/token/key
    beállításokat. Csak a router célmezőit és privát fájlhivatkozásait kell átvenni
@@ -145,7 +157,8 @@ szükséges, a policy HTTP-teszthez Flask.
 a teljes frontend production build is sikeres. Külön valódi FTP-próba igazolta
 a visszafejtett secrets stagingből indított, rögzített snapshothoz kötött
 visszaállítást. A teszthez letöltött programok és függőségek `/tmp` alatt
-maradtak; rendszertelepítés nem történt.
+maradtak; ezek a fejlesztői tesztek nem telepítettek rendszereszközt.
+Az ezt követő, sikeres r14 élesítés már telepítette az ellenőrzött rclone-t.
 [Ellenőrzési jegyzőkönyv és forrás SHA-256 értékek](audit-evidence/router-ftp-20261101/verification.json).
 
 ```bash
