@@ -1,0 +1,54 @@
+{
+  "network": "none",
+  "published_ports": 0,
+  "hardware_contacted": false,
+  "results": {
+    "backend": {
+      "running": true,
+      "exit_code": 0,
+      "http": {
+        "/health/live": 200,
+        "/health/ready": 503,
+        "/health/workers": 200
+      }
+    },
+    "tuya-poller": {
+      "running": true,
+      "exit_code": 0,
+      "live_exit": 0,
+      "ready_exit": 1
+    },
+    "gree-climate": {
+      "running": true,
+      "exit_code": 0,
+      "live_exit": 0,
+      "ready_exit": 1
+    },
+    "xiaomi-x10": {
+      "running": true,
+      "exit_code": 0,
+      "live_exit": 0,
+      "ready_exit": 1
+    },
+    "ha-growatt-poller": {
+      "running": true,
+      "exit_code": 0,
+      "live_exit": 0,
+      "ready_exit": 1
+    },
+    "ingest": {
+      "running": true,
+      "exit_code": 0,
+      "live_exit": 0,
+      "ready_exit": 1
+    },
+    "ai-server": {
+      "running": true,
+      "exit_code": 0,
+      "http": {
+        "/health/live": 200,
+        "/health/ready": 503
+      }
+    }
+  }
+}

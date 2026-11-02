@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "git_commit": "5740329aeaa0a90c914185b816c702c069603d2d",
+  "commits": 34,
+  "historical_blobs_scanned": 1533,
+  "manifest_files_verified": 5345,
+  "manifest_hash_mismatches": [],
+  "credential_findings": [],
+  "manifest_missing_paths": [],
+  "private_paths_in_head": [],
+  "remote_write_commands": 0,
+  "scan_scope": "private-key headers and non-placeholder sensitive fields in JSON, same policy as public export"
+}

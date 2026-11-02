@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "started_at": "2026-11-02T10:02:48.343364+00:00",
+  "image": "sha256:422d416cb27deba90b680a044ee83f695a6bd9dfa219ab54e55eb86b94d590d0",
+  "before": {
+    "schema": 53,
+    "rows": {
+      "states": 26115,
+      "events": 3205,
+      "statistics": 125146
+    }
+  },
+  "expected_schema": 53,
+  "network": "none",
+  "production_config_mounted": false,
+  "physical_integrations_verified": false,
+  "http_status": 401,
+  "after": {
+    "schema": 53,
+    "rows": {
+      "states": 26115,
+      "events": 3205,
+      "statistics": 125146
+    }
+  },
+  "rows_preserved": true,
+  "finished_at": "2026-11-02T10:02:55.834990+00:00"
+}

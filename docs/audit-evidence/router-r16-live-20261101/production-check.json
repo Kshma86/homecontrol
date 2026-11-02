@@ -1,0 +1,263 @@
+{
+  "ok": true,
+  "checked_at": "2026-11-01T20:36:00.724447+00:00",
+  "release": "hc-router-backup-20261101-r16",
+  "live_acceptance": {
+    "run_id": "744b9d23cb54408698d80e50afd30585",
+    "snapshot_id": "354c6ca19a7cbbd2a4a30a8ead54a6011f2a93763384022533ec1d917b97db1f",
+    "git": "pushed",
+    "restore": "verified",
+    "database": "verified",
+    "ai_enabled": false,
+    "audit_input_prepared": true,
+    "ok": true,
+    "release": "hc-router-backup-20261101-r16",
+    "state": "deployed_and_router_restore_verified"
+  },
+  "backup_state": {
+    "version": 1,
+    "run_id": "744b9d23cb54408698d80e50afd30585",
+    "mode": "weekly",
+    "source": "timer",
+    "requested_at": "2026-11-01T20:14:22.921445+00:00",
+    "state": "completed",
+    "started_at": "2026-11-01T20:14:22.921527+00:00",
+    "pid": 43084,
+    "required_targets": [
+      "local_archive",
+      "restic",
+      "secrets_bundle",
+      "git_offsite"
+    ],
+    "targets": {
+      "gitea_origin": {
+        "state": "skipped",
+        "updated_at": "2026-11-01T20:14:23.514059+00:00",
+        "detail": "AI Gitea disabled; external Git only"
+      },
+      "gitea_dump": {
+        "state": "skipped",
+        "updated_at": "2026-11-01T20:14:23.075585+00:00",
+        "detail": "Router mode: no AI Gitea dump"
+      },
+      "secrets_bundle": {
+        "state": "succeeded",
+        "updated_at": "2026-11-01T20:14:23.406543+00:00",
+        "detail": ""
+      },
+      "git_offsite": {
+        "state": "succeeded",
+        "updated_at": "2026-11-01T20:14:32.849910+00:00",
+        "detail": ""
+      },
+      "local_archive": {
+        "state": "succeeded",
+        "updated_at": "2026-11-01T20:16:26.773313+00:00",
+        "detail": "Verified local archive published"
+      },
+      "restic": {
+        "state": "succeeded",
+        "updated_at": "2026-11-01T20:17:20.177475+00:00",
+        "detail": "Snapshot 354c6ca19a7cbbd2a4a30a8ead54a6011f2a93763384022533ec1d917b97db1f"
+      },
+      "restic_retention": {
+        "state": "succeeded",
+        "updated_at": "2026-11-01T20:23:19.920787+00:00",
+        "detail": ""
+      }
+    },
+    "scope": "router",
+    "remote_backup_disabled": false,
+    "restriction_reason": "Az AI-szerver letiltva; routeres ment\u00e9s \u00e9s k\u00fcls\u0151 Git enged\u00e9lyezett.",
+    "archive": {
+      "version": 1,
+      "completed": true,
+      "name": "homecontrol_2026-11-01_21-14-32_744b9d23cb54408698d80e50afd30585.tar.gz",
+      "run_id": "744b9d23cb54408698d80e50afd30585",
+      "mode": "weekly",
+      "coverage": {
+        "include_postgres": true,
+        "include_apps": true,
+        "include_infra": true,
+        "include_zigbee2mqtt": true,
+        "include_homeassistant": true,
+        "include_scripts": true,
+        "include_docker_meta": true
+      },
+      "timestamp": "2026-11-01T20:16:26.716469+00:00",
+      "mtime_ns": 1793564165535528960,
+      "sha256": "d644e9c1ef0f64d243665fb5475191e817998d0b4743f67f0894151e1c2c7519",
+      "size_bytes": 1560247339,
+      "verified_files": 5561
+    },
+    "finished_at": "2026-11-01T20:23:20.320793+00:00",
+    "returncode": 0,
+    "error": "",
+    "missing_required_targets": []
+  },
+  "sealed_file_count": 711,
+  "changed_files": {
+    "/srv/docker/homecontrol/backups/releases/hc-router-backup-20261101-r16/source": [],
+    "/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r16": []
+  },
+  "sealed_acceptance_evidence_unchanged": true,
+  "old_r15_sealed_source_unchanged": true,
+  "original_audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "health": {
+    "db_ok": true,
+    "error": null,
+    "mqtt_ok": true,
+    "ok": true
+  },
+  "readiness": {
+    "bootstrap_ready": true,
+    "missing_workers": [],
+    "ok": true,
+    "stopping": false,
+    "unready_workers": []
+  },
+  "policy": {
+    "ai_enabled": false,
+    "local_backup_only": false,
+    "message": "Az AI-szerver letiltva; routeres ment\u00e9s \u00e9s k\u00fcls\u0151 Git enged\u00e9lyezett.",
+    "policy_valid": true,
+    "profile": "ai-offline",
+    "remote_backup_enabled": true,
+    "restore_in_place_enabled": false,
+    "restricted": true,
+    "router_backup_enabled": true
+  },
+  "containers": {
+    "homecontrol-proxy": {
+      "id": "67fdae53b7478d7a565a478d367b45dd0a7288e9b9a50f431b568be817ed0ffb",
+      "image": "sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10",
+      "running": true,
+      "health": null
+    },
+    "homecontrol-frontend": {
+      "id": "9797e33fdaf5b3b74faecae74e1e6bec8ad76eff9c84a4cbe4d14845e22a81c4",
+      "image": "sha256:9a0c26bb21cac75ec57910ae7f39fa2b5276ac3f7717c2494b66d636ff552385",
+      "running": true,
+      "health": "healthy"
+    },
+    "homecontrol-backend": {
+      "id": "0c612aed0d9f5a06a0cff12bd7fa3a61d7c080e5cff5b2e468321ba7e36c1b37",
+      "image": "sha256:c2155c65584458f2f3b0fb3cb6e4d4e06ce36245f572eee06ba68b7da1cce324",
+      "running": true,
+      "health": "healthy"
+    },
+    "homecontrol-ingest": {
+      "id": "33977e2440eb9b85e8bb1a9a36d89edb15cd825ed47641d699c7c504aea688d9",
+      "image": "sha256:b872923cb88f42467e2bb982b56e6398f86560f3b2dada157ffb13ece8920c46",
+      "running": true,
+      "health": "healthy"
+    },
+    "homecontrol-pgbouncer": {
+      "id": "686f7033cdb46abac5422abd70e5e8f15d50521cb8e6b5522e123677137c2a80",
+      "image": "sha256:7f39cf2f872c8d9a0bb0e6a5440c3bf5814036eccf284102870ab08e2603a2c7",
+      "running": true,
+      "health": "healthy"
+    },
+    "homecontrol-tuya-poller": {
+      "id": "a34519cb2917ebcd1da05bf19e957fd99183da58555621c7e198e47f436e4eb8",
+      "image": "sha256:4ebc6b5367aff665f0df2f6ea2e0e98054f98702c87c995d7a0d70becf9186c9",
+      "running": true,
+      "health": "healthy"
+    },
+    "homecontrol-gree-climate": {
+      "id": "91b3a28b68cdc7aafe91f33a97018d0599d77231845ba1722d61b5908712a70f",
+      "image": "sha256:2ea3fde755f1cf8a02b722fcaeb7807b94cee32d8d70d5f01d6f4208ba5404db",
+      "running": true,
+      "health": "healthy"
+    },
+    "homecontrol-xiaomi-x10": {
+      "id": "bdb11dafcd6f0380c774d39930508b1a04f0f3ae9accdbfd8820250aefb8c401",
+      "image": "sha256:50252994d2296cd189dd20ddfcccbf182c00b9bcc08a836f26db194354553a50",
+      "running": true,
+      "health": "healthy"
+    },
+    "homecontrol-ha-growatt-poller": {
+      "id": "0621bfa05232fc80fd189dd1a6126bc0779eed7c12a81863c946aa443979ef50",
+      "image": "sha256:2e486db3ea2764cf2f387d23276dc007e926b6a8929122cceae8ef6e18aeb890",
+      "running": true,
+      "health": "healthy"
+    },
+    "homecontrol-mqtt": {
+      "id": "4bcea8871470564e80cb60443190239b7ca012de00321f75a6cb654b396ceed9",
+      "image": "sha256:077fe4ff4c49df1e860c98335c77dda08360629e0e2a718147027e4db3eace9d",
+      "running": true,
+      "health": null
+    },
+    "homecontrol-postgres": {
+      "id": "a00ddc6bbdc1005b84378af1b6c3d1eca0b620120fcfc740256e0aecd6d60cce",
+      "image": "sha256:f992505e18f114c1e5102ac4dcf00f791b44462f6a423d899320f0bbf80e386f",
+      "running": true,
+      "health": "healthy"
+    },
+    "zigbee2mqtt": {
+      "id": "5e5aa6a73660bc99b655cd8b83235d3c4b1bd935a44d8fbc452f9cf9b52b901b",
+      "image": "sha256:89cf02f379aa743a68494388e3a26fba7b8c9101f8b452038cc07aeff3fc983c",
+      "running": true,
+      "health": null
+    },
+    "homecontrol-ai-server": {
+      "id": "1f27ee1acf14ba3c07cd8184892f8ef609882a8f1b09a24403ba80d5c78d7b59",
+      "image": "sha256:b7400a6a2bee3d136bf288e0f4d705d366e22294d37cbb9363dc583a3a698ec6",
+      "running": true,
+      "health": "healthy"
+    },
+    "homecontrol-mdns": {
+      "id": "3887fdf21c4c7ebdebdd499692899b9c0838bc3113d783c2bab77ead8f6445d9",
+      "image": "sha256:7411c2ca4fffa60cd350e0fe7a94e365166ce2cef697136722535cfe6ecc4569",
+      "running": true,
+      "health": null
+    },
+    "homeassistant": {
+      "id": "369bc91e17f9374a02dc24288f09e2202fd27ad0328c3fec558c491157684c95",
+      "image": "sha256:1476924357b46e80735c13e94232ba5c853cac052e9df4bb28d50fa56348097b",
+      "running": true,
+      "health": null
+    },
+    "homecontrol-adminer": {
+      "id": "0ad15d9c2e815cc351746cdb9586cd90c75de018c563d1e6f52d5585e4b0b506",
+      "image": "sha256:19f38bc71f743beb2ad28bf31dfeb352deb19eb167692d250a66cda40b25de93",
+      "running": false,
+      "health": null
+    }
+  },
+  "unchanged_platform": true,
+  "timers": {
+    "homecontrol-backup.timer": {
+      "NextElapseUSecRealtime": "Mon 2026-11-02 02:15:00 CET",
+      "NextElapseUSecMonotonic": "0",
+      "ActiveState": "active",
+      "UnitFileState": "enabled"
+    },
+    "homecontrol-ai-weekly-backup.timer": {
+      "NextElapseUSecRealtime": "Sun 2026-11-08 03:30:00 CET",
+      "NextElapseUSecMonotonic": "0",
+      "ActiveState": "active",
+      "UnitFileState": "enabled"
+    },
+    "homecontrol-restic-check.timer": {
+      "NextElapseUSecRealtime": "Sun 2026-12-06 05:14:13 CET",
+      "NextElapseUSecMonotonic": "0",
+      "ActiveState": "active",
+      "UnitFileState": "enabled"
+    },
+    "homecontrol-log-maintenance.timer": {
+      "NextElapseUSecRealtime": "Mon 2026-11-02 03:30:00 CET",
+      "NextElapseUSecMonotonic": "0",
+      "ActiveState": "active",
+      "UnitFileState": "enabled"
+    },
+    "homecontrol-post-boot-health.timer": {
+      "NextElapseUSecRealtime": "",
+      "NextElapseUSecMonotonic": "2month 2w 8h 2min 57.142406s",
+      "ActiveState": "active",
+      "UnitFileState": "enabled"
+    }
+  },
+  "systemd_failed": [],
+  "remote_write_commands": 0
+}

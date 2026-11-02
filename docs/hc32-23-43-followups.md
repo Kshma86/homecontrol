@@ -1,5 +1,10 @@
 # HC-12 kapcsolódó javításai – 2026-10-31
 
+**2026-11-02-i kiegészítés:** az aktuális éles runtime r16. A HC-23/43 új
+platformfrissítése külön [r18 csomagban](hc23-43-platform-release-20261102.md)
+áll helyi élesítésre készen. A következő bekezdések történeti r13/r12 állapotot
+rögzítenek; nem a jelenlegi aktív kiadást írják le.
+
 **Aktív: `hc-f10-20261031-r13`, élesítve, szoftveresen ellenőrizve.**
 Az r12 HC-12/32 és HC-23/43 részjavításai, valamint az X10 indulási online-jelzés
 korrekciója éles. Nyolc alkalmazás a várt image-en healthy, restart0; DB/MQTT

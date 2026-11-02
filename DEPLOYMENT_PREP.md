@@ -1,24 +1,25 @@
 # HomeControl – aktuális éles kiadás
 
-**Aktív: `hc-router-backup-20261101-r15`, élesítve és ellenőrizve 2026-11-01.**
-Az új teljes helyi + titkosított routeres mentés, a külső Git-feltöltés,
-a retention előtti és utáni teljes adatolvasás, az archívum 4788 checksumja
-és az izolált PostgreSQL-visszaállítás sikeres. A routeres mentési incidens
-megoldva. Backend/frontend healthy, worker-readiness sikeres; a platform
-változatlan, a 706 telepített forráshash egyezik. AI továbbra is letiltott.
-Napi mentés 02:15, heti teljes router/Git mentés vasárnap 03:30; mindhárom
-mentési timer aktív és engedélyezett. A két régi r14-es service-hibajelzés már
-megszűnt; az aktuális systemd failed-lista üres.
-[Éles r15 átadás, bizonyítékok és rollback](backups/deployments/hc-router-backup-20261101-r15/DEPLOYMENT.md).
-[Lezárt incidens](docs/router-ftp-backup-incident-20261101.md).
+**Új csomag helyi élesítéshez: `hc-security-20261102-r18` (HC-23/43 részjavítás).**
+A 14 fő platformszolgáltatás és a külön HA frissítése, teljes regressziós és
+izolált restore/rollback próbákkal. Még nem éles; az aktív kiadás r16.
+[Élesítő parancs és kapuk](backups/releases/hc-security-20261102-r18/README.md),
+[tételes scope és nyitott függőségi találatok](docs/hc23-43-platform-release-20261102.md).
+Az AI és az ESP MQTT-kivétel változatlan; a teljes HC-43 nem lezárt.
 
-**Következő csomag: `hc-router-backup-20261101-r16`, nincs élesítve.**
-A friss gépes routeres restore és Git-leltár vizsgálata öt konkrét javítást
-eredményezett. A tiszta és ismételt teljes VM-restore, az FTP-kiesés és a reboot
-átvétele sikeres. A 711 fájlos csomag lezárva, az előellenőrzés rendben;
-helyi sudo-val élesíthető. Az éles rendszer továbbra is r15.
-[R16 csomag](backups/releases/hc-router-backup-20261101-r16/README.md),
-[auditmunka és bizonyítékok](docs/ai-ssd-backup-closure-20261101.md).
+**Aktív: `hc-router-backup-20261101-r16`, élesítve és ellenőrizve 2026-11-01.**
+A teljes helyi és titkosított routeres mentés, a külső Git-feltöltés, a megőrzés
+előtti és utáni adatellenőrzés, 5561 fájlchecksum és az izolált PostgreSQL-restore
+sikeres. Mind a 711 csomag- és runtime-forráshash egyezik; backend/frontend
+healthy, readiness jó, a többi platformkonténer változatlan, systemd failed nincs.
+Az 5 hosttimer aktív és engedélyezett. Napi mentés 02:15, heti router/Git Sun03:30.
+Az AI letiltva marad. A tényleges r16 snapshotból és külső Gitből induló üres
+vendéggépes restore, FTP-kiesési próba és reboot sikeres; a mentési audit lezárva.
+
+[Éles átadás és rollback](backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md),
+[Éles utóellenőrzés](docs/audit-evidence/router-r16-live-20261101/production-check.json),
+[mentési audit](docs/ai-ssd-backup-closure-20261101.md),
+[r16 csomag](backups/releases/hc-router-backup-20261101-r16/README.md).
 
 A következő bekezdés az előző r13 kiadás feljegyzése.
 

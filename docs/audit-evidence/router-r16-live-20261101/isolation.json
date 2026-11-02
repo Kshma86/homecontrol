@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "network": "none",
+  "qemu_restrict": true,
+  "uid": "1000:1000",
+  "privileged": false,
+  "host_docker_socket": false,
+  "private_inputs_readonly": true
+}

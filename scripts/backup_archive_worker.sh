@@ -224,6 +224,9 @@ if [ "$INCLUDE_HOMEASSISTANT" = "true" ]; then
   [ -d "$HOMEASSISTANT_DIR" ] || fail "Missing selected Home Assistant directory"
   log "-- Home Assistant mappa mentés"
   cp -a "$HOMEASSISTANT_DIR" "$BACKUP_DIR/"
+  # A live SQLite database and its WAL cannot be copied independently. Publish
+  # one verified database snapshot before sealing the archive.
+  python3 "$CODE_DIR/backup_ha_sqlite.py" "$HOMEASSISTANT_DIR/config" "$BACKUP_DIR/homeassistant/config"
 else
   log "-- Home Assistant mentés kihagyva"
 fi

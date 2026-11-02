@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "finished_at": "2026-11-01T20:46:03.219508+00:00",
+  "guest_stopped": true,
+  "hc_guest_disk_removed": true,
+  "delegated_repository_git_and_age_key_copies_removed": true,
+  "disposable_ssh_private_key_removed": true,
+  "production_paths_not_modified": true,
+  "clean_os_base_without_hc_data_retained": true
+}

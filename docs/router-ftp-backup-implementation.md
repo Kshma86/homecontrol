@@ -1,13 +1,17 @@
 # Routeres FTP-mentés – elkészült forrás és bevezetési lépések
 
-Állapot: 2026-11-01, az r15 kiadás éles. A kanonikus végrehajtó és a hostops
+Állapot: 2026-11-01, az r16 kiadás éles. A kanonikus végrehajtó és a hostops
 az új, fagyasztott runtime-ot használja, a backend/frontend és a meglévő timerek
 átálltak. Az új teljes routeres mentés, Git-feltöltés, retention, archívum-
 visszaolvasás és izolált PostgreSQL-restore sikeres. A napi/heti/havi ütemezők
 aktívak. Az r14 alatt észlelt listázási hibát az éles próbával igazolt,
 korlátozott párhuzamosságú kapcsolatkezelés megoldotta; a mentési incidens lezárva.
 [Incidens és bizonyítékok](router-ftp-backup-incident-20261101.md).
-[r15 éles átadás](../backups/deployments/hc-router-backup-20261101-r15/DEPLOYMENT.md).
+[r16 éles átadás](../backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md).
+A tényleges éles Gitből és snapshotból üres hostos restore, offline HA-indítás,
+FTP-kiesési próba és reboot sikeres. A pontos Git-index, a fagyasztott recovery
+helper, checkout-umask és tényleges MQTT-mount restore-jogai javítva.
+[Lezárt mentési audit](ai-ssd-backup-closure-20261101.md).
 Routerjelszó nem került a kódba.
 
 ## Működés
@@ -47,7 +51,7 @@ Az AI-offline policy alapértelmezése továbbra is `local-only`. A bevezetendő
 kiadás policyjába külön `"backup_profile": "router-ftp"` engedély kell.
 Ez a routeres mentést és a külső Git-feltöltést engedélyezi, az AI-műveleteket,
 az AI-s Gitea olvasó/visszaállító műveleteit és az éles fájlrestore-t nem.
-Az éles r14 policy ezt a képességet engedélyezi; a fejlesztői alapértelmezés
+Az éles r16 policy ezt a képességet engedélyezi; a fejlesztői alapértelmezés
 megmaradt `local-only` értéken.
 
 ## Belépési pontok

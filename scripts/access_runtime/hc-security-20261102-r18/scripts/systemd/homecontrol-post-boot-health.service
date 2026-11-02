@@ -1,0 +1,10 @@
+[Unit]
+Description=HomeControl post-boot dependency health and recovery check
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/srv/docker/homecontrol/scripts/post_boot_health.sh
+TimeoutStartSec=3min
+

@@ -18,7 +18,9 @@ from backup_protocol import (atomic_json,enqueue,inventory,jobs,lock_state,read_
 from backup_service import BackupService
 
 PROJECT=Path(__file__).resolve().parents[3]
-RUNNER=PROJECT/'scripts/backup_runner.py'
+# The canonical wrapper belongs to the installed host and has an absolute
+# release path. Exercise this checkout's implementation with synthetic roots.
+RUNNER=PROJECT/'scripts/backup_runner_impl.py'
 
 FAKE = r'''#!/usr/bin/env python3
 import json,os,sys,time
@@ -36,6 +38,7 @@ if name=='tar':
   Path(args[args.index('-czf')+1]).write_bytes(b'incomplete');sys.exit(28)
  os.execv('/bin/tar',['/bin/tar']+args)
 if name=='git':
+ if 'clone' in args:Path(args[-1]).mkdir(parents=True,exist_ok=True)
  if 'diff' in args:sys.exit(1)
  if 'push' in args and 'origin' in args and os.environ.get('F6_FAIL_ORIGIN'):sys.exit(128)
  if 'push' in args and 'offsite' in args and os.environ.get('F6_FAIL_OFFSITE'):sys.exit(128)
@@ -59,7 +62,7 @@ class BackupRunnerTest(unittest.TestCase):
             path=self.base/name;path.mkdir(parents=True,exist_ok=True);(path/'fixture.txt').write_text(name)
         (self.base/'scripts/create_secrets_bundle.sh').write_text('#!/bin/sh\n[ -z "$F6_FAIL_SECRETS" ]\n')
         (self.base/'scripts/export_gitea_config_snapshot.sh').write_text('#!/bin/sh\nmkdir -p "$1"\nprintf fixture > "$1/config.txt"\n')
-        (self.base/'scripts/export_config_snapshot.py').write_text("import pathlib,sys\nif '--secrets-manifest' in sys.argv: pathlib.Path(sys.argv[-1]).write_text('synthetic')\nelse:\n p=pathlib.Path(sys.argv[1]);p.mkdir(exist_ok=True,parents=True);(p/'config.txt').write_text('fixture')\n")
+        (self.base/'scripts/export_config_snapshot.py').write_text("import pathlib,sys\nif '--secrets-manifest' in sys.argv: pathlib.Path(sys.argv[-1]).write_text('synthetic')\nelif '--stage-only' in sys.argv: pass\nelse:\n p=pathlib.Path(sys.argv[1]);p.mkdir(exist_ok=True,parents=True);(p/'config.txt').write_text('fixture')\n")
         for p in (self.base/'scripts').glob('*.sh'):p.chmod(0o700)
         bin=Path(self.temp.name)/'bin';bin.mkdir();fake=bin/'fake';fake.write_text(FAKE);fake.chmod(0o700)
         for command in ['docker','ssh','git','restic','tar']:(bin/command).symlink_to(fake)

@@ -1,0 +1,9 @@
+{
+  "esp_ip": "192.168.1.179",
+  "esp_identity_confirmed": true,
+  "fixed_ip_confirmed": true,
+  "address_assignment": "router DHCP reservation",
+  "confirmed_by": "user in this conversation",
+  "confirmed_date": "2026-10-31",
+  "production_deployed": false
+}

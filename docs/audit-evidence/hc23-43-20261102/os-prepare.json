@@ -1,0 +1,32 @@
+{
+  "nginx": {
+    "ok": true,
+    "component": "nginx",
+    "parent_image": "sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949",
+    "parent_repo_digests": [
+      "hc43-parent-nginx@sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949",
+      "nginx@sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949"
+    ],
+    "parent_user": "0:0",
+    "family": "alpine",
+    "networked_phase": "public distro package download only",
+    "packages_sha256": {
+      "zlib-1.3.2-r1.apk": "63aeea03c15a2f9018f81805cfc8aa926bdf5cd68921f22149c2fbb5d0ee9f47",
+      "c-ares-1.34.9-r0.apk": "3539a3e11c1ef1516117d8179a546ac882086e94e0d78ad51d687b3fa2b3b5f2",
+      "musl-1.2.6-r3.apk": "e142255d0fa397f14318996bc10378093dcc069dc3dd1b6818c8f28a789c21da",
+      "nghttp2-libs-1.70.0-r0.apk": "f0c4014eb2f10308dcdfd84cd49c121673c7b78cb8182b6e7a1388d8ae112a3b",
+      "curl-8.23.0-r0.apk": "531ae298451a4c1c44f563fc3b2eedc2c1d7e0a26a33bdfc0efe6faaff6a5942",
+      "libpsl-0.21.5-r3.apk": "ec665a344b6e887f00f0a47015cc732c3a281b69e84641dc8662ea234fde6cdb",
+      "libssl3-3.5.9-r0.apk": "05e3393fb95aa5751ca2f9d242f659f6cff82c1cc7767cc2df4a086f7ad01877",
+      "zstd-libs-1.5.7-r2.apk": "23c6065b0049b2406441564bcf0032515a43f78e80d76fcb85535a3803ef5d4e",
+      "brotli-libs-1.2.1-r0.apk": "62a7e37e43bbfc1f8525a00ad2125fd5897135dc93b849733884cb78ffd8e26c",
+      "libcurl-8.23.0-r0.apk": "1f70ca404818805a6465b615bbfe84ef861488a963d7e630108ebd7fbaa51665",
+      "libcrypto3-3.5.9-r0.apk": "6632d758d8f5e9ea3b650fe966f23bbf9a202f8b8dceecac93da135dec5e3689",
+      "libunistring-1.4.2-r0.apk": "3aa6030e603e34d96192742f327c0509f409c6769ce2e7b1463685dede38d714",
+      "libidn2-2.3.8-r0.apk": "7d038ac558dde464964b033ce5126dd2eaf84cc414dc15e77c5424a321d0ebee",
+      "ca-certificates-bundle-20261020-r0.apk": "bb008f6d214b6af7576324659856fb63dc8dcb4373f8345ff706388696f1254d"
+    },
+    "dockerfile_sha256": "6684997af00d615b5567f5e66d1b6f48d473addf7be612a53cc2243f1a0bfc9a",
+    "candidate_tag": "hc43-nginx:20261102-candidate"
+  }
+}

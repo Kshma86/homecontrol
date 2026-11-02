@@ -1,0 +1,26 @@
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test:mower": "node --test tests/mower-motor-test-config.test.mjs tests/mower-motor-test-model.test.mjs tests/mower-snapshot-hook.test.mjs tests/mower-manual-hook.test.mjs tests/mower-v3.test.mjs tests/mower-service.test.mjs tests/mower-bringup.test.mjs tests/mower-parameters.test.mjs tests/mower-parameters-ui.test.mjs tests/mower-parameters-hook.test.mjs tests/mower-firmware.test.mjs tests/mower-firmware-storage.test.mjs tests/mower-update-session.test.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "test:ai": "node --test tests/ai-images.test.mjs tests/ai-power.test.mjs",
+    "test:backup": "node --test tests/backup-jobs.test.mjs"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.7",
+    "typescript": "^5.7.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {},
+  "overrides": {
+    "baseline-browser-mapping": "2.11.0",
+    "browserslist": "4.28.7",
+    "nanoid": "3.3.18",
+    "postcss": "8.5.23",
+    "source-map-js": "1.2.2"
+  }
+}

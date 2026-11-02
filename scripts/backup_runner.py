@@ -3,6 +3,6 @@
 from pathlib import Path
 import runpy
 import sys
-FROZEN_ROOT = Path("/srv/docker/homecontrol/scripts/access_runtime/hc-router-backup-20261101-r16")
+FROZEN_ROOT = Path("/srv/docker/homecontrol/scripts/access_runtime/hc-security-20261102-r18")
 sys.path.insert(0, str(FROZEN_ROOT / 'infra/backend'))
 runpy.run_path(str(FROZEN_ROOT / 'scripts/hostops/backup_runner.py'), run_name='__main__')

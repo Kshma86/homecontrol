@@ -1,0 +1,56 @@
+[
+  {
+    "ecosystem": "PyPI",
+    "url": "https://storage.googleapis.com/osv-vulnerabilities/PyPI/all.zip",
+    "bytes": 37604846,
+    "sha256": "8fd7138ad08c733316d229a05ac5a8a9fdcba4f6439d80cdab97fe4e18445dde",
+    "headers": {
+      "Content-Type": "application/zip",
+      "X-GUploader-UploadID": "AFy3sg1jGZ7ZlxQeFHb07oIfrtpp80aEIuFc9zGqDrGyM-vujCoBNpr2BsuuKzAVmMVuuUYUQiRyjzc",
+      "Expires": "Sun, 01 Nov 2026 21:55:14 GMT",
+      "Date": "Sun, 01 Nov 2026 20:55:14 GMT",
+      "Cache-Control": "public, max-age=3600",
+      "Last-Modified": "Sun, 01 Nov 2026 09:48:42 GMT",
+      "ETag": "\"689d8d39d084b2f17a1fe41595054eb2\"",
+      "x-goog-generation": "1793526522386119",
+      "x-goog-metageneration": "1",
+      "x-goog-stored-content-encoding": "identity",
+      "x-goog-stored-content-length": "37604846",
+      "x-goog-hash": "crc32c=OqdgUg==",
+      "x-goog-storage-class": "STANDARD",
+      "Accept-Ranges": "bytes",
+      "Content-Length": "37604846",
+      "Server": "UploadServer",
+      "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "Connection": "close"
+    },
+    "seconds": 2.0
+  },
+  {
+    "ecosystem": "npm",
+    "url": "https://storage.googleapis.com/osv-vulnerabilities/npm/all.zip",
+    "bytes": 219698784,
+    "sha256": "dc28ece6d323aa92ac920b2d3ab83f3c436af72189d7e8332bd4d65a01bae2a9",
+    "headers": {
+      "Content-Type": "application/zip",
+      "X-GUploader-UploadID": "AFy3sg38r_dcwybuC_pu22QvER-wU1SSUegAjLuUSV7x99fGs4wYOIjQMFWkZb8Qe4OP1O2t",
+      "Expires": "Sun, 01 Nov 2026 21:55:14 GMT",
+      "Date": "Sun, 01 Nov 2026 20:55:14 GMT",
+      "Cache-Control": "public, max-age=3600",
+      "Last-Modified": "Sun, 01 Nov 2026 18:18:04 GMT",
+      "ETag": "\"fd9199437879f9cb356a97b50d489ee4\"",
+      "x-goog-generation": "1793557084261118",
+      "x-goog-metageneration": "1",
+      "x-goog-stored-content-encoding": "identity",
+      "x-goog-stored-content-length": "219698784",
+      "x-goog-hash": "crc32c=Qdzqdw==",
+      "x-goog-storage-class": "STANDARD",
+      "Accept-Ranges": "bytes",
+      "Content-Length": "219698784",
+      "Server": "UploadServer",
+      "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "Connection": "close"
+    },
+    "seconds": 6.8
+  }
+]

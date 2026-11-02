@@ -29,6 +29,13 @@ def recovery_aliases(index, archive, images):
     if not compose.isfile() or compose.size > 1024 * 1024:
         raise ValueError('Invalid archived Home Assistant Compose')
     text = archive.extractfile(compose).read().decode()
+    references = re.findall(r'^\s*image:\s*["\']?([^\s"\']+)["\']?\s*$', text, re.M)
+    if len(references) != 1:
+        raise ValueError('Home Assistant recovery requires one explicit image')
+    if re.fullmatch(r'sha256:[0-9a-f]{64}', references[0]):
+        if references[0] not in images:
+            raise ValueError('Pinned Home Assistant image is absent from the offline cache')
+        return {}
     if not re.search(r'^\s*image:\s*[\"\']?' + re.escape(HA_IMAGE) + r'[\"\']?\s*$', text, re.M):
         raise ValueError('Unsupported Home Assistant recovery image')
     metadata = index.get('docker_images.txt')

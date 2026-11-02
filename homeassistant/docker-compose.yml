@@ -1,11 +1,32 @@
-services:
-  homeassistant:
-    image: ghcr.io/home-assistant/home-assistant:stable
-    container_name: homeassistant
-    network_mode: host
-    restart: unless-stopped
-    environment:
-      TZ: Europe/Budapest
-    volumes:
-      - ./config:/config
-      - /etc/localtime:/etc/localtime:ro
+{
+  "name": "homeassistant",
+  "services": {
+    "homeassistant": {
+      "command": null,
+      "container_name": "homeassistant",
+      "entrypoint": null,
+      "environment": {
+        "TZ": "Europe/Budapest"
+      },
+      "image": "sha256:422d416cb27deba90b680a044ee83f695a6bd9dfa219ab54e55eb86b94d590d0",
+      "network_mode": "host",
+      "restart": "unless-stopped",
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/srv/docker/homecontrol/homeassistant/config",
+          "target": "/config",
+          "bind": {}
+        },
+        {
+          "type": "bind",
+          "source": "/etc/localtime",
+          "target": "/etc/localtime",
+          "read_only": true,
+          "bind": {}
+        }
+      ],
+      "pull_policy": "never"
+    }
+  }
+}

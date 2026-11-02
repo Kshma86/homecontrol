@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "image": "sha256:dc7182c89fadfc25e094debfd6112ebbc78b4b057ce4e966ee422255d5187dc4",
+  "docker_health": "healthy",
+  "http_index": true,
+  "network": "none",
+  "backend": "synthetic loopback alias; no API calls"
+}

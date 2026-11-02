@@ -1,0 +1,74 @@
+{
+  "status": "reviewed_residual_findings_not_remediated",
+  "cutoff": "2026-11-02",
+  "hc43_closed": false,
+  "no_private_inventory_uploaded": true,
+  "own_python_components": {
+    "components": 7,
+    "matched_records": 0,
+    "versions_unchanged_from_verified_r16": true
+  },
+  "home_assistant": {
+    "upstream_release": "2026.10.4",
+    "matched_records": 98,
+    "alias_groups": 67,
+    "packages": [
+      "authlib==1.7.2",
+      "ecdsa==0.19.2",
+      "geopy==2.3.0",
+      "mcp==1.28.1",
+      "oauthlib==3.3.1",
+      "paramiko==3.5.0",
+      "pillow==12.3.0",
+      "pyasn1==0.6.4",
+      "python-jose==3.5.0",
+      "setuptools==84.0.0"
+    ],
+    "decision": "Use the official supported release dependency set; do not override its pins. Findings remain open for upstream patches and input-path review. Isolated startup does not prove non-exploitability.",
+    "sources": [
+      "https://api.github.com/repos/home-assistant/core/releases/latest",
+      "https://www.home-assistant.io/blog/2026/10/07/release-202610/"
+    ]
+  },
+  "unknown_python_records": 122,
+  "unknown_meaning": "Unresolved version/range assessment, including Git ranges; not a clean result.",
+  "npm": {
+    "vite": "6.4.5",
+    "matched_records": 0,
+    "unknown_records": 0,
+    "catalog": "npm/all.zip; complete catalog compared locally"
+  },
+  "os": {
+    "images": 15,
+    "unique_advisory_ids": 1209,
+    "vendor_fixed_available_records": 0,
+    "meaning": "All available supported-branch package updates applied. Unfixed findings remain; this is not a clean vulnerability assessment."
+  },
+  "critical_review": [
+    {
+      "id": "CVE-2026-60002",
+      "package": "openssh-client",
+      "decision": "Stable Debian package remains affected; upstream 10.4 fixes it, Debian tracker records no-dsa/minor. HC Git uses SSH with a configured remote/host key. Do not claim the input path impossible. Keep tracked until a supported stable package resolves it.",
+      "source": "https://security-tracker.debian.org/tracker/CVE-2026-60002"
+    },
+    {
+      "id": "CVE-2026-6653",
+      "package": "libxml2",
+      "decision": "Stable Debian package remains affected; tracker records no-dsa/minor. XML input paths, including PostgreSQL XML features, need continued review. Do not inject unstable packages or claim non-exploitability.",
+      "source": "https://security-tracker.debian.org/tracker/CVE-2026-6653"
+    },
+    {
+      "id": "CVE-2026-99083",
+      "package": "linux-libc-dev",
+      "decision": "Header-package version match for a kernel ksmbd issue; the package does not supply the running kernel. Container image scanning does not attest the host kernel. Host kernel exposure remains outside this package finding.",
+      "source": "https://security-tracker.debian.org/tracker/CVE-2026-99083"
+    }
+  ],
+  "scope_limits": [
+    "Stopped Adminer is unchanged; all 15 running platform components are covered.",
+    "No physical actuation, ESP password migration or AI-machine wake/shutdown was performed.",
+    "Host packages/kernel are not updated by this release.",
+    "Full protected HA auth copy is checked under real local sudo before service interruption.",
+    "Live authenticated integrations and fresh backup/restore are mandatory activation gates, not completed offline evidence."
+  ]
+}

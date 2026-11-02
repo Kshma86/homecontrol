@@ -1,0 +1,17 @@
+{
+  "homecontrol-backend": "sha256:885e28c69cd957f2c2007715ca8a42e95b5eaccc0ab394552cb66efe3b08d479",
+  "homecontrol-ingest": "sha256:8f166c09c0aa67062b2c0170ba11f154b4aa8aef24a10a31105da440aa25cecf",
+  "homecontrol-tuya-poller": "sha256:f8bd560df207e0d0dffd8adb955dedcb87de9710695fbf86d6b56333d776a378",
+  "homecontrol-gree-climate": "sha256:1170fe37099ad7b3b9db07cb11875ad086bd9d0e32f186920eb44e973e7c3514",
+  "homecontrol-xiaomi-x10": "sha256:56fdfbc80dca10ec2f3d9a01174c634471f17b236d4daded3ecc1f2e983c47d0",
+  "homecontrol-ha-growatt-poller": "sha256:c4cb6f7b58c3c62343e0fd0e4f119e4e2b9406dee4402b6b6fa9472e7209322c",
+  "homecontrol-ai-server": "sha256:0c70389808bb7a7a8674169bc3b79f49e2a8080812ebc101e5bb723e11868ef5",
+  "homecontrol-postgres": "sha256:518afd764e2fde609ec89ad9873fef6143d754faeffd7b49a93101ccb9e76787",
+  "homecontrol-mqtt": "sha256:ea973af3b048e2ab873344fce70ca045beda44ed8a066727ab18a19b79320e18",
+  "zigbee2mqtt": "sha256:6b47bf6547787e89d02efdfe3279d2fe39b6d6206a839d1ebcc6fdc38d92ee6e",
+  "homecontrol-mdns": "sha256:eefa73a28b2f3d337636cb3f70a43d940e182dc06c67a866338ccf50a50aa87d",
+  "homeassistant": "sha256:422d416cb27deba90b680a044ee83f695a6bd9dfa219ab54e55eb86b94d590d0",
+  "homecontrol-proxy": "sha256:14e71421340a5f9894c685165f61a39f7b79181f0f00b5d1c3ac5d075fcdc832",
+  "homecontrol-pgbouncer": "sha256:121f33add3b5a9281429bd0562ee014630bd2bbc9848072cd5db8c138cb33c20",
+  "homecontrol-frontend": "sha256:dc7182c89fadfc25e094debfd6112ebbc78b4b057ce4e966ee422255d5187dc4"
+}

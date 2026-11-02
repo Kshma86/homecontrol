@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "checked_at": "2026-11-01T20:47:21.062088+00:00",
+  "document_links_checked": 8,
+  "sealed_source_files_unchanged": 711,
+  "sealed_acceptance_evidence_unchanged": true,
+  "original_audit_unchanged": true,
+  "all_final_receipts_ok": true,
+  "private_input_removed": true,
+  "hc_guest_disk_removed": true
+}

@@ -25,6 +25,32 @@ from scoped_ai_power_coordination import ScopedAiPowerCoordinator
 
 
 class AccessReleaseTest(unittest.TestCase):
+    def test_pinned_ha_image_needs_no_tag_alias_or_docker_table(self):
+        image='sha256:'+'3'*64
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);payload=root/'homeassistant';payload.mkdir()
+            (payload/'docker-compose.yml').write_text('services:\n  homeassistant:\n    image: '+image+'\n')
+            path=root/'fixture.tar'
+            with tarfile.open(path,'w') as out:out.add(payload,arcname='backup/homeassistant')
+            from backup_restore import archive_index
+            with tarfile.open(path) as archive:
+                index,_=archive_index(archive)
+                self.assertIn('homeassistant/docker-compose.yml',index)
+                self.assertEqual(restore_assets.recovery_aliases(index,archive,[image]),{})
+
+    def test_pinned_ha_image_missing_from_cache_is_rejected(self):
+        image='sha256:'+'3'*64
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);payload=root/'homeassistant';payload.mkdir()
+            (payload/'docker-compose.yml').write_text('services:\n  homeassistant:\n    image: '+image+'\n')
+            path=root/'fixture.tar'
+            with tarfile.open(path,'w') as out:out.add(payload,arcname='backup/homeassistant')
+            from backup_restore import archive_index
+            with tarfile.open(path) as archive:
+                index,_=archive_index(archive)
+                self.assertIn('homeassistant/docker-compose.yml',index)
+                with self.assertRaises(ValueError):restore_assets.recovery_aliases(index,archive,[])
+
     def mount_fixture(self, root):
         base=root/'project'
         broker=base/'infra/ssh/hc-old/mqtt/broker';broker.mkdir(parents=True)

@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "source": "operator-readable HA config; SQLite online backup API",
+  "private_copy_only": true,
+  "files": 34,
+  "unreadable_omitted": [
+    ".storage/auth_provider.homeassistant",
+    ".storage/core.uuid",
+    ".storage/core.config",
+    ".storage/onboarding",
+    ".storage/auth"
+  ],
+  "full_auth_copy_verified": false,
+  "database_integrity": "ok",
+  "database_sha256": "1d915384db62fc7652260f6872ff60b2caf6680cc1e637b06d1a489614b915d9",
+  "row_counts": {
+    "states": 26115,
+    "events": 3205,
+    "statistics": 125146,
+    "schema_changes": 1
+  },
+  "integration_domains": [
+    "analytics",
+    "backup",
+    "go2rtc",
+    "google_translate",
+    "growatt_server",
+    "met",
+    "radio_browser",
+    "shopping_list",
+    "sun"
+  ],
+  "production_changed": false
+}

@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "real_sigkill": true,
+  "automatic_systemd_restart": true,
+  "directory_inode_preserved": true,
+  "backend_rpc_recovered_without_container_restart": true
+}

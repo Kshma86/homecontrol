@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "release": "hc-router-backup-20261101-r16",
+  "snapshot_id": "354c6ca19a7cbbd2a4a30a8ead54a6011f2a93763384022533ec1d917b97db1f",
+  "git_commit": "5740329aeaa0a90c914185b816c702c069603d2d",
+  "empty_initial_image_store": true,
+  "repository_shadow": "read_only_with_temporary_locks",
+  "production_network": false,
+  "production_credentials_unchanged": true
+}

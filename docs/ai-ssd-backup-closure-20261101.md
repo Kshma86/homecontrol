@@ -1,154 +1,89 @@
-# Az AI SSD-hiba miatt félretett mentési ellenőrzések
+# Az AI SSD-hiba miatt félretett mentési ellenőrzések — lezárva
 
 2026-11-01. Felhasználói döntés: **az AI maradjon letiltva; a mentési pontokat
-a routeres rendszerrel kell lezárni**. Ez nem engedély fizikai AI-ébresztésre.
+a routeres rendszerrel zárjuk le**. Az r16 élesítése és a tényleges éles mentésből
+végzett friss gépes utópróba sikeres. A jelenlegi mentési lánc ellenőrzését
+már nem blokkolja az AI-szerver SSD-je.
 
-| Régi korlát | Most igazolt állapot | Fennmaradó munka |
+| Régi korlát | Igazolt eredmény | Állapot |
 | --- | --- | --- |
-| Aktuális távoli restic nem ellenőrizhető az AI nélkül | Az r15 routeres repository teljes visszaolvasása sikeres | Nincs a jelenlegi célra |
-| Heti mentés, Git és megőrzés éles próbája | Mind sikeres; a törlést teljes adatellenőrzés előzi meg és követi | Nincs az r15 éles körére |
-| Titkosított archívum és PostgreSQL visszaállítása | 4788 fájlchecksum és külön valódi PostgreSQL-restore sikeres | Teljes friss hostos útvonal külön |
-| Friss host és valódi systemd/host IPC | A valódi r15 mentési adat + javított kód tiszta és ismételt teljes restore-ja, rebootja, root IPC-je és hibás FTP-cél próbája sikeres | Az r16 élesítése, majd az új tényleges éles snapshot ellenőrzése |
-| Aktuális külső Git tartalma/története | Független mirror klón és fsck sikeres; 33 commit, 1442 történeti blob, a vizsgált hitelesítési mintákra 0 találat | 111 runtime térképfájl exportjegyzék-eltérésének r16 javítása elkészült; éles visszaellenőrzése hátravan |
-| HC-31 fizikai shutdown/OFF/wake | AI letiltva, fizikai próba nem futott | Csak későbbi újraaktiválás előtt; nem minősül sikeresen teszteltnek |
-| Régi AI-Gitea teljes története | A jelenlegi mentési lánc nem használja | A régi lemez története nem lett ellenőrzöttnek nyilvánítva |
+| Távoli restic az AI nélkül | Routeres titkosított repository teljes adatellenőrzése | Lezárva |
+| Heti mentés, Git és megőrzés | Új éles futás minden kötelező célja sikeres; teljes ellenőrzés a megőrzés előtt és után | Lezárva |
+| Archívum és PostgreSQL | 5561 fájlchecksum, külön PG-restore és teljes vendéggépes DB-restore | Lezárva |
+| HC-45 friss host/systemd/host IPC | Üres HC/image-tárból teljes restore, 14 alapunit, adapterek, 5 timer, root IPC, offline HA és reboot sikeres | Lezárva |
+| Aktuális külső Git tartalma/története | 34 commit, 1533 történeti blob, 5345 manifestfájl; hiány és hash-eltérés nélkül | Lezárva a jelenlegi célra |
+| HC-31 fizikai shutdown/OFF/wake | Az AI letiltva; fizikai próba nem futott | Csak későbbi újraaktiválás előtt; nincs sikeresnek minősítve |
+| Régi AI-Gitea története | A jelenlegi lánc nem használja | A régi lemez története nincs ellenőrzöttnek nyilvánítva |
 
-Az eredeti audit és a történeti naplóbejegyzések megmaradnak. HC-15/16/20/24/26,
-a globális HC-23/43 és az ESP legacy MQTT-kivétele külön feladat; ezeket az SSD
-miatti mentési kérés nem zárja le.
+## Tényleges éles r16 bizonyíték
 
-## Már rendelkezésre álló éles bizonyíték
+Kiadás: `hc-router-backup-20261101-r16`.
+Mentés: `744b9d23cb54408698d80e50afd30585`.
+Snapshot: `354c6ca19a7cbbd2a4a30a8ead54a6011f2a93763384022533ec1d917b97db1f`.
+Git-commit: `5740329aeaa0a90c914185b816c702c069603d2d`.
+Archívum SHA-256: `d644e9c1ef0f64d243665fb5475191e817998d0b4743f67f0894151e1c2c7519`.
 
-Kiadás: `hc-router-backup-20261101-r15`.
-Mentés: `b105be08ce6943fdb3b10cdf835547ee`.
-Snapshot: `b381d1287149a95a1277d4724969677bd53c11736d7eb4365f307336463b49d6`.
-Archívum SHA-256: `aec568c763787a737fb9a9525f46b94806607f4e28e97c685e1428712f86f2a6`.
+Az éles aktiválás a routeres próba után teljes ellenőrzést, helyi előmentést,
+backend/frontend átállítást, teljes helyi/router/Git mentést, archívum- és izolált
+PostgreSQL-próbát végzett. A 711 csomag- és runtime-forráshash egyezik;
+readiness jó, platform változatlan, systemd failed nincs. Az 5 hosttimer aktív
+és engedélyezett. Napi mentés 02:15, heti teljes router/Git Sun03:30.
 
-[Éles nyugta](../backups/releases/hc-router-backup-20261101-r15/evidence/router-live-acceptance.json),
-[utóellenőrzés és időzítők](../backups/releases/hc-router-backup-20261101-r15/evidence/post-live-check.json),
-[FTP-incidens lezárása](router-ftp-backup-incident-20261101.md).
+[Éles nyugta](../backups/releases/hc-router-backup-20261101-r16/deployment-status.json),
+[önálló éles utóellenőrzés](audit-evidence/router-r16-live-20261101/production-check.json),
+[csak olvasó laborbemenet-előkészítés](audit-evidence/router-r16-live-20261101/input-preparation.json).
 
-## A teljes próba előkészítése
+A Git független vizsgálata a teljes mirroron futott: a jegyzék mind az 5345
+fájlja megvan és helyes hash-ű. A korábbi 111 runtime térképfájl eltérése megszűnt;
+a térképcache a titkosított mentésben marad. A vizsgált privátkulcsfejlécekre és
+kitöltött érzékeny JSON-mezőkre nincs találat a 1533 történeti blobban. Ez a
+publikus exporterrel azonos, meghatározott mintavizsgálat, nem minden lehetséges
+titok általános kizárásának állítása.
+[Git-vizsgálat](audit-evidence/router-r16-live-20261101/git-verification.json).
 
-Az [előkészítő](../scripts/router_release/prepare_audit_restore.py) a közös
-mentési lock alatt csak olvasó másolatot készít a titkosított routeres repositoryról,
-teljes helyi restic-adatellenőrzést futtat, a jóváhagyott külső Gitből mirror klónt
-készít, ellenőrzi annak objektumait és az aktuális titkosított bundle egyezését.
-Ezután az operátornak ad át egy külön, 0700/0600 jogú privát laborbemenetet.
-Az FTP-jelszó és a privát kulcs nem kerül a terminálra vagy a nyilvános riportba.
-A termelési routeres repositoryra nem küld író parancsot.
+## Teljes helyreállítás és ellenőrzési határ
 
-Az eredeti előkészítéshez helyi sudo kellett a privát FTP/restic/Git
-beállításokhoz. A felhasználó ezt lefuttatta. A kulcs tulajdonosellenőrzése
-hibásan csak root tulajdont fogadott el root futáskor; az age-kulcs valójában
-az operátoré, megfelelő 0600 joggal. Az ellenőrzést javítottuk, és az operátori
-export befejezése újabb sudo nélkül sikerült. Az eredeti parancs, történeti
-hivatkozásként:
+A friss KVM-gép előkészített Ubuntu22.04-et, valódi systemd PID1-et, Docker29.1.5-öt
+és Compose5.0.2-t használt. A HC könyvtár és az image-tár induláskor üres volt.
+A tényleges új Git-commit és snapshot változtatás nélkül állt vissza; nincs
+külön javítási laborcommit (`candidate_fixes_applied:false`). A dump SHA-256:
+`b3b863888f9458d2a596647d07b6ef866bb1ffe705194d6f76b31f4c7a18effc`.
+A visszaállított DB: `7148703` mérés, `66` entitás, `61` HC-tábla.
 
-```bash
-sudo python3 /srv/docker/homecontrol/scripts/router_release/prepare_audit_restore.py
-```
+Sikeres a DB/MQTT-health, a checksumhoz kötött offline Home Assistant-indítás,
+a 14 alapunit és kiadási adapterek telepítése, az 5 timer jövőbeli triggerrel,
+a non-root/read-only backend Docker-socket nélkül és a valódi UID10001 → root
+IPC → vendég-Docker útvonal. Tiltott forrás-/archívumírás ellenőrzött;
+félbeszakadt hostfeladatok nem játszódtak újra. Elérhetetlen FTP esetén a
+restore hibával megállt, a kanonikus fájlok/unitok és a DB-konténer változatlanok.
+Teljes vendégreboot után a probe és a unitbájtok egyezése ismét sikeres.
 
-A [sikeres előkészítési riport](audit-evidence/ai-ssd-closure-20261101/input-preparation.json)
-igazolja a teljes letöltött repository-adatellenőrzést, a külső Git objektumait,
-a titkosított bundle egyezését és a privát bemenet átadását. Az eredeti hibát
-követő folytatás csak az operátori kulcs és a publikus eszközök másolása volt;
-az ellenőrzött mentéseket nem kellett újra letölteni. A privát bemenet eldobható,
-a teszt befejezése után törlendő; a riport történeti bizonyítékként megmarad.
+[Friss restore és reboot](audit-evidence/router-r16-live-20261101/vm-acceptance.json),
+[friss állapot](audit-evidence/router-r16-live-20261101/fresh-probe.json),
+[reboot utáni állapot](audit-evidence/router-r16-live-20261101/post-reboot-probe.json),
+[FTP-kiesés](audit-evidence/router-r16-live-20261101/unavailable-repository.json).
 
-Az új KVM-gép valódi systemd PID1-et, Docker 29.1.5-öt és Compose 5.0.2-t futtat.
-A HC könyvtár és az image-tár ellenőrzötten üres, HC-adat/kulcs még nincs benne.
-[OS-próba](audit-evidence/ai-ssd-closure-20261101/os-ready.json),
-[Ubuntu-image SHA-256](audit-evidence/ai-ssd-closure-20261101/cloud-image.json).
+A Docker network=none és QEMU restrict=on izolálta a vendéget; a router másolatát
+vendégen belüli FTP szolgálta ki, csak olvasható adatokkal és ideiglenes lockokkal.
+A termelési repository nem kapott író parancsot az ellenőrzéstől. Fizikai
+Zigbee/ESP/AI/Growatt-integrációt és OS-csomagtelepítést ez a próba nem igazol.
+A privát bemenetmásolatok és a HC-adatot tartalmazó guest lemez törölve;
+az eredeti kulcsok és mentések érintetlenek.
+[Takarítás](audit-evidence/router-r16-live-20261101/lab-cleanup.json).
 
-Az előkészített [VM-vezérlő](audit-evidence/ai-ssd-closure-20261101/lab_vm.py)
-Docker network=none és QEMU restrict=on mellett indít; a vendég nem kap host
-Docker-socketet. A [vendég-előkészítő](audit-evidence/ai-ssd-closure-20261101/setup_guest.py)
-a tényleges, titkosított repository másolatát saját FTP-kiszolgálón, csak olvasható
-adatokkal és külön ideiglenes lock-könyvtárral szolgálja ki. A helyreállítás a
-vendég saját `/srv/docker/homecontrol` könyvtárát módosítja. A labor a fizikai
-eszközöket és a termelési hálózatot nem érheti el. A catch-up mentési feladatokat
-kizárólag a laborban külön systemd-feltétel gátolja, a timerek ellenőrizhetők.
+## Előzmények és külön maradó feladatok
 
-## A valódi próba által feltárt, r16-ban javított hibák
+Az élesítés előtti, valódi r15 adatokkal és külön javítási laborcommittal futó
+próba a tiszta és azonos work-dirből ismételt restore-t, FTP-kiesést és rebootot
+is ellenőrizte. Ez az r16 utópróbájától külön bizonyíték:
+[korábbi VM-átvétel](audit-evidence/ai-ssd-closure-20261101/vm-acceptance.json).
+A feltárt öt hiba javítása az r16-ban éles: fagyasztott recovery helper választása,
+ellenőrzött HA-tag helyreállítása, Git-checkout umask, pontos export/Git-index,
+a tényleges régebbi MQTT-mount cold restore jogosultságai. A sikertelen korai
+próbák történeti diagnózisként megmaradtak, nem kapnak sikeres minősítést.
 
-Az r15 offline image-cache 29 image-et tartalmaz, köztük a Home Assistantot is,
-de a Docker-export manifestje egyikhez sem őriz RepoTags értéket. A külön HA
-Compose továbbra is a `ghcr.io/home-assistant/home-assistant:stable` nevet használja.
-A korábbi r10 VM-próba előfeltételként betöltött HA-image-et használt. Az új
-kód a checksum-ellenőrzött archívum Docker-metaadatából választja ki az egyetlen
-megfelelő, a cache-ben ténylegesen szereplő image ID-t, és abból állítja vissza
-a HA-taget. A régi és a Docker29-es táblázatformátum is tesztelt; hiányzó vagy
-kétértelmű kép a fájl-/DB-csere előtt elutasítást okoz. A HA-indítás `--pull never`.
-
-Az első teljes bootstrap a Git gyökerében levő régi `access_release` segédet
-választotta a fagyasztott r15 helyett, és a kiadásazonosság ellenőrzésénél
-megállt. A javítás kifejezetten a megfelelő fagyasztott kiadás segédjét hívja.
-
-A 077-es caller umask a publikus Git-checkout SQL-fájljait is 0600/0700-ra
-hozta létre. Emiatt a nem rootként futó sémaellenőrzés nem olvasta a 059 SQL-t.
-A klónozás saját 022-es umaskot kapott a továbbra is 0700-as privát work-rooton
-belül. Valódi Git/age első és ismételt staging tesztje igazolja a forrásfájlok
-0644/0755, valamint a kulcsok/beállítások 0600 módját. A diagnosztikai VM-ben
-a megfelelő forrásjogokkal a valódi séma-/ACL-migráció sikeres.
-
-A Git eredeti exportjegyzéke 111 runtime térképfájlt is felsorolt, amelyeket
-az örökölt ignore-szabályok kihagytak. A runtime térképcache most a titkosított
-archívum/restic része; a publikus forrásleltár kizárja. A validált exportot külön
-staging-lépés adja a Git-indexhez, és az index útvonalait egyezteti a jegyzékkel.
-Egy örökölt ignore többé nem hagyhat ki csendben egy jegyzékben szereplő forrást.
-Ez helyi staging-force, a távoli push továbbra sem force push.
-
-A fagyasztott éles r15 és az eredeti audit változatlan. Az r16 csomag lezárva,
-a tiszta OS-ről induló javított teljes VM-próba sikeres. A Git-próba
-eredeti külső commitja és a javítások külön laborcommitja külön szerepel a
-bizonyítékokban; ez nem változatlan r15 bootstrapnek tulajdonított siker.
-
-Az előkészítő 6, a séma-/asset-/jogosultsági 23, a restore/export szerződések 27,
-a mentési folyamat 29 hálózat nélküli, az aktiválás 12 és a tranzakció 16 tesztje
-sikeres. A külön Git/age/umask staging teszt is sikeres. Ezek átfedő suite-ok,
-nem összeadott tesztdarabszám. A cache tényleges Docker-loadja és az image-be
-épített hat módosuló modul forráshash-egyezése is ellenőrzött.
-
-[Folyamatállapot](audit-evidence/ai-ssd-closure-20261101/acceptance-progress.json).
-Az r16 nincs élesítve; teljes lezárás még nem történt.
-
-A bootstrap első javított tiszta OS-es köre parancsszinten befejeződött, de az
-utóellenőrzésnél az MQTT broker nem indult: a tényleges mount az r10 privát
-könyvtárát használja, a permissions lépés csak az új kiadási könyvtárat javította.
-A javítás a modellben ténylegesen megadott broker- és backend-credential mountot
-ellenőrzi és állítja be, csak a cold restore `restore-prepare` lépésében.
-A nem hivatkozott korábbi könyvtárakat nem módosítja. Symlink/idegen útvonal
-előtt nem történik chown. Az éles r15 brokerhez a munka nem nyúlt.
-
-Az explicit broker-javítást követő diagnosztikai probe sikeres: 7 139 946 mérés,
-66 entitás, 61 HC-tábla, 5 időzítő, valódi root IPC, várt non-root/read-only/no-socket
-backend, offline HA-image, valamint a kiválasztott archívum és dump hash-egyezése.
-Ez külön [diagnosztikai bizonyíték](audit-evidence/ai-ssd-closure-20261101/post-mqtt-correction-diagnostic.json),
-nem a teljesen automatikus tiszta restore végleges elfogadása. Az újabb tiszta
-OS-es teljes kör már a broker-fixet is tartalmazza, és kézi javítás nélkül sikeres.
-
-## Lezárt helyi átvétel és élesítési határ
-
-[Teljes VM-nyugta](audit-evidence/ai-ssd-closure-20261101/vm-acceptance.json): tiszta
-OS-ről és azonos work-dirből ismételt teljes restore sikeres; a teljes vendégreboot
-új boot-ID-val sikeres. A 14 alapunit és a kiadási adapterek bájtjai egyeznek,
-5 időzítő aktív/engedélyezett és jövőbeli triggerrel rendelkezik. A tényleges
-root IPC, a non-root/read-only/socket nélküli backend és az offline HA ellenőrzött.
-Az elérhetetlen FTP-s kör nemnulla kóddal megállt, a kanonikus fájlok/unitok és
-a DB-konténer változatlan maradt. A kijelölt archívum hash-e minden körben az
-éles nyugtával egyezett, a dump SHA-256:
-`ccbf9799f8dfe6d13967be3fe1f9a20bbb50628efbf8cca814b20155218c8f47`.
-
-Az eredeti külső commit `d612e6e3db13e3bc836bacf7338ef879d9c50532`, a tesztelt
-javítási laborcommit `014e1c2d663a746e9df6b632bc7d158d0584552a`. A funkcionális
-javítások az r16 csomaggal a kiadásnév normalizálása után bájtra egyeznek.
-A 711 forrásfájlos r16 csomag lezárt, élesítésre kész. A tényleges éles r16
-új mentése és külső Git-visszaellenőrzése az aktiválás után következik.
-
-[Privát laboradatok takarítása](audit-evidence/ai-ssd-closure-20261101/lab-cleanup.json):
-a VM leállt, a HC-adatot tartalmazó guest lemez és a delegált age-kulcs/Git/repository
-másolata törölt. A HC-adat nélküli tiszta OS-alap megmaradt az r16 utópróbájához.
-[Éles utóellenőrzés](audit-evidence/ai-ssd-closure-20261101/production-after.json):
-16 éles konténer változatlan, a 706 r15 forráshash és az eredeti audit egyezik,
-readiness jó, failed systemd unit nincs. Az AI továbbra is letiltott.
+Az eredeti audit változatlan. HC-15/16/20/24/26, a globális HC-23/43 és az ESP
+legacy MQTT-kivétel külön feladat. A besorolás továbbra is 40 ellenőrzött,
+5 nyitott, 3 folyamatban; ez a munka a mentési bizonyítékok korlátját zárja le.
+[Éles átadás és rollback](../backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md),
+[helyreállítási útmutató](router-disaster-restore.md), [javítási napló](../AUDIT_REPAIR.md).

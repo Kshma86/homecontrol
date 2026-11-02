@@ -1,0 +1,291 @@
+{
+  "cutoff": "2026-11-01",
+  "ecosystem": "npm",
+  "catalog_records": 230255,
+  "package_version_pairs": 116,
+  "matches": [
+    {
+      "id": "GHSA-587h-7wmj-h5pm",
+      "aliases": [
+        "CVE-2026-112942"
+      ],
+      "package": "vite",
+      "version": "6.4.3",
+      "components": [
+        "frontend_build"
+      ],
+      "summary": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6.4.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/security/advisories/GHSA-587h-7wmj-h5pm"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-112942"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/commit/f13cd835d4b8e860b1d4d080ad8a490cc2463679"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://github.com/vitejs/launch-editor"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/releases/tag/v2.14.2"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-698v-4r3x-3vcv",
+      "aliases": [
+        "CVE-2026-112943"
+      ],
+      "package": "vite",
+      "version": "6.4.3",
+      "components": [
+        "frontend_build"
+      ],
+      "summary": "launch-editor: escapeCmdArgs() omits % escaping on Windows",
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6.4.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/security/advisories/GHSA-698v-4r3x-3vcv"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-112943"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/pull/155"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/commit/3c2f9bf2ff8fe63d056a8f9cc52d825b66ca79fc"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://github.com/vitejs/launch-editor"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/releases/tag/v2.14.2"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-9jrq-w75r-8gcw",
+      "aliases": [
+        "CVE-2026-112945"
+      ],
+      "package": "vite",
+      "version": "6.4.3",
+      "components": [
+        "frontend_build"
+      ],
+      "summary": "Vite: Cross origin script execution through Vite custom middleware",
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6.4.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/security/advisories/GHSA-9jrq-w75r-8gcw"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-112945"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/pull/23653"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/commit/7dafd8e56f152403a3230608fa4005273c2e9e17"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://github.com/vitejs/vite"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-r825-w8mm-5pxw",
+      "aliases": [
+        "CVE-2026-112944"
+      ],
+      "package": "vite",
+      "version": "6.4.3",
+      "components": [
+        "frontend_build"
+      ],
+      "summary": "launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6.4.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/security/advisories/GHSA-r825-w8mm-5pxw"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-112944"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/pull/156"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/commit/f6e6701bb1f16f2dd242b321374f1b6cca6eb6d4"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://github.com/vitejs/launch-editor"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/launch-editor/releases/tag/v2.14.2"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-rq7h-c2jc-7f22",
+      "aliases": [
+        "CVE-2026-112946"
+      ],
+      "package": "vite",
+      "version": "6.4.3",
+      "components": [
+        "frontend_build"
+      ],
+      "summary": "Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "6.4.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/security/advisories/GHSA-rq7h-c2jc-7f22"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-112946"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/pull/23656"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/commit/170b92791421bcd484f7325936d989a82d6bd4aa"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/commit/45c0e3392a298626955a0ab93a8e51232daac721"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/commit/c3e06f92e969952466b4e2f5801e85e1e00cd905"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/commit/e570d8d016096b5f8f6f09808376ca6cf73f27d0"
+        },
+        {
+          "type": "WEB",
+          "url": "https://github.com/vitejs/vite/commit/f0d76c7da13d5e794807b82f0b86c1931a8438e3"
+        },
+        {
+          "type": "PACKAGE",
+          "url": "https://github.com/vitejs/vite"
+        }
+      ]
+    }
+  ],
+  "unknown": [],
+  "distinct_advisory_groups": [
+    [
+      "CVE-2026-112942",
+      "GHSA-587h-7wmj-h5pm"
+    ],
+    [
+      "CVE-2026-112943",
+      "GHSA-698v-4r3x-3vcv"
+    ],
+    [
+      "CVE-2026-112944",
+      "GHSA-r825-w8mm-5pxw"
+    ],
+    [
+      "CVE-2026-112945",
+      "GHSA-9jrq-w75r-8gcw"
+    ],
+    [
+      "CVE-2026-112946",
+      "GHSA-rq7h-c2jc-7f22"
+    ]
+  ],
+  "private_inventory_uploaded": false
+}

@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "scope": "actual deployed r16 snapshot and external Git, no candidate corrections",
+  "started_at": "2026-11-01T20:35:12.258616+00:00",
+  "remote_write_commands": 0,
+  "production_restore": false,
+  "ai_enabled": false,
+  "phase": "completed",
+  "fresh": {
+    "mode": "fresh",
+    "snapshot_id": "354c6ca19a7cbbd2a4a30a8ead54a6011f2a93763384022533ec1d917b97db1f",
+    "git_commit": "5740329aeaa0a90c914185b816c702c069603d2d",
+    "external_git_commit": "5740329aeaa0a90c914185b816c702c069603d2d",
+    "candidate_fixes_applied": false,
+    "started_at": "2026-11-01T20:35:12.693254+00:00",
+    "ok": true,
+    "returncode": 0,
+    "finished_at": "2026-11-01T20:43:53.414997+00:00"
+  },
+  "selected_dump_sha256": "b3b863888f9458d2a596647d07b6ef866bb1ffe705194d6f76b31f4c7a18effc",
+  "reboot_verified": true,
+  "new_boot_id": true,
+  "fresh_unit_bytes_identical_after_reboot": true,
+  "unavailable_repository_preserves_live_state": true,
+  "offline_homeassistant_verified": true,
+  "root_ipc_verified": true,
+  "five_timers_verified": true,
+  "finished_at": "2026-11-01T20:44:55.105115+00:00"
+}

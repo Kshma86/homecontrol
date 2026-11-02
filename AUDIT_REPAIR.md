@@ -10,32 +10,31 @@ Az átnézett audit SHA-256 lenyomata:
 51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2
 ```
 
-**Aktív: `hc-router-backup-20261101-r15`, élesítve és visszaolvasással ellenőrizve.**
-A korábbi alkalmazásjavításokat az r15 megőrzi. A mentési cél most a router
-USB-lemeze: HC-oldali titkosítás, sorosított FTP-listázás, teljes adatellenőrzés
-a megőrzési műveletek előtt és után. A külső Git-feltöltés, a titkosított
-routeres snapshot, az archívum 4788 checksumja és a külön PostgreSQL-restore
-sikeres. A napi, heti és havi időzítők engedélyezettek és aktívak.
-706 fagyasztott forráshash egyezik; az alkalmazás readiness sikeres.
-[Éles r15 átvétel és rollback](backups/deployments/hc-router-backup-20261101-r15/DEPLOYMENT.md).
-Az AI-szerver felhasználói döntés alapján letiltva marad. A friss host teljes
-routeres helyreállításának új próbája külön, folyamatban követett feladat.
+**Aktív: `hc-router-backup-20261101-r16`, élesítve és visszaállítással ellenőrizve.**
+A teljes helyi/router/Git mentés, a megőrzés előtti és utáni adatellenőrzés,
+5561 fájlchecksum és az izolált PostgreSQL-restore sikeres. A tényleges éles
+Gitből és snapshotból friss, üres HC/image-tárú gép teljes helyreállítása,
+FTP-kiesési próbája és rebootja is sikeres. Mind a 711 forráshash egyezik;
+readiness jó, platform változatlan, az 5 hosttimer aktív és engedélyezett.
+Az AI felhasználói döntés alapján letiltva marad; az SSD a jelenlegi mentési
+ellenőrzéseknek már nem akadálya.
+[Éles r16 átvétel és rollback](backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md).
 
 **Auditösszesítés:** 40 ellenőrzött, 5 nyitott, 3 folyamatban.
-HC-12 és HC-32 javítása éles; az aktív runtime r15. HC-23/43 csak részjavítás;
-a globális tesztprofil/HA/OS/advisory feladatok folyamatban. HC-41 az ESP legacy
-kivétel miatt folyamatban. Az AI fizikai próbája letiltott gépen nem végezhető;
-a mentések működésének már nem előfeltétele az AI-szerver SSD-jének javítása.
-Az r11 incidens helyreállítva, az alábbi napló történeti állapotokat őriz.
+HC-12 és HC-32 javítása éles; az aktív runtime r16. HC-23/43 globális részei és
+HC-41 az ESP legacy kivétel miatt folyamatban. HC-31 fizikai shutdown/OFF/wake
+próba nem futott, csak későbbi AI-újraaktiválás előtt szükséges. A régi AI-Gitea
+története nincs ellenőrzöttnek minősítve. A történeti napló megmarad.
 
 ## Az áttekintés eredménye
 
-**Legújabb lezárt kiadási munka:** REPAIR-057, aktív r15.
-A routeres mentés és a külső Git éles, a listázási incidens javítva és teljes
-visszaolvasással ellenőrizve. A régi SSD miatti mentési korlátok célzott
-felülvizsgálata REPAIR-058 alatt folyamatban van. Ez nem jelenti a nyitott auditfeladatok elkészültét:
-HC-15/16/20/24/26 nyitott, HC-23/41/43 folyamatban; fizikai elfogadási korlátok
-megmaradnak. A régebbi naplóbejegyzések a dátumuk szerinti állapotot őrzik.
+**Legújabb lezárt kiadási munka:** REPAIR-060, aktív r16.
+**Új élesítési csomag:** REPAIR-061, r18; csak helyi élesítésre előkészítve,
+még nem aktív. [Scope, bizonyítékok és nyitott találatok](docs/hc23-43-platform-release-20261102.md).
+Az SSD miatt korábban félretett, jelenlegi mentési láncra vonatkozó ellenőrzések
+lezárva; [tételes bizonyítékok](docs/ai-ssd-backup-closure-20261101.md).
+HC-15/16/20/24/26 továbbra is nyitott, HC-23/41/43 folyamatban. Más feladat
+besorolása nem változott; a korábbi naplóbejegyzések történeti állapotot őriznek.
 
 - A dokumentum 48, folytonosan számozott megállapítást tartalmaz: **20 P1, 26 P2, 2 P3**. A tételes besorolás egyezik az N.5 összesítésével. P0 megállapítást nem rögzít.
 - A javasolt irány fokozatos javítás a meglévő architektúrán belül. Elsőbbséget kap a leállítás, a friss fizikai visszajelzés, az atomi foglalás és a restart utáni helyreállítás, továbbá a mentés/restore és a hozzáférési határok rendezése.
@@ -111,11 +110,10 @@ A fázisok az audit F. fejezetére hivatkoznak, nem végrehajtott munkát jelöl
 
 **Aktuális összesítés:** 5 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
 40 ellenőrzött; 0 halasztott. HC-12/32 és az elkészült HC-23/43 részjavítások
-élesek; aktív az r15 (REPAIR-057). Az r10 korábbi HC-35/36 + HC-41/44 javításait
+élesek; aktív az r16 (REPAIR-060). Az r10 korábbi HC-35/36 + HC-41/44 javításait
 az aktív kiadás megőrzi (REPAIR-049); az ESP legacy kivétel miatt
 HC-41 folyamatban. HC-11/33/34 és 062 élesítése REPAIR-039; HC-10 és
-HC-13/14/21/22/40 r8 élesítése REPAIR-035. HC-45 KVM REPAIR-046, közös r10
-korlátai REPAIR-047/049. HC-31 fizikai AI-próbáját a szoftveres ellenőrzés nem
+HC-13/14/21/22/40 r8 élesítése REPAIR-035. HC-45 KVM REPAIR-046, aktuális r16 teljes hostrestore REPAIR-060. HC-31 fizikai AI-próbáját a szoftveres ellenőrzés nem
 helyettesíti. Más auditpont besorolása ebben a javításban nem módosult.
 
 
@@ -3274,3 +3272,85 @@ Az új éles mentés/Git/snapshot átvétele az aktiválás után következik.
 [Teljes VM-nyugta](docs/audit-evidence/ai-ssd-closure-20261101/vm-acceptance.json),
 [r16 előellenőrzés](backups/releases/hc-router-backup-20261101-r16/preactivation-check.json),
 [helyreállítási útmutató](docs/router-disaster-restore.md).
+
+## REPAIR-060 — éles r16 és az SSD miatti mentési korlátok lezárása (2026-11-01)
+
+A felhasználó sudo-val sikeresen élesítette az r16-ot. Új heti futás:
+`744b9d23cb54408698d80e50afd30585`; snapshot:
+`354c6ca19a7cbbd2a4a30a8ead54a6011f2a93763384022533ec1d917b97db1f`;
+külső Git: `5740329aeaa0a90c914185b816c702c069603d2d`.
+Minden kötelező cél és a megőrzés sikeres; 5561 checksum és valódi izolált
+PostgreSQL-restore ellenőrzött. Az éles utóellenőrzésben 711 kit/runtime hash
+és a lezárt acceptance-evidence egyezik, a korábbi r15 és az eredeti audit
+változatlan. Readiness jó; platform változatlan, systemd failed nincs.
+
+A független Git-mirror vizsgálat 34 commitot, 1533 történeti blobot és 5345
+manifestfájlt ellenőrzött. Hiányzó útvonal/hash-eltérés nincs, a 111 runtime
+cache-fájl eltérése megszűnt. A meghatározott privátkulcs-/JSON-hitelesítési
+mintákra nincs találat. A külső Git megmaradt, az AI letiltva maradt.
+
+A tényleges éles r16 Git és snapshot változatlan kóddal, külön laborcommit
+nélkül állt vissza az üres HC/image-tárú KVM-gépre. DB/MQTT, offline HA,
+14 alapunit, kiadási adapterek, 5 timer, root IPC, non-root/read-only backend,
+írástilalmak és no-replay sikeres. Az FTP-kiesés nem módosította a kanonikus
+fájlokat/unitokat vagy DB-konténert. Reboot után az állapot és unitbájtok
+ellenőrzése ismét sikeres. Az élesítés előtti kör az ismételt teljes restore-t
+külön igazolta. A privát laborbemenet és HC-s vendéglemez törölve.
+
+A jelenlegi mentési lánc SSD miatti ellenőrzési korlátai lezárva. HC-31 fizikai
+shutdown/OFF/wake nem futott; csak későbbi AI-újraaktiválás előtt szükséges.
+A régi AI-Gitea története nem kapott ellenőrzött minősítést. Auditbesorolás
+változatlan: 40 ellenőrzött, 5 nyitott, 3 folyamatban; más feladatot nem zártunk le.
+
+[Tételes lezárás](docs/ai-ssd-backup-closure-20261101.md),
+[aktuális VM-nyugta](docs/audit-evidence/router-r16-live-20261101/vm-acceptance.json),
+[éles átadás](backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md).
+
+## REPAIR-061 — HC-23/43 r18 platformcsomag, helyi élesítésre előkészítve (2026-11-02)
+
+**Állapot:** az éles runtime továbbra is r16. Új, külön r18 csomag készült;
+helyi sudo-aktiválás és éles átvétel szükséges. HC-23/43 folyamatban marad;
+az auditösszesítés és más pontok besorolása változatlan.
+
+**Változás:** 14 fő platformszolgáltatás és a külön HA pontos image-ID-val,
+megőrzött offline recovery-cache-sel. Támogatott HA 2026.10.4 és PgBouncer-alap,
+elérhető stabil OS-frissítések, rögzített Node 24/Vite 6.4.5 frontend. A saját
+Python-függőségverziók változatlanok. Konzisztens HA SQLite-backup és pontos
+HA image-ID-t elfogadó, ellenőrzött full-hostrestore. Az AI letiltva marad;
+az ESP MQTT legacy kivétel megmarad, Git/router backup és időzítés megőrzött.
+
+**Bizonyíték:** 795 általános + 190 PostgreSQL + 2 tulajdonosi backendteszt,
+19 külön éles-policy teszt, 54 bridge + 52 ingest + 33 X10 + 114 frontendteszt
+és build, 16 telepítő + 12 router + 16 HA-tranzakció + 8 platform-tranzakció + 2 SQLite-backup teszt,
+hibák és kihagyások nélkül. Valódi izolált PG/PgBouncer/hitelesített MQTT
+indulás → rollback → dump-restore; hét alkalmazás függőségkiesési próbája.
+A HA adatbázismásolat az új és régi image-en is megőrizte a sorokat, schema53.
+Öt védett HA auth/config fájl teljes másolata az operátori próbából hiányzott;
+az élesítő ezért teljes helyi root-előpróbát követel még szolgáltatásleállítás
+előtt. A végleges 46 image-es offline csomag blob/réteg/készletellenőrzése és
+Docker-load próbája sikeres. Nyilvános OS/npm buildanyagok megőrizve.
+Külön régi → új → régi PostgreSQL image-próba azonos laboradatköteten,
+megőrzött adatokkal. SQL-handover előtt a DB nem állhat le; rollbackkor előbb
+az előző DB-ownernek kell működnie. A valódi telepítőútvonalat is teszteltük.
+Az előzetes r17 aktiválási kapuja visszavonva, nem került élesbe; lezárt
+forrása és bizonyítékai megmaradtak. Az átadott kiadás r18.
+
+**HC-43 korlát:** teljes, friss PyPI/npm OSV-katalógus helyi összevetése és
+15 image OS-vizsgálata. Saját hét Python-komponens 0 értékelhető találat,
+frontend npm 0 találat/0 ismeretlen; elérhető disztribúciós javítás nem maradt.
+A HA-ban 98 nyers advisory / 67 aliascsoport, a Python-értékelésben 122
+ismeretlen rekord maradt. Debianban javítatlan találatok maradtak, köztük
+3 kritikus azonosító; tételes upstream/útvonal-triage dokumentálva. Ez nem
+sérülékenységmentességi tanúsítvány, HC-43 nem lezárt. Host kernel/frissítés,
+fizikai hardver- és felhőpróbák nem részei az offline elfogadásnak.
+
+**Éles kapuk:** r16 baseline és forráshash-ek, teljes védett HA-másolat offline
+próbája; titkosított router-próba és teljes régi repository-ellenőrzés, friss
+helyi mentés; naplózott átállítás és eredeti HA-adatállapotot visszaállító
+rollback; live readiness, PostgreSQL16/kolláció, hitelesített HA API és a
+korábban elérhető Growatt-entitások; friss HC/Git/router mentés, visszaolvasás,
+SHA-256 és külön PG-restore. Csak sikeres bizonyítás után indulhatnak a timerek.
+
+[Tételes átadás és visszagörgetés](docs/hc23-43-platform-release-20261102.md),
+[csomag](backups/releases/hc-security-20261102-r18/README.md),
+[helyi átadás](backups/deployments/hc-security-20261102-r18/PENDING.md).
