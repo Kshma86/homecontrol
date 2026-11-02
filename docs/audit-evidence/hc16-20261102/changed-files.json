@@ -1,0 +1,77 @@
+[
+  {
+    "path": "AUDIT_REPAIR.md",
+    "state": "modified",
+    "sha256": "c336efdcc62136802f1590d617b66db939a147db061bf843ba90f801d47a4bc9"
+  },
+  {
+    "path": "DEPLOYMENT_PREP.md",
+    "state": "modified",
+    "sha256": "6cbb1cce8688d20fb6a77233b650b7bdd42a3c9a0e06b16bea2343325438cd9d"
+  },
+  {
+    "path": "docs/ai/mower-domain.md",
+    "state": "modified",
+    "sha256": "e8ebf7c84b8eb3e2b7ecfc28659df87f9803c7a18e0f5e9bb53421d12c6c925f"
+  },
+  {
+    "path": "docs/hc-16-repair.md",
+    "state": "added",
+    "sha256": "81e7e76005b1bb96b03f025334db2446c3f47fd1d68185263a601372c4f0738d"
+  },
+  {
+    "path": "docs/mower-v3-bringup.md",
+    "state": "modified",
+    "sha256": "cc7b49b5995637459a67ad418479b445e4a6cc0b42c9379175d79d446e96c3cd"
+  },
+  {
+    "path": "docs/mower-v3-foundation.md",
+    "state": "modified",
+    "sha256": "23add488af63a6f8a35715d17b284ccf231d99a20f36b403087c3e4646330a27"
+  },
+  {
+    "path": "infra/backend/mower_manual_service.py",
+    "state": "modified",
+    "sha256": "c8259ccbd42b835443dd3c008b92f40ec6590b95eb0ecc2076424912d7631104"
+  },
+  {
+    "path": "infra/backend/mower_motor_test.py",
+    "state": "modified",
+    "sha256": "9cb3a36fe3f9ba74cfd0c38e6059c5c9b4144146de7b61217af7b0cf70ef2fbe"
+  },
+  {
+    "path": "infra/backend/mower_parameters_service.py",
+    "state": "modified",
+    "sha256": "3372ed5689cad40067fff40157d8c800738f2ede9dd9a0bd2201745866fc1d66"
+  },
+  {
+    "path": "infra/backend/mower_v3_commands.py",
+    "state": "modified",
+    "sha256": "29cdd68fdbca00aa132c96ea3dcff919d3c6f8582e63b19bd9691894c979d6c0"
+  },
+  {
+    "path": "infra/backend/mower_v3_protocol.py",
+    "state": "added",
+    "sha256": "3188183d8e903e2dd644d54653b7a30b16f151098fa0c8cf007894e1d79ccf3c"
+  },
+  {
+    "path": "infra/backend/mower_v3_service.py",
+    "state": "modified",
+    "sha256": "bb7babaf557557c7c446cb4cf8a48fc1a9df1e2df7c352119b70940dc875b559"
+  },
+  {
+    "path": "infra/backend/settings.py",
+    "state": "modified",
+    "sha256": "0f48a3c7823b1e1637aab639c7770e6e358f54e12ba07d32559d65865956a767"
+  },
+  {
+    "path": "infra/backend/tests/fixtures/hc16_import_probe.py",
+    "state": "added",
+    "sha256": "666e1aca5e5e4ce59388c2d590b73d056c209c080caeb772b73406eaa6298ac3"
+  },
+  {
+    "path": "infra/backend/tests/test_mower_module_boundaries.py",
+    "state": "added",
+    "sha256": "3afaace5680bc6e35b32a2c3a76a506a95ea5fa6013cf072af373e13f429b84a"
+  }
+]

@@ -1,0 +1,784 @@
+--- a/AUDIT_REPAIR.md
++++ b/AUDIT_REPAIR.md
+@@ -16,8 +16,8 @@
+ A teljes privát HA-előpróba, hitelesített HA API/64 Growatt-entitás és PG16/kolláció
+ sikeres. Friss HC/Git/router mentés, 6373 checksum, visszaolvasás és külön PG-restore
+ sikeres. Az AI tiltva, ESP MQTT kivétel változatlan. HC-23/43 részjavításai élesek;
+-a globális pontok/upstream találatok nyitottak. A későbbi HC-15/16/20/24 kódjavítások
+-ellenőrzöttek, de még nincsenek ebben az éles kiadásban (REPAIR-062/063/064/065).
++a globális pontok/upstream találatok nyitottak. A későbbi HC-15/16/20/24/26 kódjavítások
++ellenőrzöttek, de még nincsenek ebben az éles kiadásban (REPAIR-062–066).
+ [Éles átadás](backups/deployments/hc-security-20261102-r18/DEPLOYMENT.md),
+ [utóellenőrzés](docs/audit-evidence/hc23-43-r18-live-20261102/production-check.json).
+ 
+@@ -33,8 +33,8 @@
+ ellenőrzéseknek már nem akadálya.
+ [Éles r16 átvétel és rollback](backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md).
+ 
+-**Auditösszesítés:** 44 ellenőrzött, 1 nyitott, 3 folyamatban.
+-HC-15/16/20/24 izoláltan ellenőrzött kódjavítás; éles bevezetésük még nem történt meg.
++**Auditösszesítés:** 45 ellenőrzött, 0 nyitott, 3 folyamatban.
++HC-15/16/20/24/26 izoláltan ellenőrzött kódjavítás; éles bevezetésük még nem történt meg.
+ HC-12 és HC-32 javítása éles; az aktív runtime r18. HC-23/43 globális részei és
+ HC-41 az ESP legacy kivétel miatt folyamatban. HC-31 fizikai shutdown/OFF/wake
+ próba nem futott, csak későbbi AI-újraaktiválás előtt szükséges. A régi AI-Gitea
+@@ -43,14 +43,14 @@
+ ## Az áttekintés eredménye
+ 
+ **Legújabb lezárt kiadási munka:** REPAIR-061, aktív r18.
+-**Legújabb ellenőrzött kódjavítás:** REPAIR-065, kizárólag HC-24; nem éles.
+-[Módosítás és ellenőrzés](docs/hc-24-repair.md). A korábbi HC-15/16/20 javítások
+-(REPAIR-062/063/064) megőrzöttek, szintén nem élesek.
++**Legújabb ellenőrzött kódjavítás:** REPAIR-066, kizárólag HC-26; nem éles.
++[Módosítás és ellenőrzés](docs/hc-26-repair.md). A korábbi HC-15/16/20/24 javítások
++(REPAIR-062–065) megőrzöttek, szintén nem élesek.
+ A HC-23/43 kontrollált platformfrissítése éles és szoftveresen átvett;
+ a globális auditpontok továbbra is folyamatban. [Scope, bizonyítékok és nyitott találatok](docs/hc23-43-platform-release-20261102.md).
+ Az SSD miatt korábban félretett, jelenlegi mentési láncra vonatkozó ellenőrzések
+ lezárva; [tételes bizonyítékok](docs/ai-ssd-backup-closure-20261101.md).
+-HC-26 továbbra is nyitott, HC-23/41/43 folyamatban. Más feladat
++HC-23/41/43 továbbra is folyamatban. Más feladat
+ besorolása nem változott; a korábbi naplóbejegyzések történeti állapotot őriznek.
+ 
+ - A dokumentum 48, folytonosan számozott megállapítást tartalmaz: **20 P1, 26 P2, 2 P3**. A tételes besorolás egyezik az N.5 összesítésével. P0 megállapítást nem rögzít.
+@@ -99,7 +99,7 @@
+ | HC-23 | P2 | Reprodukálható telepítés és alkalmazásszintű állapotellenőrzés | F10 | Folyamatban |
+ | HC-24 | P2 | Végtelen ciklus az mDNS-parserben | F1 | Ellenőrzött |
+ | HC-25 | P3 | Teljes backup-log olvasása és író lockellenőrzés | F6 | Ellenőrzött |
+-| HC-26 | P3 | HA-Growatt entitásonként soros HTTP-polling | F10, használattól/méréstől függően | Nyitott |
++| HC-26 | P3 | HA-Growatt entitásonként soros HTTP-polling | F10, használattól/méréstől függően | Ellenőrzött |
+ | HC-27 | P1 | Hibajelzés előtt részlegesen alkalmazott restore | F6a | Ellenőrzött |
+ | HC-28 | P2 | Fájljogosultságok és típusinformáció elvesztése restore közben | F6a | Ellenőrzött |
+ | HC-29 | P2 | Mentésdiff útvonalhatár-ellenőrzése | F6a | Ellenőrzött |
+@@ -125,9 +125,9 @@
+ 
+ **Kezdő összesítés:** 48 nyitott; 0 folyamatban; 0 javított; 0 ellenőrzött; 0 halasztott. Éles bevezetés nem történt.
+ 
+-**Aktuális összesítés:** 1 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
+-44 ellenőrzött; 0 halasztott. HC-15/16/20/24 kódja ellenőrzött, de még nem éles
+-(REPAIR-062/063/064/065).
++**Aktuális összesítés:** 0 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
++45 ellenőrzött; 0 halasztott. HC-15/16/20/24/26 kódja ellenőrzött, de még nem éles
++(REPAIR-062–066).
+ HC-12/32 és az elkészült HC-23/43 részjavítások
+ élesek; aktív az r18 (REPAIR-061). Az r10 korábbi HC-35/36 + HC-41/44 javításait
+ az aktív kiadás megőrzi (REPAIR-049); az ESP legacy kivétel miatt
+@@ -3581,3 +3581,58 @@
+ [scope](docs/audit-evidence/hc24-20261102/scope-check.json),
+ [külön megfigyelés](docs/audit-evidence/hc24-20261102/separate-observation.json),
+ [éles változatlanság](docs/audit-evidence/hc24-20261102/production-unchanged.json).
++
++
++## REPAIR-066 — HC-26: mért HA Growatt-batch és külön HA-állapotkor (2026-11-02)
++
++- **Hatókör / fázis:** kizárólag HC-26, F0/F10 és kapcsolódó F2 hibahatárok.
++  Elolvasva a megállapítás és bizonyítékai, az F10 mért HA-batch feltétele.
++  Az eredeti audit SHA-256 változatlan; r18 ellenőrzött mentés/restore és az
++  aktuális forrás-/korábbi javítási bizonyítékok rendelkezésre álltak.
++- **Státusz:** Ellenőrzött, izolált szoftveres és csak olvasó HA-ellenőrzéssel;
++  **nem élesített**. Aktív `hc-security-20261102-r18`. Más auditpont státusza nem módosult.
++- **Használati előfeltétel / mérés:** az opcionális `ha-growatt` poller valóban
++  fut, 27 konfigurált entitással; a HA 86 állapotot ad. Három váltott sorrendű,
++  csak GET-es körben a 27 egyedi kérés mediánja 29,755 ms / 11 976 bájt,
++  az egy batch GET mediánja 2,524 ms / 38 037 bájt. A kis HA-példányon ez indokolja
++  az egy lekérést és helyi szűrést; nem állít éles 60 s hibát vagy általános sebességgaranciát.
++- **Javítás:** egy `GET /api/states` ciklusonként, utána a változatlan entity map
++  szerinti szűrés. Hiányzó/ismeretlen állapot kimarad; teljes HTTP/JSON/body-hiba
++  üres ciklust ad, nincs N kéréses fallback vagy régi snapshot-replay. Válasz és
++  session lezárva. A ciklusvárakozás monoton órát használ; health-allowance egy
++  kérésre számol, nem entitásszámra.
++- **Payload:** eredeti metrikanevek, konverzió, topic/QoS/retain és négy metaadatmező
++  megmaradt. `sample_time` a lekérés utáni UTC megfigyelés; additív `observed_at`
++  és `ha_state_age_seconds` metrikánként. A HA `last_updated` megmaradt; kora nem
++  bizonyít fizikai inverter-mintaidőt. Hibás/naiv/jövőbeli timestampnél kor=null.
++  Nincs új stale-küszöb vagy automatikus értéktörlés. A meglévő JSON-meta ingest/SQL
++  útvonal használható, migráció/ingestváltoztatás nélkül. A solar-guide frissítve.
++- **Ellenőrzés:** **18 Growatt + 816 backend unit + 19 mDNS + 52 ingest = 905
++  különböző végső teszt, 0 failure/error/skip**. A Growatt-profil a tényleges
++  poller-image-ben, hálózat és valódi HA/MQTT nélkül futott. Hiányzó/ismeretlen,
++  timeout/JSON/részleges body-hiba, következő körös recovery, forráskor, alias,
++  monoton sleep, health/shutdown és ingest szerződés ellenőrizve. Négy külön
++  régi main-loop AST-s összevetésben az eredeti MQTT mezők pontosan egyeznek.
++- **Csak olvasó jelöltpróba:** a jelölt függvények külön folyamatban egy HA GET-ből
++  26 használható metrikát építettek a 27 konfiguráltból, 26 kor-/timestampmezővel.
++  Ez nem pollerátállítás és nem MQTT-küldés. Token/nyers állapot nem került ki,
++  HA-módosítás vagy inverterparancs nem történt. Az első tesztkör datetime-mock
++  hibáját a fixture-ben javítottuk; a hibás log megmaradt, nem elfogadási bizonyíték.
++- **Korlát / függőségek:** a Requests connect/read timeout nem kemény teljes
++  wall-clock ciklushatáridő. Ezt nem állítjuk kijavítottnak; a soros N-szorzó szűnt
++  meg. Kemény transporthatáridő, fizikai forrásfrissességi szabály és frontend-
++  korjelzés külön döntés; MQTT siker/readiness szemantika változatlan. Nincs új
++  függőségfrissítés vagy más auditpont javítása. HC-23/41/43 folyamatban marad.
++- **Élesítés / rollback:** új, önálló Growatt-poller image/kiadás kell; runtime-
++  szinten nem függ a még nem éles HC-15/16/20 backend- és HC-24 mDNS-javításoktól.
++  A 185 backend-Python-fájl, 62 migráció, dependency lock/Dockerfile és MQTT-/health
++  segédek változatlanok. 736 runtime-hash és 16 konténer ID/image/futás egyezik;
++  deploy/restart, DB-lekérdezés vagy éles MQTT publish nem történt. Az eredeti
++  poller/harness/guide és patch visszatehető a korábbi javítások megtartásával;
++  DB-/adatrestore nem kell. AI letiltva marad.
++
++[Tételes leírás](docs/hc-26-repair.md),
++[mérés](docs/audit-evidence/hc26-20261102/live-measurement.json),
++[összesítés](docs/audit-evidence/hc26-20261102/summary.json),
++[scope](docs/audit-evidence/hc26-20261102/scope-check.json),
++[éles változatlanság](docs/audit-evidence/hc26-20261102/production-unchanged.json).
+--- a/DEPLOYMENT_PREP.md
++++ b/DEPLOYMENT_PREP.md
+@@ -1,4 +1,12 @@
+ # HomeControl – aktuális éles kiadás
++
++**Új, ellenőrzött kódjavítás: HC-26 (REPAIR-066), még nem éles.**
++A ténylegesen futó, 27 entitásos HA–Growatt poller mérés alapján egy batch GET-et
++használ a 27 soros helyett, külön HA-állapotkorral és megfigyelési idővel.
++905 teszt sikeres; a jelölt csak olvasó HA-próbája egy kérésből 26 használható
++metrikát épített, éles MQTT-küldés nélkül. Új Growatt-poller image/kiadás kell;
++önállóan szállítható a még nem éles HC-15/16/20/24 javításoktól. Az r18 változatlan.
++[Scope, mérés, ellenőrzés és függőségek](docs/hc-26-repair.md).
+ 
+ **Új, ellenőrzött kódjavítás: HC-24 (REPAIR-065), még nem éles.**
+ Az mDNS-parser pointerciklus-, névhossz- és csomaghatár-ellenőrzést kapott;
+--- a/apps/ha-growatt-poller/ha_growatt_poller.py
++++ b/apps/ha-growatt-poller/ha_growatt_poller.py
+@@ -98,14 +98,68 @@
+     return datetime.now(timezone.utc).isoformat()
+ 
+ 
+-def ha_get_state(session: requests.Session, entity_id: str) -> Optional[Dict[str, Any]]:
+-    url = f"{HA_BASE_URL}/api/states/{entity_id}"
+-    response = session.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
+-    if response.status_code == 404:
+-        print(f"[HA] missing entity: {entity_id}")
+-        return None
+-    response.raise_for_status()
+-    return response.json()
++def ha_get_states(session: requests.Session, entity_ids) -> Dict[str, Dict[str, Any]]:
++    """One HA snapshot per cycle; keep only configured entity objects."""
++    with session.get(f"{HA_BASE_URL}/api/states", timeout=REQUEST_TIMEOUT_SECONDS) as response:
++        response.raise_for_status()
++        states = response.json()
++    if not isinstance(states, list):
++        raise ValueError("HA states response must be a list")
++    wanted = set(entity_ids)
++    return {state["entity_id"]: state for state in states
++            if isinstance(state, dict) and isinstance(state.get("entity_id"), str)
++            and state["entity_id"] in wanted}
++
++
++def ha_state_age(last_updated: Any, observed_at: datetime) -> Optional[float]:
++    """HA state-update age, not the inverter's physical measurement age."""
++    if not isinstance(last_updated, str):
++        return None
++    try:
++        updated = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
++        if updated.tzinfo is None:
++            return None
++        age = (observed_at - updated).total_seconds()
++    except (ValueError, TypeError, OverflowError):
++        return None
++    return age if age >= 0 else None
++
++
++def build_payload(states, entity_map, *, observed_at: datetime) -> Dict[str, Any]:
++    observed = observed_at.isoformat()
++    payload: Dict[str, Any] = {"source": "home_assistant", "sample_time": observed}
++    meta = {}
++    for key, entity_id in entity_map.items():
++        state = states.get(entity_id)
++        if not state:
++            continue
++        value = coerce_state(state.get("state"))
++        if value is None:
++            continue
++        payload[key] = value
++        attrs = state.get("attributes")
++        attrs = attrs if isinstance(attrs, dict) else {}
++        meta[key] = {
++            "entity_id": entity_id,
++            "unit": attrs.get("unit_of_measurement"),
++            "friendly_name": attrs.get("friendly_name"),
++            "last_updated": state.get("last_updated"),
++            "observed_at": observed,
++            "ha_state_age_seconds": ha_state_age(state.get("last_updated"), observed_at),
++        }
++    payload["entity_count"] = len(meta)
++    payload["meta"] = meta
++    return payload
++
++
++def poll_payload(session: requests.Session, entity_map) -> Dict[str, Any]:
++    try:
++        states = ha_get_states(session, entity_map.values())
++    except Exception as exc:
++        # Do not replay a previous snapshot or fall back to N serial requests.
++        print(f"[HA] snapshot fetch error: {type(exc).__name__}")
++        states = {}
++    return build_payload(states, entity_map, observed_at=datetime.now(timezone.utc))
+ 
+ 
+ def publish_json(client: mqtt.Client, topic: str, payload: Dict[str, Any], retain: bool = False):
+@@ -118,7 +172,7 @@
+ 
+     entity_map = load_entity_map()
+     health = WorkerHealth(maximum=max(POLL_SECONDS * 3,
+-        (REQUEST_TIMEOUT_SECONDS + 1) * len(entity_map) * 3, 120))
++        (REQUEST_TIMEOUT_SECONDS + 1) * 3, 120))
+     session = requests.Session()
+     session.headers.update({
+         "Authorization": f"Bearer {HA_TOKEN}",
+@@ -138,47 +192,20 @@
+     print(f"[RUN] HA Growatt poller started: ha={HA_BASE_URL} mqtt={MQTT_HOST}:{MQTT_PORT} topic={BASE_TOPIC}")
+     try:
+         while running:
+-            started = time.time()
+-            payload: Dict[str, Any] = {
+-                "source": "home_assistant",
+-                "sample_time": now_iso(),
+-            }
+-            meta: Dict[str, Dict[str, Any]] = {}
+-
+-            ok_count = 0
+-            for key, entity_id in entity_map.items():
+-                try:
+-                    state = ha_get_state(session, entity_id)
+-                except Exception as exc:
+-                    print(f"[HA] fetch error entity={entity_id}: {exc}")
+-                    continue
+-                if not state:
+-                    continue
+-                value = coerce_state(state.get("state"))
+-                if value is None:
+-                    continue
+-                payload[key] = value
+-                attrs = state.get("attributes") or {}
+-                meta[key] = {
+-                    "entity_id": entity_id,
+-                    "unit": attrs.get("unit_of_measurement"),
+-                    "friendly_name": attrs.get("friendly_name"),
+-                    "last_updated": state.get("last_updated"),
+-                }
+-                ok_count += 1
+-
+-            payload["entity_count"] = ok_count
+-            payload["meta"] = meta
++            started = time.monotonic()
++            payload = poll_payload(session, entity_map)
++            ok_count = payload["entity_count"]
+             publish_json(client, BASE_TOPIC, payload, retain=MQTT_RETAIN)
+             print(f"[MQTT] published {ok_count}/{len(entity_map)} Growatt states")
+             health.progress(success=ok_count > 0)
+ 
+-            sleep_for = max(1.0, POLL_SECONDS - (time.time() - started))
+-            end_at = time.time() + sleep_for
+-            while running and time.time() < end_at:
+-                time.sleep(min(1.0, end_at - time.time()))
++            sleep_for = max(1.0, POLL_SECONDS - (time.monotonic() - started))
++            end_at = time.monotonic() + sleep_for
++            while running and time.monotonic() < end_at:
++                time.sleep(min(1.0, max(0.0, end_at - time.monotonic())))
+     finally:
+         health.close()
++        session.close()
+         try:
+             client.publish(f"{BASE_TOPIC}/availability", "offline", qos=MQTT_QOS, retain=True)
+             client.loop_stop()
+--- /dev/null
++++ b/apps/ha-growatt-poller/tests/test_ha_growatt_poller.py
+@@ -0,0 +1,252 @@
++"""HC-26 one-snapshot polling, source ages and unchanged MQTT wire fields."""
++import ast
++from contextlib import ExitStack
++from datetime import datetime, timedelta, timezone
++import io
++import json
++from pathlib import Path
++from types import SimpleNamespace
++import unittest
++from unittest.mock import patch
++
++import requests
++import ha_growatt_poller as poller
++
++NOW = datetime(2026, 11, 2, 15, tzinfo=timezone.utc)
++MAP = {'power_w': 'sensor.power', 'energy_kwh': 'sensor.energy'}
++
++
++def state(entity='sensor.power', value='42', age=30, **extra):
++    return dict(entity_id=entity, state=value, attributes={'unit_of_measurement': 'W', 'friendly_name': 'Fixture'},
++                last_updated=(NOW-timedelta(seconds=age)).isoformat(), **extra)
++
++
++class Response:
++    def __init__(self, states=None, error=None, json_error=None):
++        self.states = states
++        self.error = error
++        self.json_error = json_error
++        self.closed = False
++    def __enter__(self): return self
++    def __exit__(self, *args): self.closed = True
++    def raise_for_status(self):
++        if self.error: raise self.error
++    def json(self):
++        if self.json_error: raise self.json_error
++        return self.states
++
++
++class Session:
++    def __init__(self, *outcomes):
++        self.outcomes = list(outcomes); self.gets = []; self.headers = {}; self.closed = False
++        self.after_get = lambda: None
++    def get(self, url, **options):
++        self.gets.append((url, options)); self.after_get()
++        value = self.outcomes.pop(0)
++        if isinstance(value, BaseException): raise value
++        return value
++    def close(self): self.closed = True
++
++
++class GrowattPollingTest(unittest.TestCase):
++    def setUp(self):
++        self.addCleanup(patch.stopall)
++        patch.object(poller.socket, 'socket', side_effect=AssertionError('External sockets forbidden')).start()
++        patch.object(poller.mqtt, 'Client', side_effect=AssertionError('Real MQTT forbidden')).start()
++        patch.object(poller.requests, 'Session', side_effect=AssertionError('Real HA forbidden')).start()
++
++    def test_one_request_filters_only_configured_entities(self):
++        response = Response([state(), state('sensor.energy', '5.5'), state('sensor.private', 'secret'), None, {'entity_id': []}])
++        session = Session(response)
++        got = poller.ha_get_states(session, MAP.values())
++        self.assertEqual(set(got), set(MAP.values()))
++        self.assertEqual(session.gets, [(poller.HA_BASE_URL+'/api/states', {'timeout': poller.REQUEST_TIMEOUT_SECONDS})])
++        self.assertTrue(response.closed)
++
++    def test_27_metric_cycle_has_one_get(self):
++        mapping = poller.DEFAULT_ENTITY_MAP
++        session = Session(Response([state(entity, str(n)) for n, entity in enumerate(mapping.values())]))
++        payload = poller.poll_payload(session, mapping)
++        self.assertEqual(len(mapping), 27)
++        self.assertEqual(len(session.gets), 1)
++        self.assertEqual(payload['entity_count'], 27)
++        self.assertEqual(set(payload['meta']), set(mapping))
++
++    def test_missing_unknown_and_unavailable_do_not_remove_good_entities(self):
++        mapping = dict(MAP, absent='sensor.absent', unavailable='sensor.offline', unknown='sensor.unknown')
++        session = Session(Response([state(), state('sensor.energy', 'unknown'),
++            state('sensor.offline', 'unavailable'), state('sensor.unknown', 'NaN')]))
++        payload = poller.poll_payload(session, mapping)
++        self.assertEqual(payload['entity_count'], 1)
++        self.assertEqual(payload['power_w'], 42.0)
++        self.assertEqual(set(payload['meta']), {'power_w'})
++        self.assertNotIn('energy_kwh', payload)
++
++    def test_two_metric_aliases_share_the_same_snapshot_without_extra_get(self):
++        session = Session(Response([state()]))
++        payload = poller.poll_payload(session, {'first': 'sensor.power', 'second': 'sensor.power'})
++        self.assertEqual(payload['first'], payload['second'])
++        self.assertEqual(payload['entity_count'], 2)
++        self.assertEqual(len(session.gets), 1)
++
++    def test_payload_preserves_original_fields_with_additive_age_metadata(self):
++        source = state()
++        payload = poller.build_payload({'sensor.power': source}, MAP, observed_at=NOW)
++        self.assertEqual(payload['source'], 'home_assistant')
++        self.assertEqual(payload['sample_time'], NOW.isoformat())
++        self.assertEqual(payload['power_w'], 42.0)
++        self.assertEqual(payload['entity_count'], 1)
++        meta = payload['meta']['power_w']
++        self.assertEqual(meta, dict(entity_id='sensor.power', unit='W', friendly_name='Fixture',
++            last_updated=source['last_updated'], observed_at=NOW.isoformat(), ha_state_age_seconds=30.0))
++        self.assertEqual(set(payload), {'source', 'sample_time', 'power_w', 'entity_count', 'meta'})
++
++    def test_separate_entity_ages_do_not_refresh_older_ha_state(self):
++        states = {'sensor.power': state(age=3), 'sensor.energy': state('sensor.energy', '10', age=86400)}
++        payload = poller.build_payload(states, MAP, observed_at=NOW)
++        self.assertEqual(payload['meta']['power_w']['ha_state_age_seconds'], 3)
++        self.assertEqual(payload['meta']['energy_kwh']['ha_state_age_seconds'], 86400)
++        self.assertEqual(payload['meta']['energy_kwh']['last_updated'], states['sensor.energy']['last_updated'])
++        later = poller.build_payload(states, MAP, observed_at=NOW+timedelta(seconds=60))
++        self.assertEqual(later['meta']['energy_kwh']['ha_state_age_seconds'], 86460)
++
++    def test_invalid_naive_or_future_timestamps_are_unknown_age(self):
++        for stamp in (None, '', 'broken', 123, '2026-11-02T15:00:00', (NOW+timedelta(seconds=1)).isoformat()):
++            with self.subTest(stamp=stamp): self.assertIsNone(poller.ha_state_age(stamp, NOW))
++        self.assertEqual(poller.ha_state_age('2026-11-02T15:00:00Z', NOW), 0)
++        self.assertEqual(poller.ha_state_age('2026-11-02T16:59:30+02:00', NOW), 30)
++
++    def test_observation_timestamp_is_taken_after_the_http_read(self):
++        clock = [NOW]
++        session = Session(Response([state()]))
++        session.after_get = lambda: clock.__setitem__(0, NOW+timedelta(seconds=7))
++        fake_datetime = SimpleNamespace(now=lambda tz: clock[0], fromisoformat=datetime.fromisoformat)
++        with patch.object(poller, 'datetime', fake_datetime): payload = poller.poll_payload(session, MAP)
++        self.assertEqual(payload['sample_time'], clock[0].isoformat())
++        self.assertEqual(payload['meta']['power_w']['ha_state_age_seconds'], 37)
++
++    def test_bad_attributes_do_not_drop_an_otherwise_usable_state(self):
++        source = state(); source['attributes'] = 'invalid'
++        payload = poller.build_payload({'sensor.power': source}, MAP, observed_at=NOW)
++        self.assertEqual(payload['power_w'], 42)
++        self.assertIsNone(payload['meta']['power_w']['unit'])
++        self.assertIsNone(payload['meta']['power_w']['friendly_name'])
++
++    def test_timeout_cycle_is_empty_then_next_snapshot_recovers_without_replay(self):
++        session = Session(Response([state()]), requests.ReadTimeout('fixture'), Response([state(value='84')]))
++        good = poller.poll_payload(session, MAP)
++        with patch('sys.stdout', new=io.StringIO()): failed = poller.poll_payload(session, MAP)
++        recovered = poller.poll_payload(session, MAP)
++        self.assertEqual(good['power_w'], 42)
++        self.assertEqual(failed['entity_count'], 0); self.assertEqual(failed['meta'], {})
++        self.assertNotIn('power_w', failed)
++        self.assertEqual(recovered['power_w'], 84)
++        self.assertEqual(len(session.gets), 3)
++
++    def test_http_json_and_mid_body_timeout_fail_once_and_close_response(self):
++        for response in (Response(error=requests.HTTPError('401')), Response(json_error=ValueError('bad JSON')),
++                         Response(json_error=requests.ReadTimeout('partial response'))):
++            with self.subTest(error=response.error or response.json_error):
++                session = Session(response)
++                with patch('sys.stdout', new=io.StringIO()): payload = poller.poll_payload(session, MAP)
++                self.assertEqual(payload['entity_count'], 0)
++                self.assertTrue(response.closed); self.assertEqual(len(session.gets), 1)
++
++    def test_non_list_response_fails_without_entity_fallback(self):
++        for bad in ({'message': 'unauthorized'}, None, 'truncated snapshot'):
++            session = Session(Response(bad))
++            with patch('sys.stdout', new=io.StringIO()): payload = poller.poll_payload(session, MAP)
++            self.assertEqual(payload['entity_count'], 0)
++            self.assertEqual(len(session.gets), 1)
++
++    def test_numeric_and_text_coercion_remains_compatible(self):
++        for value, expected in (('1.25', 1.25), (' -2 ', -2.0), ('online', 'online'), ('', None),
++                                ('unknown', None), ('unavailable', None), ('none', None), ('NaN', None), (None, None)):
++            with self.subTest(value=value): self.assertEqual(poller.coerce_state(value), expected)
++
++    def test_publish_keeps_topic_qos_retain_and_json_contract(self):
++        calls = []
++        client = SimpleNamespace(publish=lambda *a, **kw: calls.append((a, kw)))
++        payload = poller.build_payload({'sensor.power': state()}, MAP, observed_at=NOW)
++        with patch.object(poller, 'MQTT_QOS', 1): poller.publish_json(client, 'fixture/telemetry', payload, retain=True)
++        args, options = calls[0]
++        self.assertEqual(args[0], 'fixture/telemetry'); self.assertEqual(json.loads(args[1]), payload)
++        self.assertEqual(options, dict(qos=1, retain=True))
++
++    def test_actual_ingest_mapping_keeps_ha_metrics_and_existing_json_meta(self):
++        source = Path(__file__).resolve().parents[2]/'hc_ingest/mqtt_ingest_multi.py'
++        tree = ast.parse(source.read_text())
++        function = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'growatt_metric_items')
++        namespace = {}
++        exec('from typing import Any, Optional, List, Tuple', namespace)
++        exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'), namespace)
++        payload = poller.build_payload({'sensor.power': state()}, {'system_power_w': 'sensor.power'}, observed_at=NOW)
++        mapped = namespace['growatt_metric_items']('homecontrol/tele/growatt/cloud', payload)
++        self.assertIsNone(mapped)  # The unchanged generic path consumes HA's flat keys.
++        generic = dict(payload.items())
++        self.assertEqual(generic['system_power_w'], 42)
++        self.assertEqual(generic['meta']['system_power_w']['ha_state_age_seconds'], 30)
++
++    def run_main(self, outcomes, cycles=1, mapping=MAP):
++        session = Session(*outcomes)
++        sent, progress = [], []
++        clock = [0.0]
++        class Client:
++            def publish(self, topic, payload, **kw): sent.append((topic, payload, kw))
++            def connect_async(self, *args, **kw): pass
++            def loop_start(self): pass
++            def loop_stop(self): self.stopped = True
++            def disconnect(self): self.disconnected = True
++            def is_connected(self): return True
++        client = Client()
++        class Health:
++            def __init__(self, **kw): self.maximum = kw['maximum']; self.closed = False
++            def start(self, callback): self.observations = callback()
++            def progress(self, **kw):
++                progress.append(kw)
++                if len(progress) >= cycles: poller.running = False
++            def close(self): self.closed = True
++        health = Health(maximum=1)
++        def make_health(**kw): health.maximum = kw['maximum']; return health
++        with ExitStack() as stack:
++            for name, value in dict(HA_TOKEN='synthetic-HA-token', running=True, POLL_SECONDS=1,
++                    REQUEST_TIMEOUT_SECONDS=15, WorkerHealth=make_health, load_entity_map=lambda: mapping,
++                    configure_mqtt_auth=lambda c: None).items():
++                stack.enter_context(patch.object(poller, name, value))
++            stack.enter_context(patch.object(poller.requests, 'Session', return_value=session))
++            stack.enter_context(patch.object(poller.mqtt, 'Client', return_value=client))
++            stack.enter_context(patch.object(poller.time, 'monotonic', side_effect=lambda: clock[0]))
++            stack.enter_context(patch.object(poller.time, 'sleep', side_effect=lambda seconds: clock.__setitem__(0, clock[0]+seconds)))
++            stack.enter_context(patch.object(poller.time, 'time', side_effect=AssertionError('Poll cadence must use monotonic time')))
++            stack.enter_context(patch('sys.stdout', new=io.StringIO()))
++            poller.main()
++        return session, sent, progress, health, client, clock[0]
++
++    def test_main_one_snapshot_one_publish_and_shutdown(self):
++        session, sent, progress, health, client, elapsed = self.run_main([Response([state()])])
++        telemetry = [(topic, json.loads(body), kw) for topic, body, kw in sent if topic == poller.BASE_TOPIC]
++        self.assertEqual(len(telemetry), 1); self.assertEqual(len(session.gets), 1)
++        self.assertEqual(telemetry[0][1]['entity_count'], 1)
++        self.assertNotIn('synthetic-HA-token', json.dumps(telemetry))
++        self.assertEqual(session.headers['Authorization'], 'Bearer synthetic-HA-token')
++        self.assertEqual(progress, [{'success': True}]); self.assertTrue(health.closed)
++        self.assertTrue(session.closed and client.stopped and client.disconnected)
++        self.assertEqual(sent[-1], (poller.BASE_TOPIC+'/availability', 'offline', dict(qos=poller.MQTT_QOS, retain=True)))
++
++    def test_main_timeout_then_recovery_keeps_one_attempt_per_cycle_and_monotonic_wait(self):
++        session, sent, progress, health, client, elapsed = self.run_main([requests.Timeout('offline'), Response([state()])], cycles=2)
++        payloads = [json.loads(body) for topic, body, kw in sent if topic == poller.BASE_TOPIC]
++        self.assertEqual([p['entity_count'] for p in payloads], [0, 1])
++        self.assertEqual(progress, [{'success': False}, {'success': True}])
++        self.assertEqual(len(session.gets), 2); self.assertEqual(elapsed, 1)
++
++    def test_health_stall_allowance_no_longer_scales_with_entity_count(self):
++        maxima = []
++        for mapping in ({'only': 'sensor.power'}, poller.DEFAULT_ENTITY_MAP):
++            *_, health, client, elapsed = self.run_main([Response([state()])], mapping=mapping)
++            maxima.append(health.maximum)
++        self.assertEqual(maxima, [120, 120])  # Test interval=1; production interval=60 gives 180.
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- a/docs/ai/solar-domain.md
++++ b/docs/ai/solar-domain.md
+@@ -39,6 +39,53 @@
+   "error": "Growatt cloud entity not found"
+ }
+ ```
++
++## Home Assistant Polling (HC-26)
++
++The optional `ha-growatt` Compose profile runs the HA poller. Its measured
++production configuration has 27 mapped entities; the inspected HA instance
++returned 86 state objects in about 38 KiB. The HC-26 source repair replaces the
++27 serial per-entity GETs with **one `GET /api/states` per poll**, then selects
++only configured entities locally. No HA action/service or inverter command is
++issued. See [HC-26 repair and measurements](../hc-26-repair.md).
++
++The flat MQTT metric names, value conversion, topic, QoS/retain and existing
++`source`, `entity_count`, `meta` fields remain compatible. Missing entities and
++unknown/unavailable states produce no new metric; usable entities from the
++same response still publish. A failed HTTP/JSON/body read produces an empty
++cycle (`entity_count=0`, `meta={}`), without per-entity fallback or replay of
++previous values. The next cycle makes a new single request. An omitted metric
++does not delete the previously stored DB state; consumers still need to assess
++its age.
++
++`sample_time` is the UTC time **after the snapshot read**, not the inverter's
++physical acquisition time. Each published metric retains its original
++`meta[key].last_updated`, unit and friendly name, with two additive fields:
++
++- `observed_at`: the snapshot observation timestamp, shared by the cycle.
++- `ha_state_age_seconds`: age of the HA `last_updated` value at observation;
++  null for missing, invalid, timezone-less or future timestamps.
++
++An unchanged HA state gets older across polls. Its age is not reset by a fresh
++HTTP read, and `last_updated` is not claimed to prove the inverter/cloud source's
++physical measurement age. Old numeric values are not silently replaced or
++removed by a newly invented freshness threshold. The existing SQL 019 `meta`
++JSON-state metric and ingest generic mapping already carry this information;
++no new schema or ingest path is required.
++
++The interval uses monotonic elapsed time; the default remains 60 seconds, with
++at least a one-second wait after an overrun. There is one existing configured
++HTTP timeout per cycle, with no retry multiplier. Requests' connect/read timeout
++is **not a hard whole-cycle deadline** (DNS, connect attempts and continuous
++response bytes can take longer). The worker-health allowance is now based on
++one request instead of entity count; it reports a stuck worker but does not
++abort its socket. A hard transport deadline or HA freshness policy is separate
++work, not an additional change in HC-26. MQTT success/readiness semantics are
++unchanged.
++
++This code repair is not yet deployed. A new Growatt-poller image is required;
++the HA service, MQTT credentials and entity map need no migration. Live HA
++measurements in the repair used GET only; tests use fake HA/MQTT transports.
+ 
+ ## API Endpoints
+ 
+--- /dev/null
++++ b/docs/hc-26-repair.md
+@@ -0,0 +1,140 @@
++# HC-26 — Mért, közös HA Growatt-lekérés
++
++2026-11-02, Europe/Budapest. **Ellenőrzött forrásjavítás, nincs élesítve.**
++Az aktív kiadás `hc-security-20261102-r18`; a korábbi HC-15/16/20/24 javítások
++megmaradtak. Más auditpont implementációja és státusza nem változott.
++
++## Bizonyíték, használat és F10 döntés
++
++Elolvasva HC-26 és forrásbizonyítékai, F0, F10 és annak F2 hibahatár-
++előfeltétele. Az eredeti audit változatlan SHA-256 lenyomata:
++`51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2`.
++F0 alapja az r18 ellenőrzött HC/Git/router mentése és izolált PG-restore-ja
++(`86b8ed71e4104b3a8eb909ae86e8ea91`), a korábbi tesztbizonyítékok megőrzése és
++az újrafuttatott regresszió. A poller kizárólag telemetriát olvas, inverter-
++parancsot nem ad; más bridge-ek stop-/parancsfolyamát nem módosítottuk.
++
++Az opcionális `ha-growatt` profil **ténylegesen fut**, 27 metrikát/entitást
++konfigurál. A HA példány a méréskor 86 állapotobjektumot adott vissza. A futó
++poller saját HA-hozzáférésével, csak GET-ekkel, három körben, váltott sorrendben
++mértük a két útvonalat, ugyanazzal a perzisztens HTTP sessionnel:
++
++| Útvonal | Kérések/kör | Medián | Első kör válaszmérete |
++|---|---:|---:|---:|
++| Eredeti, entitásonkénti GET | 27 | 29,755 ms | 11 976 bájt |
++| Közös `GET /api/states` | 1 | 2,524 ms | 38 037 bájt |
++
++Mindhárom batch válaszban megvolt a 27 konfigurált entitás. Ez az adott, kis
++HA-példányon mért indok a batch használatára: kevesebb kérés és rövidebb olvasás,
++kb. 3,2-szeres, de kisméretű választesttel. A normál eredeti kör is gyors volt;
++a mérés nem állít éles 60 másodperces hibát vagy általános HA-teljesítménygaranciát.
++[Használati bizonyíték](audit-evidence/hc26-20261102/usage.json),
++[nyers állapotok nélküli mérések](audit-evidence/hc26-20261102/live-measurement.json).
++
++A [HA REST API](https://contributors.home-assistant.io/core/internals/rest-api/#get-apistates)
++közös listás állapotvégpontját használjuk; nem új szolgáltatást vagy
++függőséget vezettünk be. A hozzáférési tokent, nyers állapotokat vagy más
++entitások adatait nem exportáltuk. MQTT publish/HA-módosítás nem történt.
++
++## Módosítás és megőrzött szerződés
++
++- Ciklusonként egy batch GET, utána helyi szűrés a változatlan entity map szerint.
++  Nincs entitásonkénti hálózati ciklus vagy hibánál N kéréses fallback. A HTTP-
++  válasz context managerben lezárul, hibás JSON/body esetén is.
++- Hiányzó vagy `unknown`/`unavailable` entitás kimarad; a válasz többi használható
++  entitása megmarad. Teljes HTTP/JSON/body-hiba üres ciklust ad (`entity_count=0`,
++  `meta={}`), régi értékek visszajátszása nélkül. A következő kör friss GET-et indít.
++- A metrikanevek, értékkonverzió, topic, QoS/retain és a meglévő `source`,
++  `entity_count`, `meta` mezők kompatibilisek. A négy régi metaadatmező megmaradt:
++  `entity_id`, `unit`, `friendly_name`, `last_updated`.
++- `sample_time` a batch kiolvasása **utáni** UTC megfigyelési idő. Két additív
++  mező: `meta[key].observed_at` és `meta[key].ha_state_age_seconds`. Utóbbi a HA
++  `last_updated` kora; hibás/hiányzó/naiv/jövőbeli timestampnél null. Nem állítja
++  az inverter fizikai mintájának korát. Változatlan állapot kora nőhet egészséges
++  forrásnál is; nem vezettünk be új stale-küszöböt vagy automatikus értéktörlést.
++- A meglévő SQL 019 `meta` JSON-state metrika és a változatlan ingest generikus
++  útvonala tárolja az új metaadatot. Nem kell DB-migráció vagy új ingestkód.
++  Kimaradó metrika nem törli a korábbi DB-értéket, csak nem ad új mintát.
++- A ciklusidő/sleep monoton órát használ, az alapértelmezett időköz 60 másodperc.
++  Túlcsordulás után az eddigi legalább egy másodperces várakozás megmarad.
++  Worker-health allowance már egy kérésből számol; nem az entitásszám szorzójából.
++  A health reporter, MQTT-auth és availability/reconnect viselkedése megmaradt.
++
++A HTTP connect/read timeout nem kemény teljes ciklushatáridő: ezt a
++[Requests dokumentációja](https://requests.readthedocs.io/en/latest/user/advanced/#timeouts)
++is különválasztja. A javítás az entitásszámnyi soros várakozás szorzóját szünteti
++meg; nem ígér szigorú 15/60 másodperces wall-clock korlátot lassan csorgó válasz,
++DNS vagy több connect-próba esetére. A health-státusz észleli az elakadást, nem
++szakítja meg a socketet. Kemény transporthatáridő külön döntés, ebben a javításban
++nem rendeztünk további életciklus-/transport-auditfeladatot.
++
++## Ellenőrzés
++
++| Végső profil | Eredmény |
++|---|---|
++| Growatt, a tényleges poller-image Python-környezetében | 18 sikeres |
++| Teljes backend unit suite | 816 sikeres |
++| Korábbi HC-24 mDNS-profil | 19 sikeres |
++| Ingest regresszió | 52 sikeres |
++
++**905 különböző végső teszt, 0 failure/error/skip.** A tesztazonosítókat a
++profilok között is egyeztettük; az ingest ID-k a unittest-logból ellenőrizhetők.
++A tesztkonténerek hálózat nélkül futottak, tiltott valódi HA/MQTT klienssel a
++Growatt-próbákban. Egyetlen request/27 metrika, hiányzó/ismeretlen állapot,
++HTTP-/JSON-/részleges body-timeout, következő körös helyreállás, aliasok,
++forráskor, hibás/jövőbeli timestamp, monoton sleep, health és shutdown ellenőrizve.
++
++Négy további szintetikus forgatókönyvben az eredeti main-loop AST-jével
++összevetve a régi MQTT mezők pontosan egyeznek, az új két metaadatmezőt
++leszámítva. A tényleges ingest-mapper és a meglévő JSON-meta útvonal is ellenőrzött.
++Az első Growatt-tesztkör egy hiányos datetime-mock miatt hibázott; a fixture-ben
++pótolt `fromisoformat` után mind a 18 teszt sikeres. A korábbi log megmaradt,
++nem része a sikeres elfogadásnak.
++
++A jelölt függvényeinek külön, **csak olvasó éles HA-próbája** egyetlen GET-ből
++26 használható metrikát épített a 27 konfiguráltból, 26 kor-/timestampmezővel.
++Ez nem élesítés és nem MQTT-küldés: a jelölt függvény külön rövid életű
++folyamatban futott, a futó poller folyamata/kódja változatlan maradt.
++[Csak olvasó candidate-próba](audit-evidence/hc26-20261102/live-candidate-smoke.json).
++
++Tényleges végső parancsok:
++
++```bash
++python3 -B docs/audit-evidence/hc26-20261102/check_scope.py
++python3 -B scripts/check_hc_tests.py --profile growatt --output docs/audit-evidence/hc26-20261102/growatt-final
++python3 -B scripts/check_hc_tests.py --profile unit --output docs/audit-evidence/hc26-20261102/unit
++python3 -B scripts/check_hc_tests.py --profile mdns --output docs/audit-evidence/hc26-20261102/mdns
++python3 -B scripts/check_hc_tests.py --profile ingest --output docs/audit-evidence/hc26-20261102/ingest
++```
++
++A Growatt/mDNS-profil deployed policy-val, a generic backend unit a korábban
++igazolt, csak eldobható standard policy-val futott. A korábbi PG-/frontendteszteket
++nem futtattuk újra és nem számoltuk hozzá. Inverterparancs, éles DB-lekérdezés,
++MQTT publish, HA-állapotmódosítás, deploy vagy restart nem történt.
++
++[Összesítés](audit-evidence/hc26-20261102/summary.json),
++[Growatt](audit-evidence/hc26-20261102/growatt-final/test-summary.json),
++[scope](audit-evidence/hc26-20261102/scope-check.json),
++[payload-egyezés](audit-evidence/hc26-20261102/payload-compatibility.json),
++[patch](audit-evidence/hc26-20261102/source.diff),
++[éles változatlanság](audit-evidence/hc26-20261102/production-unchanged.json).
++
++## Függőségek, élesítés és rollback
++
++**Élesítés nem történt.** Új Growatt-poller image és kontrollált kiadás kell.
++A Dockerfile már másolja a módosított scriptet; a dependency lock, HA-verzió,
++MQTT credential-/worker-health fájl, Compose-profile és entity map változatlan.
++A HC-26 önállóan szállítható a még nem éles HC-15/16/20 backend- és HC-24 mDNS-
++javításoktól. Közös platformkiadásnál azok scope-ját külön fel kell tüntetni.
++
++A tesztharness csak az új `growatt` profil bekötéséhez módosult; a staging ezt
++a forráskönyvtárat már korábban kezelte. A HC-23/41/43 folyamatban marad; nincs
++új függőségfrissítés vagy más auditpont automatikus javítása. Az AI letiltva marad.
++A nyers MQTT/DB `meta` információt a fogyasztó értelmezheti; frontend-forráskor-
++megjelenítést vagy fizikai frissességi garanciát ez a pollerjavítás nem vezet be.
++
++A 185 backend-Python-fájl és 62 migráció változatlan; korábbi bizonyítékok
++sértetlenek. A végső csak olvasó ellenőrzés 736 változatlan runtime-hasht és
++mind a 16 konténer változatlan ID/image/futás állapotát igazolta.
++Rollbackhez az eredeti poller/harness/guide fájlok és patch rendelkezésre állnak,
++a korábbi javításokat megtartva; DB- vagy adatvisszaállítás nem szükséges.
+--- a/scripts/check_hc_tests.py
++++ b/scripts/check_hc_tests.py
+@@ -28,7 +28,7 @@
+  'test_scheduler_feedback_postgres':('HC08','hc08_audit_test'),
+  'test_startup_schema_postgres':('HC07','hc07_schema_test'),
+ }
+-PROFILES=('unit','ownership','deployed','postgres','frontend','bridges','ingest','x10','mdns')
++PROFILES=('unit','ownership','deployed','postgres','frontend','bridges','ingest','x10','mdns','growatt')
+ 
+ 
+ def command(args,**kwargs):
+@@ -142,11 +142,11 @@
+          'source_policies':{v:json.loads((s/'.hc-test-source.json').read_text()) for v,s in sources.items()}}
+  try:
+   for profile in PROFILES if args.profile=='all' else (args.profile,):
+-   source=sources['deployed' if profile in ('deployed','ownership','mdns') else 'standard']
++   source=sources['deployed' if profile in ('deployed','ownership','mdns','growatt') else 'standard']
+    if profile=='postgres':
+     result=postgres(source,backend,pgimage,out,runid)
+-   elif profile in ('unit','ownership','deployed','mdns'):
+-    selected=image('homecontrol-mdns') if profile=='mdns' else backend
++   elif profile in ('unit','ownership','deployed','mdns','growatt'):
++    selected=image({'mdns':'homecontrol-mdns','growatt':'homecontrol-ha-growatt-poller'}[profile]) if profile in ('mdns','growatt') else backend
+     result=execute(base_run(source,root=profile=='ownership')+[selected,'python','-B','/src/scripts/hc_test_suite.py',profile],out/(profile+'.log'))
+     result['image']=selected
+    elif profile=='frontend':
+--- a/scripts/hc_test_suite.py
++++ b/scripts/hc_test_suite.py
+@@ -23,7 +23,7 @@
+ 
+ def main():
+     parser = argparse.ArgumentParser(description=__doc__)
+-    parser.add_argument('profile', choices=('unit', 'ownership', 'postgres', 'deployed', 'mdns'))
++    parser.add_argument('profile', choices=('unit', 'ownership', 'postgres', 'deployed', 'mdns', 'growatt'))
+     parser.add_argument('--module', help='One PostgreSQL module in its own disposable DB cluster')
+     args = parser.parse_args()
+     sys.path.insert(0, str(BACKEND))
+@@ -31,6 +31,9 @@
+     if args.profile == 'mdns':
+         sys.path.insert(0, str(ROOT/'infra/mdns'))
+         suite = loader.discover(str(ROOT/'infra/mdns/tests'))
++    elif args.profile == 'growatt':
++        sys.path.insert(0, str(ROOT/'apps/ha-growatt-poller'))
++        suite = loader.discover(str(ROOT/'apps/ha-growatt-poller/tests'))
+     elif args.profile == 'ownership':
+         suite = loader.loadTestsFromNames(sorted(OWNERSHIP))
+     elif args.profile == 'postgres':

@@ -25,6 +25,45 @@ from scoped_ai_power_coordination import ScopedAiPowerCoordinator
 
 
 class AccessReleaseTest(unittest.TestCase):
+    def json_ha_recovery(self, text, images):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'fixture.tar'
+            from io import BytesIO
+            data=text.encode()
+            with tarfile.open(path,'w') as out:
+                member=tarfile.TarInfo('backup/homeassistant/docker-compose.yml')
+                member.size=len(data);out.addfile(member,BytesIO(data))
+            from backup_restore import archive_index
+            with tarfile.open(path) as archive:
+                index,_=archive_index(archive)
+                return restore_assets.recovery_aliases(index,archive,images)
+
+    def test_r18_json_ha_compose_recovers_only_the_cached_pinned_image(self):
+        image='sha256:'+'3'*64
+        model={'services':{'homeassistant':{'image':image,'network_mode':'host',
+            'environment':{'TZ':'Europe/Budapest'},'volumes':['./config:/config']}}}
+        for indent in (None,2):
+            with self.subTest(indent=indent):
+                text=json.dumps(model,indent=indent)
+                self.assertEqual(self.json_ha_recovery(text,[image]),{})
+                with self.assertRaises(ValueError):self.json_ha_recovery(text,[])
+
+    def test_json_ha_compose_rejects_ambiguous_or_invalid_images(self):
+        image='sha256:'+'3'*64
+        cases=[
+            {'services':{'homeassistant':{'image':'ghcr.io/home-assistant/home-assistant:latest'}}},
+            {'services':{'homeassistant':{'image':image},'other':{'image':image}}},
+            {'services':{'homeassistant':{'image':None}}},
+            {'services':{'homeassistant':[]}},
+            {'services':[]},
+        ]
+        texts=[json.dumps(model) for model in cases]
+        texts += ['{"services": {"homeassistant": {"image": "bad", "image": "'+image+'"}}}',
+                  '{"services":']
+        for text in texts:
+            with self.subTest(text=text):
+                with self.assertRaises(ValueError):self.json_ha_recovery(text,[image])
+
     def test_pinned_ha_image_needs_no_tag_alias_or_docker_table(self):
         image='sha256:'+'3'*64
         with tempfile.TemporaryDirectory() as folder:

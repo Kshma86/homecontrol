@@ -1,13 +1,74 @@
 # HomeControl – aktuális éles kiadás
 
-**Új csomag helyi élesítéshez: `hc-security-20261102-r18` (HC-23/43 részjavítás).**
-A 14 fő platformszolgáltatás és a külön HA frissítése, teljes regressziós és
-izolált restore/rollback próbákkal. Még nem éles; az aktív kiadás r16.
-[Élesítő parancs és kapuk](backups/releases/hc-security-20261102-r18/README.md),
-[tételes scope és nyitott függőségi találatok](docs/hc23-43-platform-release-20261102.md).
-Az AI és az ESP MQTT-kivétel változatlan; a teljes HC-43 nem lezárt.
+**r19 összevont auditkiadás előkészítve, még nem éles (REPAIR-068).**
+HC-15/16/20/23/24/26; 1308 regressziós + 41 telepítő/aktiváló teszt, három új image,
+19 image-es offline készlet. A host sudo helyi jelszót kér.
+[Scope, helyi indítóparancs és kötelező éles kapuk](docs/audit-final-release-20261102.md).
+HC-41/43 folyamatban marad; az audit javítási körét az éles átvételi nyugta zárja.
 
-**Aktív: `hc-router-backup-20261101-r16`, élesítve és ellenőrizve 2026-11-01.**
+
+**HC-23 kódjavítása ellenőrzötten lezárva; HC-43 folyamatban (REPAIR-067).**
+A friss r18 hostrestore-ban talált HA JSON Compose-kompatibilitási hiba külön
+javítva, 818 unit teszten és friss/ismételt restore + FTP-kiesés + reboot próbán ellenőrizve; a teljes tesztkör összesen 1308 külön
+tesztje és a frontend build sikeres. A hiba javítása új recovery-/kiadáscsomagot
+igényel, az éles r18 és a lezárt runtime változatlan. A HC-43 gyártói HA/OS
+maradványtalálatai továbbra is fennállnak; ezeket nem minősítjük javítottnak.
+[Konkrét módosítás, maradványkockázatok és laboreredmények](docs/hc23-43-closure-20261102.md).
+
+
+**Új, ellenőrzött kódjavítás: HC-26 (REPAIR-066), még nem éles.**
+A ténylegesen futó, 27 entitásos HA–Growatt poller mérés alapján egy batch GET-et
+használ a 27 soros helyett, külön HA-állapotkorral és megfigyelési idővel.
+905 teszt sikeres; a jelölt csak olvasó HA-próbája egy kérésből 26 használható
+metrikát épített, éles MQTT-küldés nélkül. Új Growatt-poller image/kiadás kell;
+önállóan szállítható a még nem éles HC-15/16/20/24 javításoktól. Az r18 változatlan.
+[Scope, mérés, ellenőrzés és függőségek](docs/hc-26-repair.md).
+
+**Új, ellenőrzött kódjavítás: HC-24 (REPAIR-065), még nem éles.**
+Az mDNS-parser pointerciklus-, névhossz- és csomaghatár-ellenőrzést kapott;
+hibás kérdésszekció után a következő csomag feldolgozható. 19 izolált mDNS-
+és 816 backend unit teszt sikeres. LAN-csomagküldés és éles változtatás nem történt.
+Új mDNS-image/kiadás szükséges, önállóan szállítható a még nem éles HC-15/16/20
+backendjavításoktól. A többkérdéses válasz meglévő, külön korlátját dokumentáltuk.
+[Scope, ellenőrzés és függőségek](docs/hc-24-repair.md).
+
+**Új, ellenőrzött kódjavítás: HC-20 (REPAIR-064), még nem éles.**
+Az elérhetetlen három legacy öntözési metódus kivezetve; a 86 megmaradó metódus,
+V2 stop-policy, történeti adatok és publikus API-k megmaradtak. A domain-guide
+az aktív V2 végrehajtást írja le. 816 unit + 198 izolált PostgreSQL-teszt
+sikeres; 12 előtte/utána payload-/SQL-forgatókönyv pontos egyezést adott.
+Az éles r18 változatlan. A következő backendkiadásnak a HC-15/16/20 javításait
+együtt kell tartalmaznia. [Scope, ellenőrzés, függőségek](docs/hc-20-repair.md).
+
+**Új, ellenőrzött kódjavítás: HC-16 (REPAIR-063), még nem éles.**
+A rover ötmodulos importköre megszűnt; a tiszta validáció közös levélmodulba
+került, két használatlan operator-settings mező kivezetve. A same-origin és
+natív Bearer megmaradt. 810 unit + 197 PostgreSQL + 114 frontendteszt és build
+sikeres, hiba/kihagyás nélkül. Az r18 változatlan; a következő backendkiadásnak
+az új protokollmodult és a korábbi HC-15 javítást is tartalmaznia kell.
+[Scope, ellenőrzés és függőségek](docs/hc-16-repair.md).
+
+**Új, ellenőrzött kódjavítás: HC-15 (REPAIR-062), még nem éles.**
+A DB-wrapperlánc egyszerűsítése és az app domainlekérdezéseinek service-be
+helyezése 806 unit + 197 izolált PostgreSQL-teszten átment. Az r18 változatlan;
+új backendkiadás szükséges. [Scope, eredmények és függőségek](docs/hc-15-repair.md).
+
+**Aktív: `hc-security-20261102-r18`, élesítve és ellenőrizve 2026-11-02.**
+A 14 fő platformszolgáltatás és a külön HA a várt, pontosan rögzített image-en fut.
+Mind a 736 csomag-/runtime-forráshash egyezik; a definiált 10 healthcheck healthy,
+backend live/ready/workers rendben, frontend/proxy HTTP200, restart0, systemd-hiba nincs.
+Az 5 hosttimer aktív és engedélyezett. A HA hitelesített API-ja és 64 korábban
+elérhető Growatt-entitás rendben; PostgreSQL16 kolláció 2.41/2.41.
+Friss HC/Git/router mentés, 6373 checksum, visszaolvasás és külön PostgreSQL-restore
+sikeres. Az AI letiltva és az ESP MQTT kivétel megmaradt. HC-23/43 részjavításai
+élesek; a globális auditpontok és az upstream függőségi találatok továbbra is nyitottak.
+[Éles átadás és rollback](backups/deployments/hc-security-20261102-r18/DEPLOYMENT.md),
+[éles utóellenőrzés](docs/audit-evidence/hc23-43-r18-live-20261102/production-check.json),
+[tételes scope és korlátok](docs/hc23-43-platform-release-20261102.md).
+
+A következő bekezdés a korábbi r16 kiadás történeti átadása.
+
+**Korábbi aktív: `hc-router-backup-20261101-r16`, élesítve és ellenőrizve 2026-11-01.**
 A teljes helyi és titkosított routeres mentés, a külső Git-feltöltés, a megőrzés
 előtti és utáni adatellenőrzés, 5561 fájlchecksum és az izolált PostgreSQL-restore
 sikeres. Mind a 711 csomag- és runtime-forráshash egyezik; backend/frontend

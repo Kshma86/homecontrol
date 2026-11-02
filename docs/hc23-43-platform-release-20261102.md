@@ -1,7 +1,18 @@
 # HC-23/43 — r18 élesítési csomag, 2026-11-02
 
-Az aktív kiadás továbbra is **hc-router-backup-20261101-r16**. Az új
-**hc-security-20261102-r18** előkészített részjavítás; nem éles átvételi bizonyíték.
+> **Későbbi lezárási felülvizsgálat:** [2026-11-02-i új ellenőrzés](hc23-43-closure-20261102.md).
+> A teljes tesztcsomag és az éles függőséglista újraellenőrizve; az r18 friss
+> hostrestore-jában JSON Compose-kompatibilitási hiba igazolódott. A külön
+> munkapéldány-/laborjavítás nem módosítja az alábbi történeti r18 kiadást.
+
+
+**Aktív: hc-security-20261102-r18, élesítve és szoftveresen ellenőrizve 2026-11-02.**
+A teljes privát HA-előpróba és az élesítés sikeres. Független utóellenőrzés:
+736 egyező forráshash, 15 várt image, 10 healthy healthcheck, 5 aktív timer,
+HTTP200; a HA hitelesített API-ja és 64 Growatt-entitás megmaradt, PG16/kolláció jó.
+Friss Git/router mentés, 6373 checksum és külön PG-restore sikeres.
+[Éles átadás és rollback](../backups/deployments/hc-security-20261102-r18/DEPLOYMENT.md),
+[utóellenőrzés](audit-evidence/hc23-43-r18-live-20261102/production-check.json).
 Az AI tiltása, az ESP MQTT legacy kivétele, a Git-feltöltés és a routeres mentési
 beállítások megmaradnak. Az audit összesítése változatlan: HC-23/43 folyamatban.
 
@@ -68,16 +79,18 @@ Elsődleges források: [HA kiadás](https://www.home-assistant.io/blog/2026/10/0
 [Debian libxml2](https://security-tracker.debian.org/tracker/CVE-2026-6653),
 [Debian kernel-fejlécek](https://security-tracker.debian.org/tracker/CVE-2026-99083).
 
-## Élesítés és rollback
+## Megtörtént élesítés és rollback
 
-Az élesítés a platform és a HA rövid kiesésével jár. Aktív öntözés vagy nem
-nyugalmi/töltő robot esetén a parancs még az átállítás előtt megáll. Helyi terminál:
+Az élesítés a platform és a HA rövid kiesésével járt. Aktív öntözés vagy nem
+nyugalmi/töltő robot esetén a parancs még az átállítás előtt megáll.
+A már sikeresen lefuttatott helyi parancs; nem ismétlendő:
 
 ```bash
 sudo python3 /srv/docker/homecontrol/backups/releases/hc-security-20261102-r18/source/scripts/security_release/activate.py
 ```
 
-A helyi sudo a védett HA auth/config, a rendszerkonfiguráció és a systemd
+A következő leírás a már sikeresen lefutott élesítési folyamatot rögzíti;
+az aktiválást nem ismételjük. A helyi sudo a védett HA auth/config, a rendszerkonfiguráció és a systemd
 módosítása miatt szükséges. A parancs hash-eket és r16 baseline-t ellenőriz,
 hitelesített HA/Growatt állapotot rögzít, majd **minden éles szolgáltatás futása
 mellett** teljes privát HA-másolatot készít és próbál ki hálózat nélkül.

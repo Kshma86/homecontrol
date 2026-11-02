@@ -265,10 +265,6 @@ def db_conn(row_factory=None):
     return DB_RUNTIME.conn(row_factory)
 
 
-def get_repository_registry():
-    return DB_RUNTIME.repositories
-
-
 def fetch_all(sql: str, params: Iterable[Any] = ()):
     return DB_RUNTIME.fetch_all(sql, params)
 
@@ -473,57 +469,7 @@ def fetch_notes():
 
 
 def fetch_climate_schedule_rules(profile=None):
-    get_season_profile_service().ensure_schema()
-    ensure_scheduler_schema()
-    profile = normalize_text(profile) or None
-    if profile not in (None, "summer", "winter"):
-        raise ValueError("profile must be summer or winter")
-    return fetch_all(
-        """
-        with schedule_state as (
-          select
-            r.*,
-            a.profile as active_profile,
-            day_of_week = extract(isodow from now())::int - 1 as is_today,
-            is_enabled
-              and r.season_profile = a.profile
-              and day_of_week = extract(isodow from now())::int - 1
-              and to_char(localtime, 'HH24:MI') = to_char(start_time, 'HH24:MI')
-              as should_run_now
-          from hc.climate_schedule_rule r
-          join hc.domain_season_active a on a.domain = 'climate'
-          where r.season_profile = coalesce(%s, a.profile)
-        )
-        select
-          id,
-          label,
-          day_of_week,
-          to_char(start_time, 'HH24:MI') as start_time,
-          is_enabled,
-          season_profile,
-          active_profile,
-          season_profile = active_profile as is_active_profile,
-          is_today,
-          should_run_now,
-          case
-            when should_run_now then 'due_now'
-            when is_enabled and is_today then 'armed_today'
-            when is_enabled then 'armed'
-            else 'disabled'
-          end as schedule_status,
-          power,
-          mode,
-          target_temperature,
-          fan_speed,
-          light,
-          coalesce(extra_fan, 'keep') as extra_fan,
-          rule_engine,
-          updated_at
-        from schedule_state
-        order by day_of_week, start_time, id
-        """,
-        (profile,),
-    )
+    return get_climate_service().fetch_schedule_rules(profile)
 
 
 def record_scheduler_shadow_audit():
@@ -695,21 +641,6 @@ def get_irrigation_service():
     return _irrigation_service
 
 
-def fetch_irrigation_v2_session(source_ref: str):
-    return fetch_one(
-        """
-        select requested_stop_at
-        from hc.irrigation_manual_session
-        where started_by = 'v2_scheduler'
-          and start_payload ->> 'schedule_id' = %s
-          and started_at::date = current_date
-        order by started_at desc
-        limit 1
-        """,
-        (str(source_ref),),
-    )
-
-
 def get_scheduler_service():
     global _scheduler_service
     if _scheduler_service is None:
@@ -740,7 +671,7 @@ def get_scheduler_service():
                     v2_allow_x10=HC_V2_EXECUTION_ALLOW_X10,
                     v2_allow_climate=HC_V2_EXECUTION_ALLOW_CLIMATE,
                     evaluate_irrigation_pilot=lambda **kwargs: get_irrigation_service().evaluate_pilot(**kwargs),
-                    fetch_irrigation_v2_session=fetch_irrigation_v2_session,
+                    fetch_irrigation_v2_session=lambda source_ref: get_irrigation_service().fetch_v2_session(source_ref),
                     irrigation_command_topic=lambda: command_topics()["valve"],
                     x10_schedule_clean_topic=x10_schedule_clean_topic(X10_BASE_TOPIC),
                     x10_weekly_schedule_topic=x10_weekly_schedule_topic(X10_BASE_TOPIC),
@@ -782,6 +713,8 @@ def get_climate_service():
                     sync_auto_power_wall=sync_auto_climate_power_wall,
                     process_binding_payload=lambda key: get_process_binding_service().binding(key, include_candidates=True),
                     process_binding_entity_id=lambda key: get_process_binding_service().selected_entity_id(key),
+                    ensure_season_profile_schema=lambda: get_season_profile_service().ensure_schema(),
+                    ensure_scheduler_schema=ensure_scheduler_schema,
                 )
     return _climate_service
 

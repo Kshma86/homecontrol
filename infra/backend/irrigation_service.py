@@ -348,6 +348,20 @@ class IrrigationService:
         finally:
             self._daily_summary_lock.release()
 
+    def fetch_v2_session(self, source_ref: str):
+        return self.fetch_one(
+            """
+            select requested_stop_at
+            from hc.irrigation_manual_session
+            where started_by = 'v2_scheduler'
+              and start_payload ->> 'schedule_id' = %s
+              and started_at::date = current_date
+            order by started_at desc
+            limit 1
+            """,
+            (str(source_ref),),
+        )
+
     def running_session(self):
         return self.fetch_one(
             """
@@ -2914,195 +2928,6 @@ class IrrigationService:
                     """
                 ),
             }
-
-
-    def start_scheduled_session(self, schedule_id: int):
-        stop_generation = self._open_request_generation()
-        if not self.capability_allowed("scheduled_watering"):
-            print(f"[SEASON PROFILE] irrigation schedule_id={schedule_id} blocked", flush=True)
-            return
-        self.session_recovery.initialize()
-        if self.session_recovery.blocked:
-            return
-        row = self.fetch_one(
-            """
-            select
-              id,
-              label,
-              to_char(start_time, 'HH24:MI') as start_time,
-              to_char(stop_time, 'HH24:MI') as stop_time,
-              round(extract(epoch from (stop_time - start_time)) / 60)::int as duration_minutes
-            from hc.irrigation_schedule
-            where id = %s
-              and is_active = true
-              and day_of_week = extract(isodow from now())::int - 1
-              and localtime >= start_time
-              and localtime < stop_time
-              and (last_started_on is distinct from current_date)
-              and not exists (
-                select 1
-                from hc.irrigation_manual_session
-                where status in ('running', 'starting')
-              )
-            """,
-            (schedule_id,),
-        )
-        if not row:
-            return
-
-        decision = self.evaluate_pilot(base_duration=row["duration_minutes"])
-        if decision["mode"] == "navigator":
-            self.log_pilot_decision(decision, schedule_id=row["id"], execution_status="navigator_only")
-            print(f"[PILOT] navigator schedule_id={row['id']} final={decision['final_duration']} reason={decision['reason']}", flush=True)
-        else:
-            decision["executed"] = False
-
-        if decision["mode"] == "pilot" and int(decision["final_duration"]) <= 0:
-            self.execute_one(
-                """
-                update hc.irrigation_schedule
-                set last_started_on = current_date,
-                    updated_at = now()
-                where id = %s
-                returning id
-                """,
-                (schedule_id,),
-            )
-            decision["executed"] = True
-            self.log_pilot_decision(decision, schedule_id=row["id"], execution_status="skipped")
-            print(f"[PILOT] skipped schedule_id={row['id']} reason={decision['reason']}", flush=True)
-            return
-
-        minutes_source = decision["final_duration"] if decision["mode"] == "pilot" else row["duration_minutes"]
-        minutes = max(1, min(int(minutes_source or 1), self.manual_max_minutes))
-        valve_payload = {
-            "cmd": "set",
-            "value": "open",
-            "source": "pilot" if decision["mode"] == "pilot" else "scheduler",
-            "schedule_id": row["id"],
-            "schedule_label": row["label"],
-            "schedule_duration_minutes": row["duration_minutes"],
-            "duration_minutes": minutes,
-        }
-        if decision["mode"] == "pilot":
-            valve_payload.update(
-                {
-                    "pilot_final_duration": int(decision["final_duration"]),
-                    "pilot_triggered_rules": decision.get("triggered_rules", []),
-                }
-            )
-        reservation = self._reserve_start(
-            minutes, "pilot" if decision["mode"] == "pilot" else "scheduler", valve_payload, schedule_id=row["id"],
-        )
-        session = reservation.get("session")
-        if not session:
-            print(f"[ADMISSION] legacy schedule_id={row['id']} blocked by {reservation.get('blocked_by')}", flush=True)
-            return
-        valve_ok, valve_message, valve_details = self.publish_open_with_confirmation(valve_payload, stop_generation=stop_generation)
-        confirmed_payload = {
-            **valve_payload,
-            "confirmation": {
-                "ok": valve_ok,
-                "message": valve_message,
-                **valve_details,
-            },
-        }
-        if decision["mode"] == "pilot":
-            self.log_pilot_decision(decision, schedule_id=row["id"], execution_status="command_confirmed" if valve_ok else "start_failed")
-        if valve_ok and session:
-            self.execute_one(
-                """
-                update hc.irrigation_manual_session
-                set status = 'running',
-                    start_payload = %s::jsonb
-                where id = %s and status = 'starting'
-                returning *
-                """,
-                (json.dumps(confirmed_payload), session["id"]),
-            )
-        elif session:
-            self.execute_one(
-                """
-                update hc.irrigation_manual_session
-                set status = 'start_failed',
-                    stopped_at = now(),
-                    start_payload = %s::jsonb,
-                    error = %s
-                where id = %s
-                returning id
-                """,
-                (json.dumps(confirmed_payload), f"valve={valve_message}", session["id"]),
-            )
-        print(f"[SCHEDULE] start id={row['id']} ok={valve_ok} message={valve_message}", flush=True)
-
-    def run_due_schedules(self):
-        guard = self.manual_valve_scheduler_guard()
-        if guard["blocked"]:
-            print(f"[SCHEDULE] blocked by manual valve state={guard['state']}", flush=True)
-            return
-
-        rows = self.fetch_all(
-            """
-            select id
-            from hc.irrigation_schedule
-            where is_active = true
-              and day_of_week = extract(isodow from now())::int - 1
-              and localtime >= start_time
-              and localtime < stop_time
-              and (last_started_on is distinct from current_date)
-            order by start_time, id
-            """
-        )
-        for row in rows:
-            self.start_scheduled_session(int(row["id"]))
-
-    def stop_due_schedules(self):
-        rows = self.fetch_all(
-            """
-            select id
-            from hc.irrigation_schedule
-            where is_active = true
-              and day_of_week = extract(isodow from now())::int - 1
-              and localtime >= stop_time
-              and last_started_on = current_date
-              and (last_stopped_on is distinct from current_date)
-            order by stop_time, id
-            """
-        )
-        for row in rows:
-            session = self.fetch_one(
-                """
-                select id, status
-                from hc.irrigation_manual_session
-                where started_by in ('scheduler', 'pilot')
-                  and start_payload ->> 'schedule_id' = %s
-                  and started_at::date = current_date
-                order by started_at desc
-                limit 1
-                """,
-                (str(row["id"]),),
-            )
-            should_mark_stopped = session is None
-            if session and session["status"] == "running":
-                ok, message, _ = self.stop_manual_session(int(session["id"]), "schedule_stop")
-                print(f"[SCHEDULE] stop id={row['id']} ok={ok} message={message}", flush=True)
-                should_mark_stopped = ok
-            elif session and session["status"] == "stop_failed":
-                print(f"[SCHEDULE] stop id={row['id']} still failed; not marking stopped", flush=True)
-            elif session:
-                should_mark_stopped = session["status"] in ("stopped", "auto_stopped")
-
-            if should_mark_stopped:
-                self.execute_one(
-                    """
-                    update hc.irrigation_schedule
-                    set last_stopped_on = current_date,
-                        updated_at = now()
-                    where id = %s
-                    returning id
-                    """,
-                    (row["id"],),
-                )
 
     def mark_v2_execution(self, schedule_id: Any, value: str, status: str, result: Dict[str, Any], error: Optional[str] = None):
         return self.execute_one(

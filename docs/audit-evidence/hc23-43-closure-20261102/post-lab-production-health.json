@@ -1,0 +1,87 @@
+{
+  "scope": "final check after bounded lab cleanup",
+  "containers": {
+    "homecontrol-proxy": {
+      "running": true,
+      "restarts": 0,
+      "health": null
+    },
+    "homecontrol-frontend": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "homecontrol-backend": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "homecontrol-ingest": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "homecontrol-pgbouncer": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "homecontrol-tuya-poller": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "homecontrol-gree-climate": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "homecontrol-xiaomi-x10": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "homecontrol-ha-growatt-poller": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "homecontrol-mqtt": {
+      "running": true,
+      "restarts": 0,
+      "health": null
+    },
+    "homecontrol-postgres": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "zigbee2mqtt": {
+      "running": true,
+      "restarts": 0,
+      "health": null
+    },
+    "homecontrol-ai-server": {
+      "running": true,
+      "restarts": 0,
+      "health": "healthy"
+    },
+    "homecontrol-mdns": {
+      "running": true,
+      "restarts": 0,
+      "health": null
+    },
+    "homeassistant": {
+      "running": true,
+      "restarts": 0,
+      "health": null
+    },
+    "homecontrol-adminer": {
+      "running": false,
+      "restarts": 0,
+      "health": null
+    }
+  },
+  "failed_systemd_units": "",
+  "root_available_bytes": 54302453760
+}

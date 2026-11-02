@@ -1,0 +1,581 @@
+--- a/AUDIT_REPAIR.md
++++ b/AUDIT_REPAIR.md
+@@ -16,8 +16,8 @@
+ A teljes privát HA-előpróba, hitelesített HA API/64 Growatt-entitás és PG16/kolláció
+ sikeres. Friss HC/Git/router mentés, 6373 checksum, visszaolvasás és külön PG-restore
+ sikeres. Az AI tiltva, ESP MQTT kivétel változatlan. HC-23/43 részjavításai élesek;
+-a globális pontok/upstream találatok nyitottak. A későbbi HC-15/16/20 kódjavítások
+-ellenőrzöttek, de még nincsenek ebben az éles kiadásban (REPAIR-062/063/064).
++a globális pontok/upstream találatok nyitottak. A későbbi HC-15/16/20/24 kódjavítások
++ellenőrzöttek, de még nincsenek ebben az éles kiadásban (REPAIR-062/063/064/065).
+ [Éles átadás](backups/deployments/hc-security-20261102-r18/DEPLOYMENT.md),
+ [utóellenőrzés](docs/audit-evidence/hc23-43-r18-live-20261102/production-check.json).
+ 
+@@ -33,8 +33,8 @@
+ ellenőrzéseknek már nem akadálya.
+ [Éles r16 átvétel és rollback](backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md).
+ 
+-**Auditösszesítés:** 43 ellenőrzött, 2 nyitott, 3 folyamatban.
+-HC-15/16/20 izoláltan ellenőrzött kódjavítás; éles bevezetésük még nem történt meg.
++**Auditösszesítés:** 44 ellenőrzött, 1 nyitott, 3 folyamatban.
++HC-15/16/20/24 izoláltan ellenőrzött kódjavítás; éles bevezetésük még nem történt meg.
+ HC-12 és HC-32 javítása éles; az aktív runtime r18. HC-23/43 globális részei és
+ HC-41 az ESP legacy kivétel miatt folyamatban. HC-31 fizikai shutdown/OFF/wake
+ próba nem futott, csak későbbi AI-újraaktiválás előtt szükséges. A régi AI-Gitea
+@@ -43,14 +43,14 @@
+ ## Az áttekintés eredménye
+ 
+ **Legújabb lezárt kiadási munka:** REPAIR-061, aktív r18.
+-**Legújabb ellenőrzött kódjavítás:** REPAIR-064, kizárólag HC-20; nem éles.
+-[Módosítás és ellenőrzés](docs/hc-20-repair.md). A korábbi HC-15/16 javítások
+-(REPAIR-062/063) megőrzöttek, szintén nem élesek.
++**Legújabb ellenőrzött kódjavítás:** REPAIR-065, kizárólag HC-24; nem éles.
++[Módosítás és ellenőrzés](docs/hc-24-repair.md). A korábbi HC-15/16/20 javítások
++(REPAIR-062/063/064) megőrzöttek, szintén nem élesek.
+ A HC-23/43 kontrollált platformfrissítése éles és szoftveresen átvett;
+ a globális auditpontok továbbra is folyamatban. [Scope, bizonyítékok és nyitott találatok](docs/hc23-43-platform-release-20261102.md).
+ Az SSD miatt korábban félretett, jelenlegi mentési láncra vonatkozó ellenőrzések
+ lezárva; [tételes bizonyítékok](docs/ai-ssd-backup-closure-20261101.md).
+-HC-24/26 továbbra is nyitott, HC-23/41/43 folyamatban. Más feladat
++HC-26 továbbra is nyitott, HC-23/41/43 folyamatban. Más feladat
+ besorolása nem változott; a korábbi naplóbejegyzések történeti állapotot őriznek.
+ 
+ - A dokumentum 48, folytonosan számozott megállapítást tartalmaz: **20 P1, 26 P2, 2 P3**. A tételes besorolás egyezik az N.5 összesítésével. P0 megállapítást nem rögzít.
+@@ -97,7 +97,7 @@
+ | HC-21 | P2 | Túlzott AI-kontextus és két helyen élő válaszlogika | F9 | Ellenőrzött |
+ | HC-22 | P2 | Frontend GET-határidő és elavult válaszok kizárása | F9 | Ellenőrzött |
+ | HC-23 | P2 | Reprodukálható telepítés és alkalmazásszintű állapotellenőrzés | F10 | Folyamatban |
+-| HC-24 | P2 | Végtelen ciklus az mDNS-parserben | F1 | Nyitott |
++| HC-24 | P2 | Végtelen ciklus az mDNS-parserben | F1 | Ellenőrzött |
+ | HC-25 | P3 | Teljes backup-log olvasása és író lockellenőrzés | F6 | Ellenőrzött |
+ | HC-26 | P3 | HA-Growatt entitásonként soros HTTP-polling | F10, használattól/méréstől függően | Nyitott |
+ | HC-27 | P1 | Hibajelzés előtt részlegesen alkalmazott restore | F6a | Ellenőrzött |
+@@ -125,9 +125,9 @@
+ 
+ **Kezdő összesítés:** 48 nyitott; 0 folyamatban; 0 javított; 0 ellenőrzött; 0 halasztott. Éles bevezetés nem történt.
+ 
+-**Aktuális összesítés:** 2 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
+-43 ellenőrzött; 0 halasztott. HC-15/16/20 kódja ellenőrzött, de még nem éles
+-(REPAIR-062/063/064).
++**Aktuális összesítés:** 1 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
++44 ellenőrzött; 0 halasztott. HC-15/16/20/24 kódja ellenőrzött, de még nem éles
++(REPAIR-062/063/064/065).
+ HC-12/32 és az elkészült HC-23/43 részjavítások
+ élesek; aktív az r18 (REPAIR-061). Az r10 korábbi HC-35/36 + HC-41/44 javításait
+ az aktív kiadás megőrzi (REPAIR-049); az ESP legacy kivétel miatt
+@@ -3534,3 +3534,50 @@
+ [scope](docs/audit-evidence/hc20-20261102/scope-check.json),
+ [payload-egyezés](docs/audit-evidence/hc20-20261102/payload-parity.json),
+ [éles változatlanság](docs/audit-evidence/hc20-20261102/production-unchanged.json).
++
++
++## REPAIR-065 — HC-24: korlátos mDNS-pointer- és kérdésfeldolgozás (2026-11-02)
++
++- **Hatókör / fázis:** kizárólag HC-24, F0/F1. Elolvasva a megállapítás,
++  a H.1 pointerciklus-bizonyítéka, F0 és az érintett F1 lépés. Az export-/secret-
++  kezelés HC-17/18 része nem módosult. Az eredeti audit SHA-256 változatlan;
++  az r18 visszaállítással ellenőrzött mentése és a korábbi HC-20 alap rendelkezésre állt.
++- **Státusz:** Ellenőrzött, izolált szoftveres környezetben; **nem élesített**.
++  Aktív továbbra is `hc-security-20261102-r18`. Más auditpont státusza nem módosult.
++- **Reprodukció / javítás:** az eredeti önhivatkozó és kétpointeres ciklus
++  100 ms időkorlátba futott hálózat nélkül. A `read_name()` meglátogatott
++  offseteket, pointer-/címkehatárt és kibontott névhosszt ellenőriz. A helyi
++  pointerugrás-korlát 128; ez külön erőforráskorlát, nem RFC-hosszlimit.
++  A `parse_questions()` a hibás/csonka kérdésszekciót teljesen eldobja, részleges
++  válasz nélkül. A következő jó csomag feldolgozható marad.
++- **Ellenőrzés:** **19 mDNS + 816 backend unit = 835 egyedi végső teszt,
++  0 failure/error/skip**. Az mDNS-profil a tényleges mDNS-image Pythonjával,
++  hálózat nélkül, tiltott valódi socketkonstruktorral futott. Ciklusok,
++  csonka/határon túli név, érvényes tömörítés/folytatási offset, ugráskorlát,
++  hibás későbbi kérdés és fake fogadóciklus ellenőrizve. 3000 véletlen bájtfixture
++  és 200 generált név a 19 teszt része. Az egyszerű A/ANY válasz és announcement
++  bájtpontosan egyezik az eredetivel. PG-/frontendteszt nem futott újra.
++- **Tesztbekötés:** az új `mdns` profil és `infra/mdns` staging szükséges ahhoz,
++  hogy a teszt a módosított parsert futtassa. A korábbi profilok viselkedése
++  megmaradt; a változtatás nem zárja le a HC-23 globális kiadási feladatait.
++- **Megőrzött határok:** kizárólag a két parserfüggvény és két korlátkonstans
++  változott a responderben. Main/socket/válaszépítő/announcement AST változatlan;
++  185 backend-Python-fájl és 62 SQL-migráció változatlan. HC-15/16/20 működése
++  és korábbi bizonyítékai megmaradtak. Nincs új csomagfüggőség vagy szolgáltatáscsere.
++- **Külön megfigyelés, nem javítva:** többkérdéses querynél a meglévő builder
++  minden kérdés bájtját másolja, de QDCOUNT=1-et ír. Külön szintetikus bizonyíték
++  készült; ez válaszformátum-felülvizsgálat, nem a pointerciklus-javítás előfeltétele.
++- **Függőségek / bevezetés:** új mDNS-image és kontrollált mDNS-kiadás kell;
++  runtime-szinten nem függ a még nem éles HC-15/16/20 backendjavításoktól.
++  Közös platformkiadásban azok scope-ja külön feltüntetendő. HC-26 és a
++  HC-23/41/43 nyitott részei változatlanok; AI letiltva marad.
++- **Éles változatlanság / rollback:** 736 runtime-hash és 16 konténer
++  ID/image/futás állapota változatlan; deploy/restart, DB/eszközművelet és
++  LAN-csomagküldés nem történt. Az eredeti parser/harnessfájlok és patch alapján
++  tiszta kód-revert lehetséges a korábbi javítások megtartásával; DB-/adatrestore nem kell.
++
++[Tételes leírás](docs/hc-24-repair.md),
++[összesítés](docs/audit-evidence/hc24-20261102/summary.json),
++[scope](docs/audit-evidence/hc24-20261102/scope-check.json),
++[külön megfigyelés](docs/audit-evidence/hc24-20261102/separate-observation.json),
++[éles változatlanság](docs/audit-evidence/hc24-20261102/production-unchanged.json).
+--- a/DEPLOYMENT_PREP.md
++++ b/DEPLOYMENT_PREP.md
+@@ -1,4 +1,12 @@
+ # HomeControl – aktuális éles kiadás
++
++**Új, ellenőrzött kódjavítás: HC-24 (REPAIR-065), még nem éles.**
++Az mDNS-parser pointerciklus-, névhossz- és csomaghatár-ellenőrzést kapott;
++hibás kérdésszekció után a következő csomag feldolgozható. 19 izolált mDNS-
++és 816 backend unit teszt sikeres. LAN-csomagküldés és éles változtatás nem történt.
++Új mDNS-image/kiadás szükséges, önállóan szállítható a még nem éles HC-15/16/20
++backendjavításoktól. A többkérdéses válasz meglévő, külön korlátját dokumentáltuk.
++[Scope, ellenőrzés és függőségek](docs/hc-24-repair.md).
+ 
+ **Új, ellenőrzött kódjavítás: HC-20 (REPAIR-064), még nem éles.**
+ Az elérhetetlen három legacy öntözési metódus kivezetve; a 86 megmaradó metódus,
+--- /dev/null
++++ b/docs/hc-24-repair.md
+@@ -0,0 +1,118 @@
++# HC-24 — Korlátos mDNS-kérdésfeldolgozás
++
++2026-11-02, Europe/Budapest. **Ellenőrzött forrásjavítás, nincs élesítve.**
++Az aktív kiadás változatlanul `hc-security-20261102-r18`. A korábbi HC-15/16/20
++javítások megmaradtak; más auditpont implementációja és státusza nem változott.
++
++## Bizonyíték és hatókör
++
++Elolvasva az eredeti HC-24 megállapítás, a H.1-ben rögzített pointerciklus-
++reprodukció, F0 és az érintett F1 lépés. Az eredeti audit változatlan SHA-256:
++`51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2`.
++F1-ből itt kizárólag a DNS-parser javítása és szintetikus fixture-ellenőrzése
++érintett; a HC-17/18 export-/secret-kezelését nem módosítottuk.
++
++Az eredeti `read_name()` mind a `c000` önhivatkozásnál, mind a `c002c000`
++kétpointeres ciklusnál 100 ms után is futott; a most megismételt, hálózatmentes
++próbát időzítő szakította meg. A parser importja és az érvényes kiinduló A/ANY
++válasz-/announcement fixture-ök előállítása sem hozott létre socketet.
++[Kiinduló reprodukció](audit-evidence/hc24-20261102/baseline-parser.json).
++
++F0 alapja a korábban teljes visszaolvasással és izolált PG-restore-ral ellenőrzött
++r18 mentés (`86b8ed71e4104b3a8eb909ae86e8ea91`), az aktuális források rögzítése, a korábbi
++HC-20 816 unit + 198 PG eredménye és az ebben a körben újrafuttatott teljes unit
++suite. Az eredeti fájlok és előállapot a [bizonyítékkönyvtárban](audit-evidence/hc24-20261102/) vannak.
++
++## Módosítás
++
++- A `read_name()` meglátogatott offseteket tart nyilván, ezért az ön-, kétpontos
++  és címkén át visszatérő ciklust is elutasítja. Csomagon kívüli offset/pointer,
++  csonka pointer/címke, hiányzó névlezárás és fenntartott címketípus `ValueError`.
++- A kibontott wire név legfeljebb 255 bájt lehet, a címke felső két bitje rendes
++  címkénél nulla, így legfeljebb 63 bájtos. Ezek a
++  [DNS-formátum korlátai, RFC 1035 §2.3.4/§3.1/§4.1.4](https://www.rfc-editor.org/rfc/rfc1035.html).
++  A külön **128 pointerugrás** helyi erőforráskorlát, nem RFC-hosszkorlát;
++  ennél hosszabb, egyébként körmentes láncot is eldob a responder.
++- Érvényes tömörített névnél a visszaadott folytatási offset továbbra is az
++  eredeti név első pointere utáni pozíció, nem a pointer célja utáni offset.
++- A `parse_questions()` ellenőrzi a kérdésszám minimális helyigényét és a név
++  utáni type/class négy bájtját. Bármely hibás kérdésnél az egész kérdésszekciót
++  eldobja (`[]`), így egy korábbi érvényes kérdésből sem lesz részleges válasz.
++  A `should_answer()` emiatt hamis, a fogadóciklus a következő csomaggal folytatja.
++- Az új `infra/mdns/tests/test_mdns_responder.py` külön `mdns` tesztprofilban fut,
++  a jelenlegi mDNS-image Python-környezetével. A staging már a munkapéldány
++  mDNS-forrását és tesztjeit is átveszi; nem marad bent a régi r18 parser.
++  A meglévő profilokhoz csak az új profil bekötése és image-azonosító rögzítése
++  került hozzá, azok kiválasztási szabályai megmaradtak.
++
++A responderben csak a két parserfüggvény és két korlátkonstans változott.
++A válaszépítés, announcement, socketbeállítások, multicast cím/port, TTL,
++HC_MDNS konfiguráció és a main ciklus törzse változatlan. Nincs új függőség,
++névfeloldó-szolgáltatáscsere, DB-migráció vagy LAN-próba.
++
++## Ellenőrzés és eredmény
++
++| Ellenőrzés | Eredmény |
++|---|---|
++| Új mDNS-profil a jelenlegi mDNS-image-ben | 19 sikeres teszt |
++| Teljes backend unit suite, HC-15/16/20 regressziókkal | 816 sikeres teszt |
++| Eredeti pointerciklus-reprodukció | mindkét hibát igazolta, 100 ms időkorláttal |
++| Érvényes egyszerű A/ANY válasz és announcement | bájtpontos egyezés a korábbi fixture-rel |
++| Fogadóciklus hibás csomagok után | következő jó kérdés megválaszolva, fake sockettel |
++| Véletlen és generált parserfixture-ök | 3000 véletlen bájtsorozat + 200 érvényes generált név |
++| Scope | 185 backend-Python-fájl és 62 SQL-migráció változatlan |
++| Éles változatlanság | 736 runtime-hash és 16 konténer ID/image/futás állapota egyezik |
++
++**835 különböző végső teszt, 0 failure/error/skip.** A random/generált esetek
++és a fogadóciklus próbája a 19 parser-teszt részei, nem hozzáadott darabszámok.
++A fixture-ök időkorlátot használnak, hogy a pointerciklus regressziója se
++akassza meg a tesztfolyamatot. A tesztekben a valódi socketkonstruktor tiltott;
++a main próbája kizárólag hamis recv/send műveleteket használ.
++
++Tényleges végső parancsok:
++
++```bash
++python3 -B docs/audit-evidence/hc24-20261102/check_scope.py
++python3 -B scripts/check_hc_tests.py --profile mdns --output docs/audit-evidence/hc24-20261102/mdns
++python3 -B scripts/check_hc_tests.py --profile unit --output docs/audit-evidence/hc24-20261102/unit
++```
++
++A konténerek `--network none`, csak olvasó forrásmount és nem root felhasználó
++mellett futottak. Az mDNS-profil a deployed policy-t változtatás nélkül használta;
++a generic unit-profil csak az eldobható másolatban tartja meg a korábban
++dokumentált opcionális backup policy-t. Éles DB/eszközkapcsolat, LAN-csomagküldés,
++image- vagy szolgáltatáscsere nem történt. PostgreSQL- és frontendtesztet most
++nem futtattunk újra, azok korábbi eredménye nem része a 835-nek.
++
++[Összesítés](audit-evidence/hc24-20261102/summary.json),
++[mDNS-tesztek](audit-evidence/hc24-20261102/mdns/test-summary.json),
++[unit](audit-evidence/hc24-20261102/unit/test-summary.json),
++[scope](audit-evidence/hc24-20261102/scope-check.json),
++[patch](audit-evidence/hc24-20261102/source.diff),
++[éles változatlanság](audit-evidence/hc24-20261102/production-unchanged.json).
++
++## Függőségek, külön megfigyelés és bevezetés
++
++A HC-24 javításához nem kellett más auditpontot módosítani. A HC-17/18 F1
++exportmunkája külön feladat volt, a meglévő exportlista már tartalmazza az
++`infra/mdns` könyvtárat. A tesztharness változása kizárólag az új parserprofil
++futtatásához szükséges; nem zárja le a HC-23 globális kiadási feladatait.
++HC-26 és a HC-23/41/43 nyitott részei változatlanok. Az AI letiltva marad.
++
++Külön megfigyelés, **nem javítva ebben a körben**: az eddigi `build_response()`
++többkérdéses csomagnál az összes kérdés bájtját másolja, de a fejlécben
++`QDCOUNT=1` marad. Ezt szintetikus, kétkérdéses fixture igazolja; a builder
++AST-je megmaradt. Ez külön válaszformátum-felülvizsgálat, nem a HC-24 ciklusfix
++előfeltétele. Az érvényes egyszerű kérdés válaszegyezését igazoltuk, általános
++DNS/mDNS-megfelelőséget nem állítunk.
++[Külön bizonyíték](audit-evidence/hc24-20261102/separate-observation.json).
++
++**Élesítés nem történt.** Új mDNS-image és kontrollált mDNS-kiadás szükséges;
++a módosított fájl már a Dockerfile meglévő COPY célja. A HC-24 önállóan
++szállítható, nincs runtime-függése a még nem éles HC-15/16/20 backendjavításoktól.
++Közös platformkiadásnál ezeket külön a backend scope-jában kell feltüntetni.
++A r18 csomag-/runtime-/image-állományokat nem módosítottuk.
++
++Forrásoldali rollback: a parser és három harnessfájl eredeti példánya megvan;
++az új teszt és a HC-24 dokumentáció/napló módosításai a patch alapján vonhatók
++vissza, a HC-15/16/20 megőrzésével. DB- vagy adatvisszaállítás nem szükséges.
+--- a/infra/mdns/mdns_responder.py
++++ b/infra/mdns/mdns_responder.py
+@@ -7,6 +7,8 @@
+ MDNS_GROUP = "224.0.0.251"
+ MDNS_PORT = 5353
+ DEFAULT_TTL = 120
++MAX_NAME_BYTES = 255  # Expanded wire name, including label lengths and root.
++MAX_POINTER_JUMPS = 128  # Local work limit, not a DNS wire-format limit.
+ 
+ 
+ def env_name() -> str:
+@@ -39,10 +41,17 @@
+ 
+ 
+ def read_name(packet: bytes, offset: int):
++    """Decode one bounded name; end stays after the first on-wire pointer."""
+     labels = []
+     jumped = False
+     end = offset
+-    while offset < len(packet):
++    visited = set()
++    name_bytes = 1  # The terminating root label counts toward the wire limit.
++    jumps = 0
++    while True:
++        if offset < 0 or offset >= len(packet) or offset in visited:
++            raise ValueError("Truncated or cyclic DNS name")
++        visited.add(offset)
+         length = packet[offset]
+         if length == 0:
+             offset += 1
+@@ -51,31 +60,46 @@
+             return ".".join(labels).lower(), end
+         if length & 0xC0 == 0xC0:
+             if offset + 1 >= len(packet):
+-                return "", end
++                raise ValueError("Truncated DNS pointer")
+             pointer = ((length & 0x3F) << 8) | packet[offset + 1]
++            jumps += 1
++            if pointer >= len(packet) or jumps > MAX_POINTER_JUMPS:
++                raise ValueError("Invalid or excessive DNS pointer chain")
+             if not jumped:
+                 end = offset + 2
+             jumped = True
+             offset = pointer
+             continue
++        if length & 0xC0:
++            raise ValueError("Unsupported DNS label type")
++        if offset + 1 + length > len(packet):
++            raise ValueError("Truncated DNS label")
++        name_bytes += 1 + length
++        if name_bytes > MAX_NAME_BYTES:
++            raise ValueError("DNS name exceeds wire length limit")
+         offset += 1
+         labels.append(packet[offset:offset + length].decode("ascii", errors="ignore"))
+         offset += length
+         if not jumped:
+             end = offset
+-    return "", end
+ 
+ 
+ def parse_questions(packet: bytes):
+     if len(packet) < 12:
+         return []
+     qdcount = struct.unpack("!H", packet[4:6])[0]
++    # Even a root question needs one name byte and four type/class bytes.
++    if qdcount > (len(packet) - 12) // 5:
++        return []
+     offset = 12
+     questions = []
+     for _ in range(qdcount):
+-        name, offset = read_name(packet, offset)
++        try:
++            name, offset = read_name(packet, offset)
++        except ValueError:
++            return []
+         if offset + 4 > len(packet):
+-            break
++            return []
+         qtype, qclass = struct.unpack("!HH", packet[offset:offset + 4])
+         offset += 4
+         questions.append((name, qtype, qclass))
+--- /dev/null
++++ b/infra/mdns/tests/test_mdns_responder.py
+@@ -0,0 +1,186 @@
++"""HC-24 synthetic parser/loop fixtures; socket creation is always forbidden."""
++from collections import deque
++from contextlib import contextmanager
++import random
++import signal
++import struct
++import unittest
++from unittest.mock import patch
++
++import mdns_responder as mdns
++
++
++def header(count=1, flags=0):
++    return struct.pack('!HHHHHH', 0x1234, flags, count, 0, 0, 0)
++
++
++def query(name='hc.local', qtype=1, qclass=1):
++    return header() + mdns.encode_name(name) + struct.pack('!HH', qtype, qclass)
++
++
++@contextmanager
++def deadline(seconds=.5):
++    def expired(*args):
++        raise AssertionError('DNS parser did not terminate within fixture deadline')
++    previous = signal.signal(signal.SIGALRM, expired)
++    signal.setitimer(signal.ITIMER_REAL, seconds)
++    try:
++        yield
++    finally:
++        signal.setitimer(signal.ITIMER_REAL, 0)
++        signal.signal(signal.SIGALRM, previous)
++
++
++class MDNSParserTest(unittest.TestCase):
++    def setUp(self):
++        self.socket_guard = patch.object(mdns.socket, 'socket', side_effect=AssertionError('LAN sockets forbidden'))
++        self.socket_guard.start()
++        self.addCleanup(self.socket_guard.stop)
++
++    def rejected(self, packet, offset=0):
++        with deadline(), self.assertRaises(ValueError):
++            mdns.read_name(packet, offset)
++
++    def test_plain_root_case_and_end_offset(self):
++        self.assertEqual(mdns.read_name(b'\0tail', 0), ('', 1))
++        self.assertEqual(mdns.read_name(b'xx\x02HC\x05LOCAL\0tail', 2), ('hc.local', 12))
++
++    def test_compressed_name_preserves_first_pointer_end(self):
++        packet = mdns.encode_name('hc.local') + b'\xc0\x00' + b'\x03www\xc0\x00' + b'\xc0\x0a'
++        self.assertEqual(mdns.read_name(packet, 10), ('hc.local', 12))
++        self.assertEqual(mdns.read_name(packet, 12), ('www.hc.local', 18))
++        self.assertEqual(mdns.read_name(packet, 18), ('hc.local', 20))
++
++    def test_self_referencing_pointer_terminates(self):
++        self.rejected(b'\xc0\x00')
++
++    def test_two_pointer_cycle_terminates(self):
++        self.rejected(b'\xc0\x02\xc0\x00')
++
++    def test_label_then_pointer_cycle_terminates(self):
++        self.rejected(b'\x01a\xc0\x00')
++
++    def test_truncated_label_pointer_root_and_invalid_offsets(self):
++        for packet, offset in ((b'', 0), (b'\xc0', 0), (b'\xc0\x02', 0),
++                               (b'\xc0\xff', 0), (b'\x03ab', 0), (b'\x01a', 0),
++                               (b'\0', -1), (b'\0', 1)):
++            with self.subTest(packet=packet, offset=offset):
++                self.rejected(packet, offset)
++
++    def test_reserved_label_encodings_rejected(self):
++        for packet in (b'\x40\0', b'\x80\0', b'\x7f' + b'a' * 127 + b'\0', b'\xbf' + b'a' * 191 + b'\0'):
++            with self.subTest(prefix=packet[0]):
++                self.rejected(packet)
++
++    def test_maximum_label_and_expanded_name_boundary(self):
++        labels = ['a' * 63, 'b' * 63, 'c' * 63, 'd' * 61]
++        packet = mdns.encode_name('.'.join(labels))
++        self.assertEqual(len(packet), 255)
++        self.assertEqual(mdns.read_name(packet, 0), ('.'.join(labels), 255))
++        self.rejected(mdns.encode_name('.'.join(labels[:-1] + ['d' * 62])))
++        self.assertEqual(mdns.read_name(mdns.encode_name('a' * 63), 0), ('a' * 63, 65))
++
++    def test_expanded_length_limit_also_applies_after_compression(self):
++        name = '.'.join(['a' * 63] * 3 + ['b' * 61])
++        packet = mdns.encode_name(name) + b'\x01x\xc0\x00'
++        self.rejected(packet, 255)
++
++    def test_pointer_chain_work_limit(self):
++        packet = bytearray(b'\0')
++        target = 0
++        for _ in range(mdns.MAX_POINTER_JUMPS):
++            current = len(packet)
++            packet.extend(struct.pack('!H', 0xC000 | target))
++            target = current
++        self.assertEqual(mdns.read_name(bytes(packet), target), ('', len(packet)))
++        packet.extend(struct.pack('!H', 0xC000 | target))
++        self.rejected(bytes(packet), len(packet) - 2)
++
++    def test_valid_compressed_multi_question_parsing(self):
++        packet = header(2) + mdns.encode_name('hc.local') + struct.pack('!HH', 1, 1)
++        packet += b'\xc0\x0c' + struct.pack('!HH', 255, 0x8001)
++        self.assertEqual(mdns.parse_questions(packet), [('hc.local', 1, 1), ('hc.local', 255, 0x8001)])
++
++    def test_truncated_header_and_impossible_question_count(self):
++        for size in range(12):
++            self.assertEqual(mdns.parse_questions(b'\0' * size), [])
++        self.assertEqual(mdns.parse_questions(header(65535) + b'\0' * 20), [])
++        self.assertEqual(mdns.parse_questions(header(0)), [])
++        self.assertEqual(mdns.parse_questions(header() + b'\0' + struct.pack('!HH', 1, 1)), [('', 1, 1)])
++
++    def test_bad_question_discards_whole_section_without_partial_answer(self):
++        good = query()[12:]
++        for bad in (b'\xc0\x0c', b'\x05x', b'\0\0\x01\0', b'\xc0\xff\0\x01\0\x01'):
++            packet = header(2) + good + bad
++            self.assertEqual(mdns.parse_questions(packet), [])
++            self.assertFalse(mdns.should_answer(packet, 'hc.local'))
++
++    def test_malformed_first_question_is_not_answered(self):
++        for body in (b'\xc0\x0c\0\x01\0\x01', b'\x40\0\0\x01\0\x01', b'\x03ab'):
++            packet = header() + body
++            with deadline():
++                self.assertEqual(mdns.parse_questions(packet), [])
++                self.assertFalse(mdns.should_answer(packet, 'hc.local'))
++
++    def test_existing_answer_selection_and_response_flag(self):
++        for qtype in (1, 255):
++            self.assertTrue(mdns.should_answer(query('HC.LOCAL', qtype, 0x8001), 'hc.local'))
++        self.assertFalse(mdns.should_answer(query('other.local'), 'hc.local'))
++        self.assertFalse(mdns.should_answer(query(qtype=28), 'hc.local'))
++        response = bytearray(query()); response[2] |= 0x80
++        self.assertFalse(mdns.should_answer(bytes(response), 'hc.local'))
++
++    def test_single_question_response_bytes_match_original_fixtures(self):
++        for qtype, question_tail in ((1, '00010001'), (255, '00ff0001')):
++            expected = bytes.fromhex('123484000001000100000000024843056c6f63616c00' + question_tail
++                                     + 'c00c00018001000000780004c0000217')
++            self.assertEqual(mdns.build_response(query('HC.local', qtype), 'hc.local', '192.0.2.23'), expected)
++
++    def test_announcement_bytes_match_original_fixture(self):
++        expected = bytes.fromhex('000084000000000100000000026863056c6f63616c0000018001000000780004c0000217')
++        self.assertEqual(mdns.build_announcement('hc.local', '192.0.2.23'), expected)
++
++    def test_receive_loop_continues_after_bad_packets_with_fake_socket(self):
++        class Finished(BaseException):
++            pass
++        packets = deque([header() + b'\xc0\x0c\0\x01\0\x01', header(2) + query()[12:] + b'\x05x', query()])
++        sent = []
++        class FakeSocket:
++            def recvfrom(self, limit):
++                if not packets:
++                    raise Finished()
++                return packets.popleft(), ('192.0.2.100', 5353)
++            def sendto(self, payload, address):
++                sent.append((payload, address))
++        with patch.object(mdns, 'make_socket', return_value=FakeSocket()), \
++             patch.object(mdns, 'env_name', return_value='hc.local'), \
++             patch.object(mdns, 'local_ip', return_value='192.0.2.23'), \
++             patch.object(mdns.time, 'monotonic', return_value=0), deadline(), self.assertRaises(Finished):
++            mdns.main()
++        self.assertEqual(len(sent), 2)
++        self.assertEqual([address for _, address in sent], [(mdns.MDNS_GROUP, mdns.MDNS_PORT), ('192.0.2.100', 5353)])
++        expected = mdns.build_response(query(), 'hc.local', '192.0.2.23')
++        self.assertEqual([payload for payload, _ in sent], [expected, expected])
++
++    def test_deterministic_random_and_generated_names_are_bounded(self):
++        rng = random.Random(24)
++        with deadline(3):
++            for _ in range(3000):
++                packet = rng.randbytes(rng.randrange(0, 400))
++                offset = rng.randrange(-1, len(packet) + 2)
++                try:
++                    name, end = mdns.read_name(packet, offset)
++                except ValueError:
++                    pass
++                else:
++                    self.assertTrue(0 <= end <= len(packet))
++                self.assertIsInstance(mdns.parse_questions(packet), list)
++            for _ in range(200):
++                labels = [''.join(rng.choices('abcXYZ', k=rng.randrange(1, 20))) for _ in range(rng.randrange(1, 6))]
++                expected = '.'.join(labels)
++                wire = mdns.encode_name(expected)
++                self.assertEqual(mdns.read_name(wire, 0), (expected.lower(), len(wire)))
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- a/scripts/check_hc_tests.py
++++ b/scripts/check_hc_tests.py
+@@ -28,7 +28,7 @@
+  'test_scheduler_feedback_postgres':('HC08','hc08_audit_test'),
+  'test_startup_schema_postgres':('HC07','hc07_schema_test'),
+ }
+-PROFILES=('unit','ownership','deployed','postgres','frontend','bridges','ingest','x10')
++PROFILES=('unit','ownership','deployed','postgres','frontend','bridges','ingest','x10','mdns')
+ 
+ 
+ def command(args,**kwargs):
+@@ -142,11 +142,13 @@
+          'source_policies':{v:json.loads((s/'.hc-test-source.json').read_text()) for v,s in sources.items()}}
+  try:
+   for profile in PROFILES if args.profile=='all' else (args.profile,):
+-   source=sources['deployed' if profile in ('deployed','ownership') else 'standard']
++   source=sources['deployed' if profile in ('deployed','ownership','mdns') else 'standard']
+    if profile=='postgres':
+     result=postgres(source,backend,pgimage,out,runid)
+-   elif profile in ('unit','ownership','deployed'):
+-    result=execute(base_run(source,root=profile=='ownership')+[backend,'python','-B','/src/scripts/hc_test_suite.py',profile],out/(profile+'.log'))
++   elif profile in ('unit','ownership','deployed','mdns'):
++    selected=image('homecontrol-mdns') if profile=='mdns' else backend
++    result=execute(base_run(source,root=profile=='ownership')+[selected,'python','-B','/src/scripts/hc_test_suite.py',profile],out/(profile+'.log'))
++    result['image']=selected
+    elif profile=='frontend':
+     node=re.search(r'^FROM (node@sha256:[0-9a-f]+)',(ROOT/'infra/frontend/Dockerfile').read_text(),re.M)[1]
+     # node_modules and build output exist only in the disposable tmpfs.
+--- a/scripts/hc_test_suite.py
++++ b/scripts/hc_test_suite.py
+@@ -23,12 +23,15 @@
+ 
+ def main():
+     parser = argparse.ArgumentParser(description=__doc__)
+-    parser.add_argument('profile', choices=('unit', 'ownership', 'postgres', 'deployed'))
++    parser.add_argument('profile', choices=('unit', 'ownership', 'postgres', 'deployed', 'mdns'))
+     parser.add_argument('--module', help='One PostgreSQL module in its own disposable DB cluster')
+     args = parser.parse_args()
+     sys.path.insert(0, str(BACKEND))
+     loader = unittest.TestLoader()
+-    if args.profile == 'ownership':
++    if args.profile == 'mdns':
++        sys.path.insert(0, str(ROOT/'infra/mdns'))
++        suite = loader.discover(str(ROOT/'infra/mdns/tests'))
++    elif args.profile == 'ownership':
+         suite = loader.loadTestsFromNames(sorted(OWNERSHIP))
+     elif args.profile == 'postgres':
+         if not args.module or not args.module.startswith('tests.test_') or not args.module.endswith('_postgres'):
+--- a/scripts/stage_hc_test_source.py
++++ b/scripts/stage_hc_test_source.py
+@@ -6,7 +6,7 @@
+ import shutil
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+-FOLDERS = ('infra/backend', 'apps/bridge_runtime', 'apps/tuya-poller',
++FOLDERS = ('infra/backend', 'infra/mdns', 'apps/bridge_runtime', 'apps/tuya-poller',
+            'apps/gree-climate', 'apps/xiaomi-x10', 'apps/hc_ingest',
+            'apps/ha-growatt-poller', 'apps/ai-server')
+ 

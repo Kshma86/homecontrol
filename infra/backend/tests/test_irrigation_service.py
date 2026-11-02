@@ -237,8 +237,6 @@ class IrrigationServiceTest(unittest.TestCase):
     def test_scheduler_tick_skips_without_irrigation_publish_domain(self):
         calls = []
         service = self.service()
-        service.run_due_schedules = lambda: calls.append("run_legacy")
-        service.stop_due_schedules = lambda: calls.append("stop_legacy")
         service.run_v2_due_schedules = lambda: calls.append("run_v2")
         service.stop_v2_due_schedules = lambda: calls.append("stop_v2")
 
@@ -251,8 +249,6 @@ class IrrigationServiceTest(unittest.TestCase):
         service = self.service(
             v2_execution_engine_state=lambda config: {"publish_domains": ["irrigation"]},
         )
-        service.run_due_schedules = lambda: calls.append("run_legacy")
-        service.stop_due_schedules = lambda: calls.append("stop_legacy")
         service.run_v2_due_schedules = lambda: calls.append("run_v2")
         service.stop_v2_due_schedules = lambda: calls.append("stop_v2")
         service.solar_pump_scheduler_tick = lambda: calls.append("pump")
@@ -666,6 +662,110 @@ class IrrigationConfirmationTest(unittest.TestCase):
             for value in (0, -1, float("nan"), float("inf")):
                 with self.subTest(key=key, value=value), self.assertRaises(ValueError):
                     IrrigationServiceTest().service(**{key: value})
+
+
+class IrrigationV2ScheduleRegressionTest(unittest.TestCase):
+    """HC-20: retain the active scheduler's rule and stop contracts."""
+    def service(self, mode="navigator", final_duration=7, confirmed=True):
+        self.reservations, self.opens, self.writes, self.executions, self.decisions = [], [], [], [], []
+        self.now = datetime(2026, 11, 2, 10, tzinfo=timezone.utc)
+        self.schedule = dict(id=7, label="garden", start_time="10:00", stop_time="10:20", duration_minutes=20)
+        service = IrrigationServiceTest().service(fetch_one=lambda *args: self.schedule)
+        service.evaluate_pilot = lambda **kw: dict(mode=mode, final_duration=final_duration,
+            base_duration=20, reason="fixture rule", triggered_rules=["fixture"], weather_snapshot={})
+        def reserve(**values):
+            self.reservations.append(values)
+            return {"session": dict(id=11, requested_stop_at=self.now + timedelta(minutes=values["minutes"]))}
+        service.reserve_session = reserve
+        def execute(sql, params=()):
+            self.writes.append((sql, params))
+            return dict(id=11, status="running")
+        service.execute_one = execute
+        service.publish_open_with_confirmation = lambda payload, **kw: (
+            self.opens.append(payload) or confirmed, "fixture confirmation", {"sample": "fresh"})
+        service.mark_v2_execution = lambda *args: self.executions.append(args)
+        service.log_pilot_decision = lambda decision, **kw: self.decisions.append((decision.copy(), kw))
+        return service
+
+    def test_navigator_preserves_scheduled_duration_and_stop_payload(self):
+        service = self.service(mode="navigator", final_duration=7)
+        service.start_v2_scheduled_session(7)
+        self.assertEqual(self.reservations[0]["minutes"], 20)
+        self.assertEqual(self.reservations[0]["started_by"], "v2_scheduler")
+        self.assertEqual(self.opens[0]["duration_minutes"], 20)
+        self.assertEqual(self.opens[0]["source"], "scheduler")
+        payload = json.loads(self.writes[0][1][0])
+        self.assertEqual(payload["hc_executor"], "v2_scheduler")
+        self.assertEqual(payload["stop_policy"]["stop_authority"], "schedule_stop_event")
+        self.assertEqual(payload["stop_policy"]["effective_stop_at"], (self.now + timedelta(minutes=20)).isoformat())
+        self.assertEqual(self.executions[0][1:3], ("open", "confirmed"))
+        self.assertEqual(self.decisions, [])  # No legacy navigator_only execution log.
+
+    def test_pilot_uses_rule_duration_even_beyond_original_window(self):
+        service = self.service(mode="pilot", final_duration=30)
+        service.start_v2_scheduled_session(7)
+        self.assertEqual(self.reservations[0]["minutes"], 30)
+        self.assertEqual(self.opens[0]["source"], "pilot")
+        self.assertEqual(self.opens[0]["pilot_final_duration"], 30)
+        payload = json.loads(self.writes[0][1][0])
+        self.assertEqual(payload["stop_policy"]["stop_authority"], "v2_rule_effective_stop")
+        self.assertEqual(payload["stop_policy"]["scheduled_stop"], "10:20")
+        self.assertEqual(payload["stop_policy"]["effective_stop_at"], (self.now + timedelta(minutes=30)).isoformat())
+        self.assertEqual(self.decisions[0][1]["execution_status"], "v2_command_confirmed")
+
+    def test_pilot_skip_consumes_day_without_reservation_or_open(self):
+        service = self.service(mode="pilot", final_duration=0)
+        service.start_v2_scheduled_session(7)
+        self.assertEqual(self.reservations, [])
+        self.assertEqual(self.opens, [])
+        self.assertEqual(len(self.writes), 1)
+        self.assertIn("last_started_on = current_date", self.writes[0][0])
+        self.assertEqual(self.decisions[0][1]["execution_status"], "v2_skipped")
+        result = self.executions[0]
+        self.assertEqual(result[1:3], ("open", "skipped"))
+        self.assertFalse(result[3]["published"])
+        self.assertFalse(result[3]["publish_attempted"])
+
+    def test_failed_start_keeps_uncertainty_and_recovery_block(self):
+        service = self.service(mode="pilot", confirmed=False)
+        service.start_v2_scheduled_session(7)
+        self.assertTrue(service.session_recovery.blocked)
+        self.assertIn("status = 'stop_failed'", self.writes[0][0])
+        self.assertIn("where id = %s and status = 'starting'", self.writes[0][0])
+        self.assertEqual(self.executions[0][1:3], ("open", "failed"))
+        self.assertEqual(self.decisions[0][1]["execution_status"], "v2_start_failed")
+
+    def test_manual_valve_guard_precedes_due_selection_and_dispatch(self):
+        service = self.service()
+        service.manual_valve_scheduler_guard = lambda: dict(blocked=True, state="OPEN")
+        service.fetch_all = lambda *args: self.fail("blocked physical valve selected schedules")
+        service.run_v2_due_schedules()
+        self.assertEqual(self.opens, [])
+        service.manual_valve_scheduler_guard = lambda: dict(blocked=False)
+        service.fetch_all = lambda *args: [{"id": "7"}, {"id": "8"}]
+        calls = []
+        service.start_v2_scheduled_session = calls.append
+        service.run_v2_due_schedules()
+        self.assertEqual(calls, [7, 8])
+
+    def test_effective_stop_marks_day_only_after_confirmed_or_terminal_close(self):
+        for status, ok, expected_day in (("running", True, True), ("running", False, False),
+                                       ("stop_failed", True, False), ("starting", True, False),
+                                       ("stopped", True, True), ("auto_stopped", True, True),
+                                       ("start_failed", True, False), (None, True, True)):
+            with self.subTest(status=status, close_ok=ok):
+                service = self.service()
+                deadline = self.now + timedelta(minutes=7)
+                service.fetch_all = lambda *args: [dict(id=7, session_id=11 if status else None,
+                    session_status=status, requested_stop_at=deadline)]
+                closes = []
+                service.stop_manual_session = lambda *args: (closes.append(args) or ok, "fixture close", {})
+                service.stop_v2_due_schedules()
+                self.assertEqual(bool(self.writes), expected_day)
+                self.assertEqual(closes, [(11, "v2_effective_stop")] if status == "running" else [])
+                if status == "running":
+                    self.assertEqual(self.executions[0][1:3], ("close", "confirmed" if ok else "failed"))
+                    self.assertEqual(self.executions[0][3]["effective_stop_at"], deadline)
 
 
 if __name__ == "__main__":

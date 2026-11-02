@@ -1,0 +1,440 @@
+{
+  "audit_sections": [
+    "HC-16",
+    "D.1",
+    "F0",
+    "F8",
+    "G.3-4"
+  ],
+  "handoff": "docs/rover-single-user-control-20261013.md",
+  "active_release": "hc-security-20261102-r18",
+  "production_modified": false,
+  "source_sha256": {
+    "infra/backend/mower_v3_service.py": "acb4ea6b2ccfe9fd8519ece367a29797dbe552c6c91cdca4b2edc88c05423471",
+    "infra/backend/mower_v3_commands.py": "b6d2a8fdfc4c77f142043e31c0304431aa407fa85b604b6b79bf3393bf63bda5",
+    "infra/backend/mower_manual_service.py": "bf57b0eeeaf6ddbbfb742d05c17ea10615d3f8a8342012fb068f77d1629c2efd",
+    "infra/backend/mower_motor_test.py": "c4215fa0b9dd407841d18e321c7e1328455a68910af06fb1d8c0327cfbdcb1fb",
+    "infra/backend/mower_parameters_service.py": "aaa78fb9b94ead3116d33c9d79d1e05a2d1f74b15cd5a550585bbe656138ea4b",
+    "infra/backend/settings.py": "f16fac2d36f72355ef72d0a11ab8ed94f3c82c244d6106e6d6a39f3ea8ed0777",
+    "docs/mower-v3-foundation.md": "bcb4fdcc4f48d2539df3c02c07591f054b593dd77dddcf0b165afe03d1d3764c",
+    "docs/mower-v3-bringup.md": "bd79bd471a91c46cb02981e0ae14448447dab4d9a6a1f22524e1ebdc2aac26c1",
+    "docs/ai/mower-domain.md": "a5a5ed54d97ee0b7bc1d363e499255e164592658d699819b94e197164a0d1f2d",
+    "AUDIT_REPAIR.md": "6a58a7732350c170fdeac14c640359da9d166d2ac0ff4d2013160a2c303d22ce",
+    "DEPLOYMENT_PREP.md": "d3295acb80e82bbf3928e5529199f95226766593fb6e2aa5843f22aa9ce840ac"
+  },
+  "hc15_pending_change_fingerprints": [
+    {
+      "path": "infra/backend/app.py",
+      "state": "modified",
+      "sha256": "00e57fc96b7e7b6518474b3ac3199fabb03747888c73243a8a86436987f01978"
+    },
+    {
+      "path": "infra/backend/db_runtime.py",
+      "state": "modified",
+      "sha256": "8baaffaf53a39ae5299f731737fd6521894294ed2eb110fc839a7954099828df"
+    },
+    {
+      "path": "infra/backend/repository_service.py",
+      "state": "deleted",
+      "sha256": null
+    },
+    {
+      "path": "infra/backend/climate_service.py",
+      "state": "modified",
+      "sha256": "6fc106769c2c13e6d5a145a700c0d93f477fcb23c8993ad6c17073cc8b5cc10e"
+    },
+    {
+      "path": "infra/backend/irrigation_service.py",
+      "state": "modified",
+      "sha256": "e78921d90c572bdb30df433c32510d273c94b12ef08a626be3e93683b70cd0fc"
+    },
+    {
+      "path": "infra/backend/tests/test_repository_service.py",
+      "state": "deleted",
+      "sha256": null
+    },
+    {
+      "path": "scripts/stage_hc_test_source.py",
+      "state": "modified",
+      "sha256": "5caedbcec8e26ce0433c202bf9938960b5fa178e9ed3942a74dd79658d9c1fab"
+    },
+    {
+      "path": "scripts/check_hc_tests.py",
+      "state": "modified",
+      "sha256": "7e0688feed4d4b9d695bddb741746dc0318901bc7275440ee52e255e9245db0e"
+    },
+    {
+      "path": "infra/backend/tests/test_db_runtime.py",
+      "state": "added",
+      "sha256": "599c620b72e20696ad1d2dc19b5cae46c90e9c46df52b7f2c3ad858e5d33f8e0"
+    },
+    {
+      "path": "infra/backend/tests/test_domain_schedule_reads.py",
+      "state": "added",
+      "sha256": "4640ff51c67a9a4e1dcc71020f87934a288f2c850d3cecb64faac3c571540b0e"
+    },
+    {
+      "path": "infra/backend/tests/test_app_database_wiring.py",
+      "state": "added",
+      "sha256": "faff538cbd0cfe442267cb425c22e509e6365bfe639ca780183d19a514790208"
+    },
+    {
+      "path": "infra/backend/tests/test_database_runtime_postgres.py",
+      "state": "added",
+      "sha256": "531e12c56163437fd9e60215103dae17eb64b3e3ff14e79de5c56142f290ea9d"
+    },
+    {
+      "path": "infra/backend/tests/fixtures/hc15_queries.json",
+      "state": "added",
+      "sha256": "23684ced7022bd517056b3b41d018f24edd33c59adefce4844eebc7572a1b3a4"
+    },
+    {
+      "path": "infra/backend/tests/fixtures/hc15_routes.json",
+      "state": "added",
+      "sha256": "6771057d332736805cbf2c5ce1d1da853a06f434b944f8f4778559edf06ce621"
+    },
+    {
+      "path": "infra/backend/tests/fixtures/hc15_import_probe.py",
+      "state": "added",
+      "sha256": "6c2d558bcdecb244f250206a0a4ed9b2557932e3853d5f3423a48e0073f1e28f"
+    }
+  ],
+  "audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "graph": {
+    "admin_service": [
+      "runtime_schema_contract",
+      "settings",
+      "startup_schema_contract"
+    ],
+    "ai_chat_audit_service": [
+      "runtime_schema_contract"
+    ],
+    "ai_context_plan": [],
+    "ai_domain_replies": [
+      "ai_context_plan"
+    ],
+    "ai_images": [],
+    "ai_node_service": [
+      "ai_power_coordination",
+      "deployment_policy",
+      "worker_runtime"
+    ],
+    "ai_power_coordination": [
+      "backup_protocol"
+    ],
+    "ai_proxy_service": [
+      "ai_context_plan",
+      "ai_domain_replies",
+      "ai_images",
+      "deployment_policy",
+      "worker_runtime"
+    ],
+    "api_route_modules": [
+      "context_payload_service",
+      "host_operations_client",
+      "sql_lab_database",
+      "system_status_service"
+    ],
+    "app": [
+      "admin_service",
+      "ai_chat_audit_service",
+      "ai_node_service",
+      "ai_proxy_service",
+      "api_route_modules",
+      "climate_fan_coordination",
+      "climate_service",
+      "climate_window_guard",
+      "combustion_safety_service",
+      "command_service",
+      "context_service",
+      "db_runtime",
+      "deployment_policy",
+      "energy_device_service",
+      "health_routes",
+      "host_operations_client",
+      "irrigation_admission",
+      "irrigation_service",
+      "mower_bringup_read",
+      "mower_firmware_operations_store",
+      "mower_firmware_routes",
+      "mower_firmware_service",
+      "mower_firmware_sessions_store",
+      "mower_firmware_staging",
+      "mower_firmware_store",
+      "mower_firmware_updates",
+      "mower_manual_service",
+      "mower_motor_test",
+      "mower_motor_test_routes",
+      "mower_operator_auth",
+      "mower_parameters_routes",
+      "mower_parameters_service",
+      "mower_parameters_store",
+      "mower_service",
+      "mower_service_read",
+      "mower_v3_routes",
+      "mower_v3_service",
+      "mqtt_monitor_service",
+      "page_usage_service",
+      "power_wall_service",
+      "process_binding_service",
+      "robot_service",
+      "runtime_utils",
+      "scheduler_audit",
+      "scheduler_service",
+      "schema_service",
+      "scoped_ai_power_coordination",
+      "season_profile_service",
+      "settings",
+      "sql_lab_database",
+      "sql_lab_service",
+      "startup_service",
+      "system_status_service",
+      "topic_contract",
+      "worker_runtime"
+    ],
+    "backend_healthcheck": [],
+    "backup_export": [
+      "backup_export_manifest",
+      "backup_protocol",
+      "router_backup"
+    ],
+    "backup_export_manifest": [],
+    "backup_protocol": [],
+    "backup_restore": [
+      "backup_protocol"
+    ],
+    "backup_service": [
+      "ai_power_coordination",
+      "backup_export_manifest",
+      "backup_protocol",
+      "backup_restore",
+      "deployment_policy",
+      "router_backup"
+    ],
+    "baseline_contract": [],
+    "climate_fan_coordination": [],
+    "climate_service": [],
+    "climate_window_guard": [
+      "runtime_schema_contract"
+    ],
+    "combustion_safety_service": [
+      "combustion_state_store"
+    ],
+    "combustion_state_store": [],
+    "command_service": [],
+    "context_payload_service": [],
+    "context_service": [
+      "read_model_cache"
+    ],
+    "database_service": [],
+    "db_privilege_manifest": [],
+    "db_runtime": [
+      "database_service",
+      "runtime_utils"
+    ],
+    "deployment_policy": [],
+    "energy_device_service": [],
+    "gunicorn_conf": [
+      "app"
+    ],
+    "health_routes": [],
+    "host_operations_client": [],
+    "irrigation_admission": [],
+    "irrigation_recovery": [],
+    "irrigation_service": [
+      "irrigation_recovery",
+      "irrigation_summary_queries",
+      "irrigation_utils",
+      "read_model_cache",
+      "runtime_schema_contract"
+    ],
+    "irrigation_summary_queries": [],
+    "irrigation_utils": [],
+    "migrate_hc07": [
+      "startup_schema_contract",
+      "startup_schema_manifest"
+    ],
+    "migrate_hc38": [
+      "baseline_contract"
+    ],
+    "migrate_hc39": [
+      "db_privilege_manifest",
+      "migrate_hc07",
+      "sql_lab_database"
+    ],
+    "mower_bringup_read": [
+      "mower_service_read",
+      "mower_v3_service"
+    ],
+    "mower_firmware_operations_store": [
+      "mower_firmware_service",
+      "runtime_schema_contract"
+    ],
+    "mower_firmware_routes": [
+      "mower_firmware_service",
+      "mower_operator_auth",
+      "mower_v3_routes"
+    ],
+    "mower_firmware_service": [
+      "mower_v3_service",
+      "rover_qspi_image"
+    ],
+    "mower_firmware_sessions_store": [
+      "mower_firmware_service",
+      "runtime_schema_contract"
+    ],
+    "mower_firmware_staging": [
+      "mower_firmware_service",
+      "mower_firmware_store"
+    ],
+    "mower_firmware_store": [
+      "mower_firmware_service",
+      "runtime_schema_contract"
+    ],
+    "mower_firmware_updates": [
+      "mower_firmware_service",
+      "mower_firmware_staging",
+      "mower_v3_service"
+    ],
+    "mower_manual_service": [
+      "mower_v3_commands",
+      "mower_v3_service"
+    ],
+    "mower_motor_test": [
+      "mower_parameters_service",
+      "mower_v3_commands",
+      "mower_v3_service",
+      "rover_parameters"
+    ],
+    "mower_motor_test_routes": [
+      "mower_operator_auth",
+      "mower_parameters_service",
+      "mower_v3_service"
+    ],
+    "mower_operator_auth": [],
+    "mower_parameters_routes": [
+      "mower_operator_auth",
+      "mower_parameters_service"
+    ],
+    "mower_parameters_service": [
+      "mower_v3_commands",
+      "mower_v3_service",
+      "rover_parameters"
+    ],
+    "mower_parameters_store": [
+      "mower_parameters_service",
+      "runtime_schema_contract"
+    ],
+    "mower_service": [],
+    "mower_service_read": [
+      "mower_v3_service",
+      "rover_parameters"
+    ],
+    "mower_v3_commands": [
+      "mower_motor_test",
+      "mower_v3_service"
+    ],
+    "mower_v3_routes": [
+      "mower_manual_service",
+      "mower_operator_auth",
+      "mower_v3_service"
+    ],
+    "mower_v3_service": [
+      "mower_manual_service",
+      "mower_motor_test",
+      "mower_v3_commands"
+    ],
+    "mqtt_credentials": [],
+    "mqtt_monitor_service": [
+      "deployment_policy",
+      "mqtt_credentials"
+    ],
+    "mqtt_read_probe": [
+      "mqtt_credentials"
+    ],
+    "page_usage_service": [
+      "runtime_schema_contract"
+    ],
+    "power_wall_service": [
+      "deployment_policy"
+    ],
+    "process_binding_service": [
+      "deployment_policy",
+      "runtime_schema_contract"
+    ],
+    "read_model_cache": [],
+    "restore_runtime_schema": [
+      "migrate_hc07",
+      "migrate_hc39",
+      "sql_lab_database"
+    ],
+    "robot_service": [],
+    "router_backup": [],
+    "rover_image": [
+      "rover_profile",
+      "rover_ram_audit"
+    ],
+    "rover_parameters": [],
+    "rover_profile": [],
+    "rover_qspi_image": [
+      "rover_image",
+      "rover_ram_audit"
+    ],
+    "rover_ram_audit": [],
+    "runtime_schema_contract": [],
+    "runtime_utils": [
+      "read_model_cache"
+    ],
+    "scheduler_audit": [
+      "scheduler_feedback"
+    ],
+    "scheduler_feedback": [],
+    "scheduler_service": [
+      "scheduler_audit",
+      "scheduler_feedback",
+      "startup_schema_contract",
+      "x10_schedule_delivery",
+      "x10_schedule_utils"
+    ],
+    "schema_service": [
+      "runtime_schema_contract",
+      "startup_schema_contract"
+    ],
+    "scoped_ai_power_coordination": [
+      "ai_power_coordination"
+    ],
+    "season_profile_service": [
+      "startup_schema_contract"
+    ],
+    "settings": [],
+    "sql_lab_database": [
+      "database_service"
+    ],
+    "sql_lab_service": [
+      "sql_lab_database"
+    ],
+    "startup_runner": [],
+    "startup_schema_contract": [
+      "startup_schema_manifest"
+    ],
+    "startup_schema_manifest": [],
+    "startup_service": [
+      "worker_runtime"
+    ],
+    "system_status_service": [
+      "host_operations_client",
+      "worker_runtime"
+    ],
+    "topic_contract": [],
+    "worker_runtime": [],
+    "wsgi": [
+      "app",
+      "startup_runner"
+    ],
+    "x10_schedule_delivery": [
+      "scheduler_audit",
+      "scheduler_feedback"
+    ],
+    "x10_schedule_utils": []
+  }
+}

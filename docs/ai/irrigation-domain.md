@@ -387,8 +387,9 @@ HC-03 adds the uncertain-session lifecycle while retaining publication order.
 
 ## Atomic Start Admission (HC-04)
 
-`IrrigationSessionAdmission.reserve()` is shared by manual, V2 scheduled and
-retained legacy start methods. It uses a fresh connection and one short
+`IrrigationSessionAdmission.reserve()` is shared by manual and V2 scheduled
+starts. The unreachable legacy executor was removed in [HC-20](../hc-20-repair.md).
+Admission uses a fresh connection and one short
 READ COMMITTED transaction: acquire a SHARE ROW EXCLUSIVE lock on the session
 table, recheck `starting`/`running`/`stop_failed`, and insert a `starting` row.
 Reads remain available; session writers are serialized during this transaction.
@@ -421,8 +422,8 @@ This is a cooperative application transaction, not a database uniqueness
 constraint for arbitrary SQL writers. All HC insert paths use it; mixed old/new
 controllers and uncoordinated SQL writes are not supported. Keep one active
 backend: HC-02 command ordering, HC-03 startup recovery and scheduler workers
-are not distributed ownership mechanisms. HC-08 audit-chain recovery, HC-20
-legacy removal and HC-13 full I/O/worker deadlines remain separate work.
+are not distributed ownership mechanisms. Removing the legacy executor does
+not change admission, audit-chain recovery or I/O/worker deadline behavior.
 
 ## Valve Confirmation
 
@@ -524,29 +525,51 @@ Schedule status values emitted by `fetch_schedules()`:
 - `armed`
 - `disabled`
 
-Legacy scheduled start:
+Scheduled start (the active V2 path):
 
-1. `run_due_schedules()` checks the manual valve guard.
-2. It selects due active rows ordered by `start_time, id`.
-3. `start_scheduled_session()` rejects if another session is `running` or
-   `starting`.
-4. It evaluates the pilot rules.
-5. It always marks `last_started_on = current_date` before command execution.
-6. In `navigator` mode, pilot decision is logged as `navigator_only`, but
-   scheduled duration remains authoritative.
-7. In `pilot` mode, `final_duration <= 0` means skip watering and log
-   `skipped`.
-8. Otherwise it opens the valve, creates a session, and stores confirmation.
+1. `scheduler_tick()` checks the V2 `irrigation` publish-domain gate, then calls
+   `run_v2_due_schedules()` and the separate solar-pump tick. Stop supervision
+   runs on the safety worker, independently of opening waits.
+2. `run_v2_due_schedules()` checks the physical manual-valve guard, then selects
+   due active rows ordered by `start_time, id`.
+3. `start_v2_scheduled_session()` checks seasonal `scheduled_watering` capability,
+   initializes session recovery and refuses unresolved starts/stops. Its schedule
+   SELECT excludes `starting`, `running` and `stop_failed` sessions.
+4. It evaluates the existing pilot rules. In `navigator` mode the scheduled
+   duration is authoritative; the recommendation does not change it and this
+   path does not create the former `navigator_only` execution log.
+5. In `pilot` mode, `final_duration <= 0` logs `v2_skipped`, consumes the schedule
+   day and marks the V2 open execution skipped with no reservation or OPEN.
+6. Otherwise the duration is bounded by the existing `manual_max_minutes`.
+   HC-04 atomically rechecks eligibility, consumes `last_started_on` and inserts
+   a `starting` session before OPEN. A losing/failed reservation authorizes no
+   command and consumes no day. The session uses `started_by = 'v2_scheduler'`.
+7. OPEN carries the unchanged scheduler/pilot command payload. The stored
+   session additionally records `hc_executor`, rule information and `stop_policy`.
+   Navigator uses `schedule_stop_event`; pilot uses `v2_rule_effective_stop`.
+   The effective deadline is the admitted session's `requested_stop_at`; pilot
+   duration may differ from the original schedule window.
+8. Fresh physical confirmation conditionally changes `starting` to `running`
+   and marks V2 execution confirmed. Failed opening leaves `stop_failed`
+   uncertainty and blocks further starts for recovery; it is not successful
+   watering. MQTT publication and physical completion are separate evidence.
 
-Legacy scheduled stop:
+Scheduled stop:
 
-- Runs when local time is at or after `stop_time`, the schedule started today,
-  and it has not been stopped today.
-- Finds today's matching `scheduler` or `pilot` session.
-- If session is `running`, publishes close with reason `schedule_stop`.
-- Does not mark schedule stopped when the session is `stop_failed`.
-- Marks stopped when there is no session, or session status is already
-  `stopped`/`auto_stopped`.
+- `scheduler_stop_tick()` applies the V2 domain gate and invokes
+  `stop_v2_due_schedules()`. The generic safety/recovery passes remain separate.
+- For an active schedule started today and not stopped today, V2 selects today's
+  matching `v2_scheduler` session. Its `requested_stop_at` is authoritative;
+  the original `stop_time` is only the fallback when no matching session exists.
+- A due `running` session closes with reason `v2_effective_stop`; execution is
+  confirmed only after successful close confirmation. Failed close does not
+  consume `last_stopped_on`.
+- A `stop_failed` session is not marked stopped. Already `stopped`/`auto_stopped`
+  sessions, or the due no-session fallback, may mark the schedule day stopped.
+- The three unreachable legacy executor methods are absent from current source.
+  Historical `scheduler`/`pilot` sessions, SQL migrations, history/read APIs,
+  manual controls and the separate solar-pump scheduler remain available.
+  Generic overdue/no-water/recovery rules are unchanged by this removal.
 
 ## Pilot And Navigator
 
@@ -570,8 +593,9 @@ Pilot config fields:
 
 Modes:
 
-- `navigator`: calculate and log recommendation, but do not change scheduled
-  watering duration.
+- `navigator`: calculate a recommendation, but do not change scheduled watering
+  duration. Explicit evaluation can log a decision; V2 start does not add the
+  removed legacy `navigator_only` execution log.
 - `pilot`: apply the calculated `final_duration`; may skip watering.
 
 Analysis rule for AI:
@@ -666,8 +690,9 @@ V2 execution path:
 - `scheduler_stop_tick()` applies the same V2 domain gate and runs only
   `stop_v2_due_schedules()` on the safety worker. Generic overdue-session
   supervision remains available independently of the V2 domain gate.
-- `run_v2_due_schedules()` follows the same manual valve guard and due-schedule
-  selection as legacy.
+- `run_v2_due_schedules()` checks the physical manual-valve guard and selects
+  eligible schedules by local weekday/window and per-date markers. It is the
+  sole scheduled-start dispatcher; no legacy executor remains.
 - `start_v2_scheduled_session()` creates sessions with
   `started_by = 'v2_scheduler'`.
 - V2 uses a single effective stop policy.

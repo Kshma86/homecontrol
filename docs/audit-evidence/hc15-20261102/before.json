@@ -1,0 +1,81 @@
+{
+  "active_release": "hc-security-20261102-r18",
+  "audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "source": {
+    "infra/backend/app.py": {
+      "sha256": "897b8d13630a0cf471449451869f964ef98b14984bc31c3addec8dbfe7cacbb7",
+      "matches_active_runtime": true
+    },
+    "infra/backend/db_runtime.py": {
+      "sha256": "850b1b107b807c31ae5443d621ededc77f64cab273bc1dd4369e7a84c0636cb1",
+      "matches_active_runtime": true
+    },
+    "infra/backend/repository_service.py": {
+      "sha256": "78b1b0d810aecb8cc916e7e0fc1e196168790b07383684217d22943820ffa016",
+      "matches_active_runtime": true
+    },
+    "infra/backend/database_service.py": {
+      "sha256": "4cca1f13f1e3198348c4b32a64d35281c6bfa94b74ee165331fc385377a5b117",
+      "matches_active_runtime": true
+    },
+    "infra/backend/climate_service.py": {
+      "sha256": "7d3feea8e4f4b204583b6487bb3aa40377c55dede0922f4384f13e275e907f09",
+      "matches_active_runtime": true
+    },
+    "infra/backend/irrigation_service.py": {
+      "sha256": "c6fa573697a505092cf55b1a6f7d4479057a121b46ddc174214b0c89c8039fd2",
+      "matches_active_runtime": true
+    },
+    "infra/backend/scheduler_service.py": {
+      "sha256": "9711a9cc355063f81beb0dc039936fed5e32514d63a4a5fd6e91d65c7a0d0873",
+      "matches_active_runtime": true
+    },
+    "infra/backend/scheduler_audit.py": {
+      "sha256": "fd04bf55a1a2bd5e05089c2a2182e981ade3e570280b21951ccc98bb64bfea73",
+      "matches_active_runtime": true
+    },
+    "infra/backend/tests/test_repository_service.py": {
+      "sha256": "573bb800ec205a339a13f9d8f0af0b1c7ff26139820450211f6428cac8163315",
+      "matches_active_runtime": true
+    },
+    "scripts/stage_hc_test_source.py": {
+      "sha256": "80a6935a7653cc5ed713e52a6631ed1a36c62a7eae5cdb1c2cbf3d87e12db561",
+      "matches_active_runtime": true
+    },
+    "scripts/check_hc_tests.py": {
+      "sha256": "05714e14708ebd6a2144ce31f4b710bb1ee3adc7baf467364fbd8dbf341bf6b7",
+      "matches_active_runtime": true
+    }
+  },
+  "before_app_lines": 1406,
+  "production_modified": false,
+  "read_audit_sections": [
+    "HC-15",
+    "D.1",
+    "F0",
+    "F8"
+  ],
+  "existing_dependencies": [
+    "HC-08 scheduler audit service/transaction adapter",
+    "HC-39 restricted runtime role and separate SQL Lab reader",
+    "HC-07/38 schema contracts"
+  ],
+  "scope_exclusions": [
+    "HC-16 rover imports/auth",
+    "HC-20 legacy executor removal",
+    "HC-23/43 platform/dependency updates"
+  ],
+  "backup_acceptance": {
+    "run_id": "86b8ed71e4104b3a8eb909ae86e8ea91",
+    "snapshot_id": "16cce464df928667d89eb16065c72eebd6c9e02a25867a0aff2037f7660488cb",
+    "git": "pushed",
+    "restore": "verified",
+    "database": "verified",
+    "ai_enabled": false,
+    "audit_input_prepared": true,
+    "ok": true,
+    "release": "hc-security-20261102-r18",
+    "state": "deployed_and_router_restore_verified"
+  },
+  "backup_run_state": "completed"
+}

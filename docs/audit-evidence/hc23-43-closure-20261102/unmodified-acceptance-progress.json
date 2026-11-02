@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "scope": "real deployed r18 archive and external Git; no source corrections",
+  "started_at": "2026-11-02T15:48:52.470904+00:00",
+  "remote_write_commands": 0,
+  "production_restore": false,
+  "ai_enabled": false,
+  "phase": "fresh_restore",
+  "error_type": "RuntimeError",
+  "finished_at": "2026-11-02T15:53:09.262567+00:00"
+}

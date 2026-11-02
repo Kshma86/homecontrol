@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "finding": "HC-24",
+  "changed_parser_functions": [
+    "read_name",
+    "parse_questions"
+  ],
+  "unchanged_parser_functions": [
+    "env_name",
+    "local_ip",
+    "encode_name",
+    "build_response",
+    "build_announcement",
+    "should_answer",
+    "make_socket",
+    "main"
+  ],
+  "changed_constants": [
+    "MAX_NAME_BYTES=255",
+    "MAX_POINTER_JUMPS=128 (local resource limit)"
+  ],
+  "single_question_A_ANY_response_bytes_unchanged": true,
+  "announcement_bytes_unchanged": true,
+  "backend_python_unchanged": 185,
+  "sql_migrations_unchanged": 62,
+  "previous_pending_paths_preserved": [
+    "infra/backend/app.py",
+    "infra/backend/db_runtime.py",
+    "infra/backend/repository_service.py",
+    "infra/backend/climate_service.py",
+    "infra/backend/irrigation_service.py",
+    "infra/backend/tests/test_repository_service.py",
+    "infra/backend/tests/test_db_runtime.py",
+    "infra/backend/tests/test_domain_schedule_reads.py",
+    "infra/backend/tests/test_app_database_wiring.py",
+    "infra/backend/tests/test_database_runtime_postgres.py",
+    "infra/backend/tests/fixtures/hc15_queries.json",
+    "infra/backend/tests/fixtures/hc15_routes.json",
+    "infra/backend/tests/fixtures/hc15_import_probe.py",
+    "docs/ai/mower-domain.md",
+    "docs/hc-16-repair.md",
+    "docs/mower-v3-bringup.md",
+    "docs/mower-v3-foundation.md",
+    "infra/backend/mower_manual_service.py",
+    "infra/backend/mower_motor_test.py",
+    "infra/backend/mower_parameters_service.py",
+    "infra/backend/mower_v3_commands.py",
+    "infra/backend/mower_v3_protocol.py",
+    "infra/backend/mower_v3_service.py",
+    "infra/backend/settings.py",
+    "infra/backend/tests/fixtures/hc16_import_probe.py",
+    "infra/backend/tests/test_mower_module_boundaries.py",
+    "docs/ai/irrigation-domain.md",
+    "docs/hc-20-repair.md",
+    "infra/backend/tests/test_irrigation_admission.py",
+    "infra/backend/tests/test_irrigation_admission_postgres.py",
+    "infra/backend/tests/test_irrigation_service.py"
+  ],
+  "intentional_harness_and_registry_overlap": [
+    "AUDIT_REPAIR.md",
+    "DEPLOYMENT_PREP.md",
+    "scripts/check_hc_tests.py",
+    "scripts/stage_hc_test_source.py"
+  ],
+  "prior_evidence_unchanged": true,
+  "original_audit_unchanged": true,
+  "automatic_other_audit_fixes": false,
+  "production_changed": false,
+  "lan_packets_sent": 0,
+  "separate_multi_question_observation": "separate-observation.json"
+}

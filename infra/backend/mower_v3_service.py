@@ -11,55 +11,20 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
+from mower_v3_protocol import (
+    CONTRACT, MANUAL_PROTOCOL, STATES, RoverReadError, UnknownMutation,
+    unique_object, reject_constant, integer, hex_id, require, validate_identity,
+    validate_state, motor_identity, validate_motor_state, validate_parameters_status,
+    parameters_fresh,
+)
 
-CONTRACT = "3.1.0"
-MANUAL_PROTOCOL = "homecontrol.mower.manual.v3"
 MAX_RESPONSE_BYTES = 16384
 STATE_TIMEOUT_MS = 1500
-STATES = {"DISARMED", "IDLE", "MANUAL", "AUTO", "PAUSED", "FAULT", "MAINTENANCE"}
-
-
-class RoverReadError(Exception):
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-
-
-class UnknownMutation(RoverReadError):
-    def __init__(self):
-        super().__init__("REPLY_LOST", "A művelet eredménye ismeretlen; csak olvasási egyeztetés végezhető.")
 
 
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
-
-
-def unique_object(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError("Duplicate JSON key")
-        result[key] = value
-    return result
-
-
-def reject_constant(value):
-    raise ValueError("Non-finite JSON number")
-
-
-def integer(value, minimum=0, maximum=0xFFFFFFFF):
-    return type(value) is int and minimum <= value <= maximum
-
-
-def hex_id(value, length, *, nonzero=False):
-    return (type(value) is str and re.fullmatch(r"[0-9A-F]{%d}" % length, value)
-            is not None and (not nonzero or value != "0" * length))
-
-
-def require(condition):
-    if not condition:
-        raise RoverReadError("INVALID_RESPONSE", "Hibás vagy hiányos v3.1 roverválasz.")
 
 
 class RoverHttp:
@@ -169,85 +134,6 @@ class RoverHttp:
         return connect_rover(url + "/api/v3/manual", self._token)
 
 
-def validate_identity(payload):
-    require(type(payload) is dict and type(payload.get("v")) is int and payload["v"] == 3)
-    if payload.get("contract") != CONTRACT:
-        raise RoverReadError("INCOMPATIBLE_VERSION", "A rover nem a támogatott 3.1.0 szerződést jelzi.")
-    require(hex_id(payload.get("esp_boot"), 16, nonzero=True))
-    require("stm_boot" in payload and (payload["stm_boot"] is None or hex_id(payload["stm_boot"], 16, nonzero=True)))
-    require(hex_id(payload.get("profile_crc"), 8))
-    for key in ("compatible", "conformant", "stm_remote_update", "stm_reset_recovery", "update_locked"):
-        require(type(payload.get(key)) is bool)
-    for key in ("esp_fw", "stm_flash_layout", "manual_protocol"):
-        require(type(payload.get(key)) is str and 0 < len(payload[key]) <= 48)
-    for key in ("stm_fw", "stm_bootloader_fw"):
-        require(key in payload and (payload[key] is None or type(payload[key]) is str and 0 < len(payload[key]) <= 48))
-    for key in ("update_service_abi", "stm_image_max_bytes", "esp_ota_max_bytes"):
-        require(integer(payload.get(key)))
-    require(type(payload.get("max_mission_bytes")) is int and payload["max_mission_bytes"] == 131072)
-    require(type(payload.get("max_segments")) is int and payload["max_segments"] == 4096)
-    for key, allowed in (("stm_confirmed_slot", {"A", "B", "NONE", None}), ("stm_inactive_slot", {"A", "B", None})):
-        require(key in payload and (payload[key] is None or type(payload[key]) is str) and payload[key] in allowed)
-    if "runtime_parameters" in payload:
-        require(type(payload["runtime_parameters"]) is bool)
-    for key in ("manual_claim_from_disarmed", "minimal_erpm_parameters", "first_configuration_requires_motor_feedback", "test_manual_control", "manual_erpm", "commissioned", "profile_verified", "motion_permitted", "esp_ota_enabled", "autonomous_enabled"):
-        if key in payload:
-            require(type(payload[key]) is bool)
-    if "mode" in payload:
-        require(type(payload["mode"]) is str)
-    if "parameter_versions_supported" in payload:
-        require(type(payload["parameter_versions_supported"]) is list and all(type(v) is int and v in (1, 2) for v in payload["parameter_versions_supported"]))
-    # Whitelist: a remote response can never add credentials to browser diagnostics.
-    keys = ("v", "contract", "esp_boot", "stm_boot", "profile_crc", "compatible", "conformant",
-            "esp_fw", "stm_fw", "stm_bootloader_fw", "stm_remote_update", "stm_reset_recovery",
-            "update_locked", "stm_flash_layout", "update_service_abi", "stm_image_max_bytes",
-            "esp_ota_max_bytes", "max_mission_bytes", "max_segments", "manual_protocol",
-            "stm_confirmed_slot", "stm_inactive_slot", "runtime_parameters", "mode", "manual_claim_from_disarmed", "minimal_erpm_parameters", "first_configuration_requires_motor_feedback", "test_manual_control", "manual_erpm", "parameter_versions_supported", "commissioned", "profile_verified", "motion_permitted", "esp_ota_enabled", "autonomous_enabled")
-    return {key: payload[key] for key in keys if key in payload}
-
-
-def validate_state(payload, identity):
-    require(type(payload) is dict and type(payload.get("v")) is int and payload["v"] == 3)
-    require(payload.get("esp_boot") == identity["esp_boot"])
-    require("stm_boot" in payload and payload["stm_boot"] == identity["stm_boot"])
-    require(type(payload.get("source_valid")) is bool)
-    require(integer(payload.get("published_ms")) and integer(payload.get("source_seq")))
-    require("source_age_ms" in payload and (payload["source_age_ms"] is None or integer(payload["source_age_ms"])))
-    enums = {
-        "state": STATES, "phase": {"NONE", "ALIGN", "TRACK"},
-        "store": {"EMPTY", "RECEIVING", "VALIDATING", "READY"},
-        "outcome": {"NONE", "RUNNING", "PAUSED", "COMPLETED", "STOPPED", "FAULTED"},
-    }
-    for key, allowed in enums.items():
-        require(key in payload and (payload[key] is None or type(payload[key]) is str and payload[key] in allowed))
-    for key in ("state_seq", "control_epoch", "event_seq", "revision", "segment_index",
-                "segment_count", "manual_lease_id", "manual_input_seq"):
-        require(key in payload and (payload[key] is None or integer(payload[key])))
-    for key in ("armed", "stopped", "ready_for_start", "ready_for_resume"):
-        require(key in payload and (payload[key] is None or type(payload[key]) is bool))
-    require("mission_id" in payload and (payload["mission_id"] is None or type(payload["mission_id"]) is str and
-            re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", payload["mission_id"]) is not None))
-    require("crc32" in payload and (payload["crc32"] is None or hex_id(payload["crc32"], 8)))
-    require("reason" in payload and (payload["reason"] is None or type(payload["reason"]) is str and re.fullmatch(r"[A-Z_]{1,32}", payload["reason"]) is not None))
-    for key in ("fault_mask", "safety_installed_mask", "safety_active_mask"):
-        require(key in payload and (payload[key] is None or integer(payload[key])))
-    if payload["source_valid"]:
-        require(identity["stm_boot"] is not None and payload["source_seq"] > 0
-                and payload["source_age_ms"] is not None)
-        for key in (*enums, "armed", "stopped", "ready_for_start", "ready_for_resume", "fault_mask",
-                    "safety_installed_mask", "safety_active_mask", "event_seq", "segment_index", "segment_count", "reason"):
-            require(payload[key] is not None)
-        require(integer(payload["state_seq"], 1) and integer(payload["control_epoch"], 1))
-        require(payload["segment_index"] <= payload["segment_count"] <= 4096)
-        require(payload["armed"] == (payload["state"] in ("IDLE", "MANUAL", "AUTO", "PAUSED")))
-    keys = ("v", "esp_boot", "stm_boot", "published_ms", "source_seq", "source_age_ms", "source_valid",
-            "state_seq", "control_epoch", "event_seq", "state", "phase", "armed", "store", "mission_id",
-            "revision", "crc32", "segment_index", "segment_count", "outcome", "reason", "fault_mask",
-            "stopped", "ready_for_start", "ready_for_resume", "manual_lease_id", "manual_input_seq",
-            "safety_installed_mask", "safety_active_mask")
-    return {key: payload[key] for key in keys}
-
-
 class MowerV3Service:
     def __init__(self, *, origin="", token="", transport=None, clock=time.monotonic, read_only=False, motor_test_enabled=False, simple_control=False):
         self.simple_control = simple_control
@@ -290,7 +176,6 @@ class MowerV3Service:
             self.maintenance_guard()
             identity = validate_identity(self._transport.get("/api/v3/identity"))
             result["identity"] = identity
-            from mower_motor_test import motor_identity, validate_motor_state
             test_mode = identity.get("mode") == "MOTOR_TEST"
             if test_mode:
                 require(motor_identity(identity))
@@ -346,7 +231,6 @@ class MowerV3Service:
                 self._sample = {"key": sample_key, "age": age, "at": now, "evidence": evidence}
             result["state"] = state
             if identity.get("mode") == "MOTOR_TEST":
-                from mower_motor_test import motor_identity, validate_parameters_status, parameters_fresh
                 require(motor_identity(identity))
                 recovering = False
                 if identity.get("manual_claim_from_disarmed") is True:

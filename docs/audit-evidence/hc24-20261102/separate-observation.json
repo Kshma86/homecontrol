@@ -1,0 +1,10 @@
+{
+  "question_count_parsed": 2,
+  "response_qdcount": 1,
+  "question_bytes_copied": 20,
+  "original_question_bytes": 20,
+  "build_response_ast_unchanged": true,
+  "fixed": false,
+  "blocks_hc24": false,
+  "description": "Existing builder copies both questions while declaring QDCOUNT=1. Separate protocol issue, outside the HC-24 loop fix."
+}

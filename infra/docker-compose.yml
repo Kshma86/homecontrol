@@ -68,7 +68,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:885e28c69cd957f2c2007715ca8a42e95b5eaccc0ab394552cb66efe3b08d479",
+      "image": "sha256:0e5c69b450c66e21c4b9408ec6e80698830d8c56b5a32fff4a6c4898b7ead3af",
       "logging": {
         "driver": "json-file",
         "options": {
@@ -173,7 +173,7 @@
         },
         {
           "type": "bind",
-          "source": "/srv/docker/homecontrol/infra/ssh/hc-security-20261102-r18/mqtt/credentials/backend.password",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-audit-20261102-r19/mqtt/credentials/backend.password",
           "target": "/run/secrets/hc-mqtt.password",
           "read_only": true
         }
@@ -181,7 +181,7 @@
       "pull_policy": "never",
       "env_file": [
         {
-          "path": "/srv/docker/homecontrol/infra/ssh/hc-security-20261102-r18/compose-env/backend.env",
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-audit-20261102-r19/compose-env/backend.env",
           "format": "raw"
         }
       ],
@@ -340,7 +340,7 @@
       "network_mode": "host",
       "restart": "unless-stopped",
       "pull_policy": "never",
-      "image": "sha256:c4cb6f7b58c3c62343e0fd0e4f119e4e2b9406dee4402b6b6fa9472e7209322c",
+      "image": "sha256:f85cde2862d666f5a28aefd0429437873bc4ecd0ec92f3f4a87ec59bd2bbdc3c",
       "env_file": [
         {
           "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/homecontrol-ha-growatt-poller.env",
@@ -462,7 +462,7 @@
       "network_mode": "host",
       "restart": "unless-stopped",
       "pull_policy": "never",
-      "image": "sha256:eefa73a28b2f3d337636cb3f70a43d940e182dc06c67a866338ccf50a50aa87d",
+      "image": "sha256:b85dd1092f6346dfea6768fffd23e8cec9c9c9908ecd5629a26c13d7f3148734",
       "env_file": [
         {
           "path": "/srv/docker/homecontrol/infra/ssh/hc-access-20261030-r10/compose-env/mdns.env",

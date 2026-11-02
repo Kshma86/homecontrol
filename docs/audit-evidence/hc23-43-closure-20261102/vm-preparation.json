@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "container": "hc-r18-closure-lab-20261102",
+  "network": "none",
+  "qemu_restrict": true,
+  "host_docker_socket": false,
+  "private_input_readonly": true,
+  "fresh_overlay": true,
+  "empty_hc": true,
+  "empty_image_store": true,
+  "hardware_network": false
+}

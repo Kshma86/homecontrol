@@ -10,7 +10,20 @@ Az átnézett audit SHA-256 lenyomata:
 51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2
 ```
 
-**Aktív: `hc-router-backup-20261101-r16`, élesítve és visszaállítással ellenőrizve.**
+**Aktív: `hc-security-20261102-r18`, élesítve és szoftveresen átvéve 2026-11-02.**
+736 csomag-/runtime-forráshash egyezik; 15 komponens a várt image-en, a 10
+healthcheck healthy, HTTP/worker/readiness rendben, 5 timer aktív, systemd-hiba nincs.
+A teljes privát HA-előpróba, hitelesített HA API/64 Growatt-entitás és PG16/kolláció
+sikeres. Friss HC/Git/router mentés, 6373 checksum, visszaolvasás és külön PG-restore
+sikeres. Az AI tiltva, ESP MQTT kivétel változatlan. HC-23/43 korábbi részjavításai élesek;
+HC-23 új JSON Compose recovery-javítása külön ellenőrzött, még nem éles (REPAIR-067). HC-43 upstream találatai folyamatban maradnak. A későbbi HC-15/16/20/24/26 kódjavítások
+ellenőrzöttek, de még nincsenek ebben az éles kiadásban (REPAIR-062–066).
+[Éles átadás](backups/deployments/hc-security-20261102-r18/DEPLOYMENT.md),
+[utóellenőrzés](docs/audit-evidence/hc23-43-r18-live-20261102/production-check.json).
+
+A következő bekezdés a korábbi r16 állapot történeti összefoglalója.
+
+**Korábbi aktív: `hc-router-backup-20261101-r16`, élesítve és visszaállítással ellenőrizve.**
 A teljes helyi/router/Git mentés, a megőrzés előtti és utáni adatellenőrzés,
 5561 fájlchecksum és az izolált PostgreSQL-restore sikeres. A tényleges éles
 Gitből és snapshotból friss, üres HC/image-tárú gép teljes helyreállítása,
@@ -20,20 +33,22 @@ Az AI felhasználói döntés alapján letiltva marad; az SSD a jelenlegi menté
 ellenőrzéseknek már nem akadálya.
 [Éles r16 átvétel és rollback](backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md).
 
-**Auditösszesítés:** 40 ellenőrzött, 5 nyitott, 3 folyamatban.
-HC-12 és HC-32 javítása éles; az aktív runtime r16. HC-23/43 globális részei és
-HC-41 az ESP legacy kivétel miatt folyamatban. HC-31 fizikai shutdown/OFF/wake
+**Auditösszesítés:** 46 ellenőrzött, 0 nyitott, 2 folyamatban (HC-41/43).
+HC-15/16/20/24/26 izoláltan ellenőrzött kódjavítás; éles bevezetésük még nem történt meg.
+HC-12 és HC-32 javítása éles; az aktív runtime r18. HC-23 kódja ellenőrzött, az új recovery-javítás még nem éles. HC-43 a felhasználó döntése szerint gyártói javításig, HC-41 az ESP legacy kivétel miatt folyamatban. HC-31 fizikai shutdown/OFF/wake
 próba nem futott, csak későbbi AI-újraaktiválás előtt szükséges. A régi AI-Gitea
 története nincs ellenőrzöttnek minősítve. A történeti napló megmarad.
 
 ## Az áttekintés eredménye
 
-**Legújabb lezárt kiadási munka:** REPAIR-060, aktív r16.
-**Új élesítési csomag:** REPAIR-061, r18; csak helyi élesítésre előkészítve,
-még nem aktív. [Scope, bizonyítékok és nyitott találatok](docs/hc23-43-platform-release-20261102.md).
+**Legújabb lezárt kiadási munka:** REPAIR-061, aktív r18.
+**Legújabb ellenőrzött kódjavítás:** REPAIR-067, HC-23; nem éles.
+[Friss és ismételt restore, FTP-kiesés, reboot, tesztek és kiadási függőség](docs/hc23-43-closure-20261102.md). A korábbi HC-15/16/20/24/26 javítások (REPAIR-062–066) megőrzöttek, szintén nem élesek.
+A HC-23/43 kontrollált platformfrissítése éles és szoftveresen átvett;
+HC-43 a gyártói találatok miatt továbbra is folyamatban. [Korábbi r18 scope és bizonyítékok](docs/hc23-43-platform-release-20261102.md).
 Az SSD miatt korábban félretett, jelenlegi mentési láncra vonatkozó ellenőrzések
 lezárva; [tételes bizonyítékok](docs/ai-ssd-backup-closure-20261101.md).
-HC-15/16/20/24/26 továbbra is nyitott, HC-23/41/43 folyamatban. Más feladat
+HC-41/43 továbbra is folyamatban. HC-23 ellenőrzött; az új recovery-forrás éles kiadása még szükséges. Más feladat
 besorolása nem változott; a korábbi naplóbejegyzések történeti állapotot őriznek.
 
 - A dokumentum 48, folytonosan számozott megállapítást tartalmaz: **20 P1, 26 P2, 2 P3**. A tételes besorolás egyezik az N.5 összesítésével. P0 megállapítást nem rögzít.
@@ -71,18 +86,18 @@ A fázisok az audit F. fejezetére hivatkoznak, nem végrehajtott munkát jelöl
 | HC-12 | P2 | Bridge-parancsfeldolgozás korlátai és sorrendje | F10 | Ellenőrzött |
 | HC-13 | P2 | Háttérszálak életciklusa, hosszú kapcsolatok és teljes határidők | F10 | Ellenőrzött |
 | HC-14 | P2 | Olvasás közbeni drága összesítésírás és hibás refresh-időzítés | F9 | Ellenőrzött |
-| HC-15 | P2 | DB-wrapperlánc és az app összekötési felelősségei | F8 | Nyitott |
-| HC-16 | P2 | Rover-modulfüggőségek és kikapcsolt auth-kompatibilitás | F8 | Nyitott |
+| HC-15 | P2 | DB-wrapperlánc és az app összekötési felelősségei | F8 | Ellenőrzött |
+| HC-16 | P2 | Rover-modulfüggőségek és kikapcsolt auth-kompatibilitás | F8 | Ellenőrzött |
 | HC-17 | P1 | Hitelesítési backup fájl kizárása a Gitea-exportból | F1 | Ellenőrzött |
 | HC-18 | P2 | Hiányos konfigurációexport és hatástalan megjelenített útlista | F1 | Ellenőrzött |
 | HC-19 | P1 | Kettős backup-végrehajtó, közös névtér és redundáns timerek | F6 | Ellenőrzött |
-| HC-20 | P2 | Elérhetetlen legacy öntözéskód és elavult dokumentáció | F8 | Nyitott |
+| HC-20 | P2 | Elérhetetlen legacy öntözéskód és elavult dokumentáció | F8 | Ellenőrzött |
 | HC-21 | P2 | Túlzott AI-kontextus és két helyen élő válaszlogika | F9 | Ellenőrzött |
 | HC-22 | P2 | Frontend GET-határidő és elavult válaszok kizárása | F9 | Ellenőrzött |
-| HC-23 | P2 | Reprodukálható telepítés és alkalmazásszintű állapotellenőrzés | F10 | Folyamatban |
-| HC-24 | P2 | Végtelen ciklus az mDNS-parserben | F1 | Nyitott |
+| HC-23 | P2 | Reprodukálható telepítés és alkalmazásszintű állapotellenőrzés | F10 | Ellenőrzött |
+| HC-24 | P2 | Végtelen ciklus az mDNS-parserben | F1 | Ellenőrzött |
 | HC-25 | P3 | Teljes backup-log olvasása és író lockellenőrzés | F6 | Ellenőrzött |
-| HC-26 | P3 | HA-Growatt entitásonként soros HTTP-polling | F10, használattól/méréstől függően | Nyitott |
+| HC-26 | P3 | HA-Growatt entitásonként soros HTTP-polling | F10, használattól/méréstől függően | Ellenőrzött |
 | HC-27 | P1 | Hibajelzés előtt részlegesen alkalmazott restore | F6a | Ellenőrzött |
 | HC-28 | P2 | Fájljogosultságok és típusinformáció elvesztése restore közben | F6a | Ellenőrzött |
 | HC-29 | P2 | Mentésdiff útvonalhatár-ellenőrzése | F6a | Ellenőrzött |
@@ -108,9 +123,11 @@ A fázisok az audit F. fejezetére hivatkoznak, nem végrehajtott munkát jelöl
 
 **Kezdő összesítés:** 48 nyitott; 0 folyamatban; 0 javított; 0 ellenőrzött; 0 halasztott. Éles bevezetés nem történt.
 
-**Aktuális összesítés:** 5 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
-40 ellenőrzött; 0 halasztott. HC-12/32 és az elkészült HC-23/43 részjavítások
-élesek; aktív az r16 (REPAIR-060). Az r10 korábbi HC-35/36 + HC-41/44 javításait
+**Aktuális összesítés:** 0 nyitott; 2 folyamatban (HC-41/43); 0 javítva – ellenőrzésre vár;
+46 ellenőrzött; 0 halasztott. HC-23 REPAIR-067 kódjavítása ellenőrzött, még nem éles. HC-15/16/20/24/26 kódja ellenőrzött, de még nem éles
+(REPAIR-062–066).
+HC-12/32 és az elkészült HC-23/43 részjavítások
+élesek; aktív az r18 (REPAIR-061). Az r10 korábbi HC-35/36 + HC-41/44 javításait
 az aktív kiadás megőrzi (REPAIR-049); az ESP legacy kivétel miatt
 HC-41 folyamatban. HC-11/33/34 és 062 élesítése REPAIR-039; HC-10 és
 HC-13/14/21/22/40 r8 élesítése REPAIR-035. HC-45 KVM REPAIR-046, aktuális r16 teljes hostrestore REPAIR-060. HC-31 fizikai AI-próbáját a szoftveres ellenőrzés nem
@@ -3306,10 +3323,11 @@ változatlan: 40 ellenőrzött, 5 nyitott, 3 folyamatban; más feladatot nem zá
 [aktuális VM-nyugta](docs/audit-evidence/router-r16-live-20261101/vm-acceptance.json),
 [éles átadás](backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md).
 
-## REPAIR-061 — HC-23/43 r18 platformcsomag, helyi élesítésre előkészítve (2026-11-02)
+## REPAIR-061 — HC-23/43 r18 platformfrissítés és éles átvétel (2026-11-02)
 
-**Állapot:** az éles runtime továbbra is r16. Új, külön r18 csomag készült;
-helyi sudo-aktiválás és éles átvétel szükséges. HC-23/43 folyamatban marad;
+**Állapot: éles és szoftveresen átvett r18.**
+Az alábbi előkészítési feljegyzés a még r16-on futó állapotot rögzíti;
+a tényleges éles átvétel eredménye a bejegyzés végén szerepel. HC-23/43 folyamatban marad;
 az auditösszesítés és más pontok besorolása változatlan.
 
 **Változás:** 14 fő platformszolgáltatás és a külön HA pontos image-ID-val,
@@ -3354,3 +3372,342 @@ SHA-256 és külön PG-restore. Csak sikeres bizonyítás után indulhatnak a ti
 [Tételes átadás és visszagörgetés](docs/hc23-43-platform-release-20261102.md),
 [csomag](backups/releases/hc-security-20261102-r18/README.md),
 [helyi átadás](backups/deployments/hc-security-20261102-r18/PENDING.md).
+
+
+**REPAIR-061 éles átvétel — 2026-11-02.** A felhasználó helyi sudo-val
+sikeresen élesítette az r18-at. Teljes védett HA-konfiguráció és konzisztens
+DB-másolat offline előpróbája sikeres, a sorok megmaradtak. Éles hitelesített
+HA API HTTP200, 64 korábban elérhető Growatt-entitás megmaradt; PostgreSQL16,
+kolláció 2.41/2.41. A heti futás `86b8ed71e4104b3a8eb909ae86e8ea91` completed/0;
+6373 checksum, Git push, routeres visszaolvasás és külön PG-restore sikeres.
+Snapshot `16cce464df928667d89eb16065c72eebd6c9e02a25867a0aff2037f7660488cb`,
+Git `09c74d093a4276e8d5cb90b4fe454055b09010fb`.
+
+Független, csak olvasó utóellenőrzés: 736 csomag-/runtime-forráshash és a
+lezárt bizonyítékok egyeznek; 15 komponens a várt image-en, 10 healthcheck
+healthy, restart0; backend live/ready/workers és frontend/proxy HTTP200 jó.
+Mind az 5 hosttimer aktív/engedélyezett, hostops/MQTT guard aktív, systemd-hiba
+nincs. Az AI letiltva, ESP-kivétel megmaradt. A lezárt csomagot és az eredeti
+auditot nem módosítottuk. A teljes friss r18 vendéggépes restore/reboot és a
+fizikai bridge-/X10-próba ebben a körben nem futott; a korábbi r16 VM-próba
+nem újraminősített r18 bizonyíték. HC-23/43 folyamatban marad, az upstream
+függőségi találatok és más pontok besorolása változatlan.
+
+[Éles átadás és rollback](backups/deployments/hc-security-20261102-r18/DEPLOYMENT.md),
+[utóellenőrzés](docs/audit-evidence/hc23-43-r18-live-20261102/production-check.json).
+
+## REPAIR-062 — HC-15: mért DB-hozzáférés és app-wiring egyszerűsítése (2026-11-02)
+
+- **Hatókör / fázis:** kizárólag HC-15, F0 és F8. Elolvasva HC-15, D.1
+  hivatkozási bizonyítékai és F8 elfogadási/rollback feltételei. Az eredeti
+  audit SHA-256 változatlan. Kiindulás az éles r18-cal egyező backendforrás;
+  ellenőrzött r18 mentési nyugta rendelkezésre állt.
+- **Státusz:** Ellenőrzött, izolált szoftveres környezetben; **nem élesített**.
+  Aktív továbbra is `hc-security-20261102-r18`.
+- **Bizonyíték / javítás:** az egyetlen shared repositoryt tartó
+  `RepositoryRegistry` és a változtatás nélkül delegáló `SqlRepository`
+  kivezetve; `DatabaseRuntime` közvetlenül a változatlan `DatabaseService`-t
+  hívja. A használatlan registry-getter és a puszta forwardingteszt törölve.
+  Requestenkénti helper-számlálás, nyers connection/context manager,
+  kivétel-/rollback-határ és a szűkített `hc_app` role megmaradt.
+- **App/domain:** a klímaütemezés SQL/profilvalidálása a meglévő ClimateService-be,
+  a V2 öntözési session lookup a meglévő IrrigationService-be került. Az app
+  1406 → 1339 sor; explicit, késleltetett wiring maradt. A korábbi HC-08
+  scheduler-audit leválasztását megőriztük. Nincs új DI-framework vagy migráció.
+  Az összes korábbi öntözési metódus AST-je változatlan; HC-20-at nem javítottuk.
+- **Ellenőrzés:** kiinduló 795 unit; végső 806 unit és 197 PostgreSQL-teszt,
+  utóbbi 15 külön eldobható klaszterben/modulban. **1003 egyedi végső teszt,
+  0 failure/error/skip.** A külön 24 célzott/startup teszt átfedő, nem hozzáadott.
+  Valódi rollback, close, savepoint, role-elutasítás; korábbi/új SQL-payload
+  ugyanazon DB-tranzakcióban. Query-counter hibás/sikeres/párhuzamos requestnél
+  azonos. Őrzött app-import és valódi lazy factoryk nem nyitnak kapcsolatot,
+  nem indítanak szálat/folyamatot, nem írnak fájlt; 163 route változatlan.
+- **Tesztkörnyezet:** hálózat nélküli konténerek, csak saját PG namespace,
+  hostport és éles DB/eszköz nélkül. A staging a törölt modulokat is eltávolítja.
+  Az első célzott kísérlet image-munkakönyvtár miatti téves importját külön
+  naplóztuk; a végső futtatások explicit forrásimporttal sikeresek.
+- **Függőségek:** meglévő HC-08 tranzakciós adapter, HC-07/38 sémaellenőrzés és
+  HC-39 DB-role/SQL Lab határ megőrzött. HC-16 és HC-20 továbbra is külön
+  feladat; más HC státusza/implementációja nem változott. Éles bevezetéshez
+  új backendkiadás kell, a törölt modul tényleges kihagyásával.
+- **Éles változatlanság:** a 736 telepített runtime-hash és mind a 16 konténer
+  ID/image/állapota az r18 korábbi átvételével egyezik; deploy/restart és éles
+  DB-lekérdezés nem történt. Rollbackhez a mentett eredeti fájlok megvannak;
+  nincs DB-down-migráció vagy adattörlés.
+
+[Tételes leírás](docs/hc-15-repair.md),
+[összesítés és tényleges parancsok](docs/audit-evidence/hc15-20261102/summary.json),
+[scope](docs/audit-evidence/hc15-20261102/scope-check.json),
+[éles változatlanság](docs/audit-evidence/hc15-20261102/production-unchanged.json),
+[patch](docs/audit-evidence/hc15-20261102/source.diff).
+
+
+## REPAIR-063 — HC-16: egyirányú rover-protokoll és használatlan settings kivezetése (2026-11-02)
+
+- **Hatókör / fázis:** kizárólag HC-16, F0/F8. Elolvasva a megállapítás,
+  D.1 bizonyítékai/kivezetési feltételei, F8 teljes kapcsolódó suite-ra,
+  viselkedésmegőrzésre és rollbackre vonatkozó feltételei, G.3–4 és az aktuális
+  egykezelős átadás. Az eredeti audit SHA-256 változatlan. F0 alapja az r18
+  visszaállítással ellenőrzött mentése és a mostani 806 tesztes baseline.
+- **Státusz:** Ellenőrzött, izolált szoftveres környezetben; **nem élesített**.
+  Aktív továbbra is `hc-security-20261102-r18`. A korábbi HC-15 javítás mind
+  a 15 fájlujjlenyomata változatlan; más auditpont státusza nem módosult.
+- **Javítás:** a 14 közös, tiszta rover-definíció a `mower_v3_protocol.py`
+  levélmodulba került. A service/commands/manual/motor-test/parameters
+  ötmodulos kölcsönös függősége megszűnt, a késleltetett importokat is számítva.
+  A korábbi nyilvános importok aliasok, azonos hibatípusokkal/függvényekkel.
+  Az áthelyezett definíciók és az öt üzleti modultörzs AST-je importokat
+  leszámítva azonos; protokollkonstans, payload és időzítés változatlan.
+- **Auth:** két használatlan operator-env settings-mező kivezetve, három
+  érintett guide javítva. Az app fix superuser módja, a same-origin ellenőrzés,
+  a natív Bearer/tokenfájl és a tesztelt opcionális session-adapter megmaradt.
+  A teljes auth-modult D.1 alapján nem töröltük; privát env nem módosult.
+- **Ellenőrzés:** végső 810 unit (249 roverhez kapcsolódó), 197 valódi
+  PostgreSQL-teszt 15 külön eldobható klaszterben és 114 frontendteszt,
+  továbbá offline frontend-build. **1121 végső teszt, 0 failure/error/skip.**
+  A 4 célzott teszt átfedő: 120 importálási sorrend, alias-/exceptionazonosság,
+  importgráf és őrzött tényleges app-wiring; 28 idegen/hiányzó originű POST
+  elutasítva külső I/O előtt, natív teszttoken nem látható repr/API válaszban.
+  Normál v3/MOTOR_TEST/HC_BRINGUP, lease/deadman/UNKNOWN és firmware/store
+  szerződések ellenőrizve. Nincs fizikai roverpróba vagy éles DB/eszközkapcsolat.
+- **Korábbi kísérletek:** a teszt téves parameter-URL-jét javítottuk; az első
+  teljes kör 11 hibáját okozó hiányzó `re` importot visszaállítottuk. A végső
+  backend/PG-körök már a javított forráson sikeresek. A sikertelen logok
+  megőrzöttek és nem részei a sikeres elfogadásnak.
+- **Függőségek / bevezetés:** a következő backendkiadás a megőrzött HC-15 és
+  az új HC-16 forrásállapotát együtt tartalmazza; az új protokollmodult az öt
+  importálóval/settings-szel együtt kell szállítani. HC-20 külön feladat,
+  nem előfeltétel. HC-23/43 globális nyitott részei és HC-41 ESP kivétele
+  nem változtak. Nincs DB-migráció, új parancs vagy új worker-szemantika.
+- **Éles változatlanság / rollback:** 736 runtime-hash és 16 konténer
+  ID/image/futás állapota változatlan. Deploy/restart nem történt. Az eredeti
+  fájlok és patch alapján tiszta kód-revert lehetséges a HC-15 megőrzésével;
+  adat-/DB-visszaállítás nem szükséges.
+
+[Tételes leírás](docs/hc-16-repair.md),
+[összesítés](docs/audit-evidence/hc16-20261102/summary.json),
+[scope](docs/audit-evidence/hc16-20261102/scope-check.json),
+[éles változatlanság](docs/audit-evidence/hc16-20261102/production-unchanged.json).
+
+
+## REPAIR-064 — HC-20: elérhetetlen legacy öntözési végrehajtó kivezetése (2026-11-02)
+
+- **Hatókör / fázis:** kizárólag HC-20, F0/F8. Elolvasva HC-20, D.1 bizonyítékai,
+  F8 viselkedésmegőrzési/teszt-/rollback feltételei, F0 és G.5. Az eredeti audit
+  SHA-256 változatlan. Az r18 visszaállítással ellenőrzött mentése rendelkezésre
+  állt; a most lefagyasztott HC-15/16 állapot 810 baseline unit tesztje sikeres.
+- **Státusz:** Ellenőrzött, izolált szoftveres környezetben; **nem élesített**.
+  Aktív továbbra is `hc-security-20261102-r18`. Más auditpont státusza nem módosult.
+- **Bizonyíték / javítás:** a három zárt legacy metódus (`start_scheduled_session`,
+  `run_due_schedules`, `stop_due_schedules`) kivezetve, 185 definíciós sor törölve.
+  Mind a 86 megmaradó service-metódus és a teljes modul AST-je a törléseket
+  leszámítva változatlan. A 491 kezelt aktív forrás-/unit-/config fájlban nincs
+  hivatkozás a régi nevekre; az öntözési domain-guide a tényleges V2 utat írja le.
+- **Tesztigazítás:** az audit óta készült HC-04 legacy-indítási teszthivatkozások
+  a megmaradó manual/V2 kapukat követik; a tranzakciós hiba-/versenytesztek
+  megmaradtak. A régi legacy–V2 teszt helyett tényleges V2 service-hívás védi a
+  napi egyszeri startot lezárt session és service-újrapéldányosítás után.
+  Hat új unit és egy további PG-teszt fedi a navigator/pilot, skip/hibás start,
+  kéziszelep-guard, stopnaplózás és valódi SQL-alapú effektív stop szerződését.
+- **Ellenőrzés:** **816 unit + 198 PostgreSQL = 1014 egyedi végső backendteszt,
+  0 failure/error/skip**. A PG 15 külön eldobható klaszteren/modulban futott.
+  A külön 57 célzott teszt átfedő, nem hozzáadott. Tizenkét előtte/utána V2
+  forgatókönyvben pontos reservation/MQTT payload/SQL/eredmény/recovery egyezés.
+  Az app 163 route-ját ellenőrző és a HC-15/16 regressziós tesztek is sikeresek.
+- **Megőrzött határok:** 62 SQL-migráció, történeti sessionök és publikus API-k
+  változatlanok. HC-01–04/08, szezonprofil, stop-authority és egyworkeres
+  tulajdonlás megmaradt. Nincs új eszközparancs, ütemezési szemantikaváltozás,
+  runtime DDL vagy DB-migráció. Frontend és AI letiltás változatlan.
+- **Függőségek / bevezetés:** a következő backendkiadás a korábbi HC-15/16 és
+  HC-20 forrását együtt tartalmazza. A HC-15 service-fájlja csak a HC-20 három
+  törlésével változott; a korábbi javítás működése megmaradt. HC-24/26 és
+  HC-23/41/43 külön munka marad. Fizikai öntözési próba nem történt.
+- **Éles változatlanság / rollback:** 736 runtime-hash és 16 konténer
+  ID/image/futás állapota változatlan; deploy/restart és éles DB/eszközművelet
+  nem történt. Az eredeti fájlok és patch alapján tiszta kód-revert lehetséges
+  a HC-15/16 megtartásával, adat- vagy DB-visszaállítás nélkül.
+
+[Tételes leírás](docs/hc-20-repair.md),
+[összesítés](docs/audit-evidence/hc20-20261102/summary.json),
+[scope](docs/audit-evidence/hc20-20261102/scope-check.json),
+[payload-egyezés](docs/audit-evidence/hc20-20261102/payload-parity.json),
+[éles változatlanság](docs/audit-evidence/hc20-20261102/production-unchanged.json).
+
+
+## REPAIR-065 — HC-24: korlátos mDNS-pointer- és kérdésfeldolgozás (2026-11-02)
+
+- **Hatókör / fázis:** kizárólag HC-24, F0/F1. Elolvasva a megállapítás,
+  a H.1 pointerciklus-bizonyítéka, F0 és az érintett F1 lépés. Az export-/secret-
+  kezelés HC-17/18 része nem módosult. Az eredeti audit SHA-256 változatlan;
+  az r18 visszaállítással ellenőrzött mentése és a korábbi HC-20 alap rendelkezésre állt.
+- **Státusz:** Ellenőrzött, izolált szoftveres környezetben; **nem élesített**.
+  Aktív továbbra is `hc-security-20261102-r18`. Más auditpont státusza nem módosult.
+- **Reprodukció / javítás:** az eredeti önhivatkozó és kétpointeres ciklus
+  100 ms időkorlátba futott hálózat nélkül. A `read_name()` meglátogatott
+  offseteket, pointer-/címkehatárt és kibontott névhosszt ellenőriz. A helyi
+  pointerugrás-korlát 128; ez külön erőforráskorlát, nem RFC-hosszlimit.
+  A `parse_questions()` a hibás/csonka kérdésszekciót teljesen eldobja, részleges
+  válasz nélkül. A következő jó csomag feldolgozható marad.
+- **Ellenőrzés:** **19 mDNS + 816 backend unit = 835 egyedi végső teszt,
+  0 failure/error/skip**. Az mDNS-profil a tényleges mDNS-image Pythonjával,
+  hálózat nélkül, tiltott valódi socketkonstruktorral futott. Ciklusok,
+  csonka/határon túli név, érvényes tömörítés/folytatási offset, ugráskorlát,
+  hibás későbbi kérdés és fake fogadóciklus ellenőrizve. 3000 véletlen bájtfixture
+  és 200 generált név a 19 teszt része. Az egyszerű A/ANY válasz és announcement
+  bájtpontosan egyezik az eredetivel. PG-/frontendteszt nem futott újra.
+- **Tesztbekötés:** az új `mdns` profil és `infra/mdns` staging szükséges ahhoz,
+  hogy a teszt a módosított parsert futtassa. A korábbi profilok viselkedése
+  megmaradt; a változtatás nem zárja le a HC-23 globális kiadási feladatait.
+- **Megőrzött határok:** kizárólag a két parserfüggvény és két korlátkonstans
+  változott a responderben. Main/socket/válaszépítő/announcement AST változatlan;
+  185 backend-Python-fájl és 62 SQL-migráció változatlan. HC-15/16/20 működése
+  és korábbi bizonyítékai megmaradtak. Nincs új csomagfüggőség vagy szolgáltatáscsere.
+- **Külön megfigyelés, nem javítva:** többkérdéses querynél a meglévő builder
+  minden kérdés bájtját másolja, de QDCOUNT=1-et ír. Külön szintetikus bizonyíték
+  készült; ez válaszformátum-felülvizsgálat, nem a pointerciklus-javítás előfeltétele.
+- **Függőségek / bevezetés:** új mDNS-image és kontrollált mDNS-kiadás kell;
+  runtime-szinten nem függ a még nem éles HC-15/16/20 backendjavításoktól.
+  Közös platformkiadásban azok scope-ja külön feltüntetendő. HC-26 és a
+  HC-23/41/43 nyitott részei változatlanok; AI letiltva marad.
+- **Éles változatlanság / rollback:** 736 runtime-hash és 16 konténer
+  ID/image/futás állapota változatlan; deploy/restart, DB/eszközművelet és
+  LAN-csomagküldés nem történt. Az eredeti parser/harnessfájlok és patch alapján
+  tiszta kód-revert lehetséges a korábbi javítások megtartásával; DB-/adatrestore nem kell.
+
+[Tételes leírás](docs/hc-24-repair.md),
+[összesítés](docs/audit-evidence/hc24-20261102/summary.json),
+[scope](docs/audit-evidence/hc24-20261102/scope-check.json),
+[külön megfigyelés](docs/audit-evidence/hc24-20261102/separate-observation.json),
+[éles változatlanság](docs/audit-evidence/hc24-20261102/production-unchanged.json).
+
+
+## REPAIR-066 — HC-26: mért HA Growatt-batch és külön HA-állapotkor (2026-11-02)
+
+- **Hatókör / fázis:** kizárólag HC-26, F0/F10 és kapcsolódó F2 hibahatárok.
+  Elolvasva a megállapítás és bizonyítékai, az F10 mért HA-batch feltétele.
+  Az eredeti audit SHA-256 változatlan; r18 ellenőrzött mentés/restore és az
+  aktuális forrás-/korábbi javítási bizonyítékok rendelkezésre álltak.
+- **Státusz:** Ellenőrzött, izolált szoftveres és csak olvasó HA-ellenőrzéssel;
+  **nem élesített**. Aktív `hc-security-20261102-r18`. Más auditpont státusza nem módosult.
+- **Használati előfeltétel / mérés:** az opcionális `ha-growatt` poller valóban
+  fut, 27 konfigurált entitással; a HA 86 állapotot ad. Három váltott sorrendű,
+  csak GET-es körben a 27 egyedi kérés mediánja 29,755 ms / 11 976 bájt,
+  az egy batch GET mediánja 2,524 ms / 38 037 bájt. A kis HA-példányon ez indokolja
+  az egy lekérést és helyi szűrést; nem állít éles 60 s hibát vagy általános sebességgaranciát.
+- **Javítás:** egy `GET /api/states` ciklusonként, utána a változatlan entity map
+  szerinti szűrés. Hiányzó/ismeretlen állapot kimarad; teljes HTTP/JSON/body-hiba
+  üres ciklust ad, nincs N kéréses fallback vagy régi snapshot-replay. Válasz és
+  session lezárva. A ciklusvárakozás monoton órát használ; health-allowance egy
+  kérésre számol, nem entitásszámra.
+- **Payload:** eredeti metrikanevek, konverzió, topic/QoS/retain és négy metaadatmező
+  megmaradt. `sample_time` a lekérés utáni UTC megfigyelés; additív `observed_at`
+  és `ha_state_age_seconds` metrikánként. A HA `last_updated` megmaradt; kora nem
+  bizonyít fizikai inverter-mintaidőt. Hibás/naiv/jövőbeli timestampnél kor=null.
+  Nincs új stale-küszöb vagy automatikus értéktörlés. A meglévő JSON-meta ingest/SQL
+  útvonal használható, migráció/ingestváltoztatás nélkül. A solar-guide frissítve.
+- **Ellenőrzés:** **18 Growatt + 816 backend unit + 19 mDNS + 52 ingest = 905
+  különböző végső teszt, 0 failure/error/skip**. A Growatt-profil a tényleges
+  poller-image-ben, hálózat és valódi HA/MQTT nélkül futott. Hiányzó/ismeretlen,
+  timeout/JSON/részleges body-hiba, következő körös recovery, forráskor, alias,
+  monoton sleep, health/shutdown és ingest szerződés ellenőrizve. Négy külön
+  régi main-loop AST-s összevetésben az eredeti MQTT mezők pontosan egyeznek.
+- **Csak olvasó jelöltpróba:** a jelölt függvények külön folyamatban egy HA GET-ből
+  26 használható metrikát építettek a 27 konfiguráltból, 26 kor-/timestampmezővel.
+  Ez nem pollerátállítás és nem MQTT-küldés. Token/nyers állapot nem került ki,
+  HA-módosítás vagy inverterparancs nem történt. Az első tesztkör datetime-mock
+  hibáját a fixture-ben javítottuk; a hibás log megmaradt, nem elfogadási bizonyíték.
+- **Korlát / függőségek:** a Requests connect/read timeout nem kemény teljes
+  wall-clock ciklushatáridő. Ezt nem állítjuk kijavítottnak; a soros N-szorzó szűnt
+  meg. Kemény transporthatáridő, fizikai forrásfrissességi szabály és frontend-
+  korjelzés külön döntés; MQTT siker/readiness szemantika változatlan. Nincs új
+  függőségfrissítés vagy más auditpont javítása. HC-23/41/43 folyamatban marad.
+- **Élesítés / rollback:** új, önálló Growatt-poller image/kiadás kell; runtime-
+  szinten nem függ a még nem éles HC-15/16/20 backend- és HC-24 mDNS-javításoktól.
+  A 185 backend-Python-fájl, 62 migráció, dependency lock/Dockerfile és MQTT-/health
+  segédek változatlanok. 736 runtime-hash és 16 konténer ID/image/futás egyezik;
+  deploy/restart, DB-lekérdezés vagy éles MQTT publish nem történt. Az eredeti
+  poller/harness/guide és patch visszatehető a korábbi javítások megtartásával;
+  DB-/adatrestore nem kell. AI letiltva marad.
+
+[Tételes leírás](docs/hc-26-repair.md),
+[mérés](docs/audit-evidence/hc26-20261102/live-measurement.json),
+[összesítés](docs/audit-evidence/hc26-20261102/summary.json),
+[scope](docs/audit-evidence/hc26-20261102/scope-check.json),
+[éles változatlanság](docs/audit-evidence/hc26-20261102/production-unchanged.json).
+
+## REPAIR-067 — HC-23/43 lezárási felülvizsgálat és HA JSON Compose recovery-javítás (2026-11-02)
+
+**Kérés és scope:** HC-23/43 lezárhatósága, HC-41 változatlanul hagyásával.
+HC-23/43 bizonyítékai és az F0/F2/F10 lépés áttekintve; más auditpont javítása,
+ESP-jelszóváltás, AI-indítás vagy éles telepítés nem történt.
+
+**HC-23 státusz: Ellenőrzött kódjavítás, nem éles.** A friss és ismételt helyreállítás, az FTP-kiesési próba és a valódi guest-reboot sikeres; 14 system-scope unit, 5 timer, 12 hozzáférési unit/drop-in, DB-dump/checksum és root IPC ellenőrzött.
+
+**HC-23 módosítás:** a letiltott AI-node három mozgó image-hivatkozása ellenőrzött
+OCI-digestet kapott, a README és az új image-pins.json rögzíti az inaktív scope-ot.
+Ez metadata-/Compose-ellenőrzés; a három image futtatása és hardverminősítése nem
+történt meg. A valódi r18 Gitből és router-snapshotból induló friss KVM-restore
+az előellenőrzésben HA JSON Compose-formátumhibát jelzett. A munkapéldány
+restore_assets.py fájlja ezt kezeli, egyetlen explicit, offline cache-ben létező
+HA-image követelményével és duplikált kulcs/több szolgáltatás/hibás image elutasításával.
+Az eredeti r18 runtime és mentés változatlan. A külön labor-Git-jelölt kizárólag
+az egy recovery-forrás javítását tartalmazza két megfelelő helyen.
+
+**Ellenőrzés:** az összes tesztprofil és a frontend build sikeres. A recovery-javítás
+után 818 backend unit teszt sikeres; a profilok összesen 1194 külön Python- és
+114 frontendtesztet, azaz 1308 külön esetet fednek le, hiba és kihagyás nélkül.
+A friss, megismételt, FTP-kiesési és rebootos restore-átvétel végső eredménye a
+részletes dokumentum ellenőrzési záradékában és a bounded-lab bizonyítékaiban szerepel.
+
+**Laborincidens:** az első javított jelölt próbájának eldobható lemeze megtöltötte
+a rootpartíciót. A labor méretét nem korlátoztuk megfelelően. Kizárólag a védett
+labor-VM leállítása és saját overlayének törlése helyreállította a tárhelyet.
+Az utóellenőrzésben minden éles konténer-ID/image és 736 runtime-hash változatlan,
+15 komponens fut, 10 healthcheck healthy, restart0, systemd failed unit nincs.
+A korábbi 41 függő kódfingerprint és 215 bizonyítékfájl megőrzött. Az új labor
+külön 18 GiB staging-lemezt, 40 GiB kemény root-VM-fájlkorlátot és automatikus
+tárhelyőrt használ. A megszakított próbát nem számítjuk sikeresnek.
+
+**HC-43:** az éles inventory ismételt teljes helyi Python-OSV ellenőrzése 98 rekordot,
+67 aliascsoportot és 122 nem eldöntött rekordot adott; a hét saját Python-komponensben
+nincs ismert verziótalálat. Az érintett HA képfeltöltési út ténylegesen használja a
+Pillow-t. A SQL Lab éles forrással egyező tiszta validátora ártalmatlan XMLPARSE SELECT-et
+elfogad; DB-kapcsolat/SQL-futtatás/exploit nem történt. A támogatott HA/Debian javítások
+hiánya és a teljes maradványlista dokumentált. A felhasználó kifejezetten azt kérte:
+**„Maradjon folyamatban a gyártói javításig.”** HC-43 ezért Folyamatban marad;
+maradványkockázat-elfogadás és halasztott lezárás nem történt.
+
+**Élesítés és függőség:** a recovery-forrás és az inaktív sablon javítása nem éles.
+Új, hitelesített recovery-/kiadáscsomag kell; a lezárt r18 nem írható át helyben.
+A még nem éles HC-15/16/20/24/26 javítások megőrzöttek, külön számon tartva.
+HC-41 és az AI-tiltás változatlan.
+
+[Részletes módosítás, gyártói kockázatok és ellenőrzési záradék](docs/hc23-43-closure-20261102.md),
+[bizonyítékok](docs/audit-evidence/hc23-43-closure-20261102/).
+
+## REPAIR-068 — az elkészült javítások r19 élesítésének előkészítése (2026-11-02)
+
+A felhasználó engedélyezte az utolsó elkészült javítások élesítését és az audit
+jelenlegi javítási körének lezárását. Az aktív csomag r18; a HC-15/16/20/23/24/26
+kódjavítások új `hc-audit-20261102-r19` csomagba kerültek. Három image és a root
+recovery/runtime változik, HA/PG/MQTT és a többi konténer megőrzött. Az 50 fájlos
+review-listán kívüli munkakönyvtári drift nem kerül be, a friss host F6-javítása
+megmarad. A három image pontos régi alapot és változatlan csomagkészletet használ.
+
+1308 regressziós + 41 telepítő/aktiváló/utóellenőrzési eset és frontend build
+sikeres; a baked kód/csomaglista, dependency nélküli processzstartup és a 19 image-es
+offline Docker-load ellenőrzött. A három hiányzó teszt-fixture miatt nulla teszttel
+leállt profilt külön sikeresen újrafuttattuk, a sikertelen történet megmaradt.
+A hét meglévő health-route tesztet is megőriztük; a teljes 818 unit teszt újra sikeres.
+Új pontos r19 bare-metal VM-próbát nem állítunk: az r18+recovery-javítás teljes
+bizonyítéka változatlanul megőrzött. A friss éles Git/router és PG-restore a helyi
+root-aktiválás kötelező kapuja.
+
+**Élesítés eddig nem történt.** A host `sudo -n` jelszót kér; ez nem új engedélykérés,
+hanem a helyi root-hitelesítés határa. A védett titkokat nem kerüljük meg Dockerrel.
+A helyi parancs siker után automatikus runtime/timer/komponens-ellenőrzést és élő
+auditzáró bejegyzést készít. HC-41 és HC-43 a korábbi döntés szerint folyamatban;
+46 Ellenőrzött, 0 Nyitott, 0 Halasztva. Az AI tiltva marad.
+
+[Átadási terv és indítóparancs](docs/audit-final-release-20261102.md),
+[r19 csomag](backups/releases/hc-audit-20261102-r19/README.md).

@@ -1,0 +1,781 @@
+--- a/AUDIT_REPAIR.md
++++ b/AUDIT_REPAIR.md
+@@ -16,8 +16,8 @@
+ A teljes privát HA-előpróba, hitelesített HA API/64 Growatt-entitás és PG16/kolláció
+ sikeres. Friss HC/Git/router mentés, 6373 checksum, visszaolvasás és külön PG-restore
+ sikeres. Az AI tiltva, ESP MQTT kivétel változatlan. HC-23/43 részjavításai élesek;
+-a globális pontok/upstream találatok nyitottak. A későbbi HC-15 és HC-16 kódjavítás
+-ellenőrzött, de még nincs ebben az éles kiadásban (REPAIR-062/063).
++a globális pontok/upstream találatok nyitottak. A későbbi HC-15/16/20 kódjavítások
++ellenőrzöttek, de még nincsenek ebben az éles kiadásban (REPAIR-062/063/064).
+ [Éles átadás](backups/deployments/hc-security-20261102-r18/DEPLOYMENT.md),
+ [utóellenőrzés](docs/audit-evidence/hc23-43-r18-live-20261102/production-check.json).
+ 
+@@ -33,8 +33,8 @@
+ ellenőrzéseknek már nem akadálya.
+ [Éles r16 átvétel és rollback](backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md).
+ 
+-**Auditösszesítés:** 42 ellenőrzött, 3 nyitott, 3 folyamatban.
+-HC-15 és HC-16 izoláltan ellenőrzött kódjavítás; éles bevezetésük még nem történt meg.
++**Auditösszesítés:** 43 ellenőrzött, 2 nyitott, 3 folyamatban.
++HC-15/16/20 izoláltan ellenőrzött kódjavítás; éles bevezetésük még nem történt meg.
+ HC-12 és HC-32 javítása éles; az aktív runtime r18. HC-23/43 globális részei és
+ HC-41 az ESP legacy kivétel miatt folyamatban. HC-31 fizikai shutdown/OFF/wake
+ próba nem futott, csak későbbi AI-újraaktiválás előtt szükséges. A régi AI-Gitea
+@@ -43,14 +43,14 @@
+ ## Az áttekintés eredménye
+ 
+ **Legújabb lezárt kiadási munka:** REPAIR-061, aktív r18.
+-**Legújabb ellenőrzött kódjavítás:** REPAIR-063, kizárólag HC-16; nem éles.
+-[Módosítás és ellenőrzés](docs/hc-16-repair.md). A korábbi HC-15 javítás
+-(REPAIR-062) megőrzött, szintén nem éles.
++**Legújabb ellenőrzött kódjavítás:** REPAIR-064, kizárólag HC-20; nem éles.
++[Módosítás és ellenőrzés](docs/hc-20-repair.md). A korábbi HC-15/16 javítások
++(REPAIR-062/063) megőrzöttek, szintén nem élesek.
+ A HC-23/43 kontrollált platformfrissítése éles és szoftveresen átvett;
+ a globális auditpontok továbbra is folyamatban. [Scope, bizonyítékok és nyitott találatok](docs/hc23-43-platform-release-20261102.md).
+ Az SSD miatt korábban félretett, jelenlegi mentési láncra vonatkozó ellenőrzések
+ lezárva; [tételes bizonyítékok](docs/ai-ssd-backup-closure-20261101.md).
+-HC-20/24/26 továbbra is nyitott, HC-23/41/43 folyamatban. Más feladat
++HC-24/26 továbbra is nyitott, HC-23/41/43 folyamatban. Más feladat
+ besorolása nem változott; a korábbi naplóbejegyzések történeti állapotot őriznek.
+ 
+ - A dokumentum 48, folytonosan számozott megállapítást tartalmaz: **20 P1, 26 P2, 2 P3**. A tételes besorolás egyezik az N.5 összesítésével. P0 megállapítást nem rögzít.
+@@ -93,7 +93,7 @@
+ | HC-17 | P1 | Hitelesítési backup fájl kizárása a Gitea-exportból | F1 | Ellenőrzött |
+ | HC-18 | P2 | Hiányos konfigurációexport és hatástalan megjelenített útlista | F1 | Ellenőrzött |
+ | HC-19 | P1 | Kettős backup-végrehajtó, közös névtér és redundáns timerek | F6 | Ellenőrzött |
+-| HC-20 | P2 | Elérhetetlen legacy öntözéskód és elavult dokumentáció | F8 | Nyitott |
++| HC-20 | P2 | Elérhetetlen legacy öntözéskód és elavult dokumentáció | F8 | Ellenőrzött |
+ | HC-21 | P2 | Túlzott AI-kontextus és két helyen élő válaszlogika | F9 | Ellenőrzött |
+ | HC-22 | P2 | Frontend GET-határidő és elavult válaszok kizárása | F9 | Ellenőrzött |
+ | HC-23 | P2 | Reprodukálható telepítés és alkalmazásszintű állapotellenőrzés | F10 | Folyamatban |
+@@ -125,9 +125,9 @@
+ 
+ **Kezdő összesítés:** 48 nyitott; 0 folyamatban; 0 javított; 0 ellenőrzött; 0 halasztott. Éles bevezetés nem történt.
+ 
+-**Aktuális összesítés:** 3 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
+-42 ellenőrzött; 0 halasztott. HC-15 és HC-16 kódja ellenőrzött, de még nem éles
+-(REPAIR-062/063).
++**Aktuális összesítés:** 2 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
++43 ellenőrzött; 0 halasztott. HC-15/16/20 kódja ellenőrzött, de még nem éles
++(REPAIR-062/063/064).
+ HC-12/32 és az elkészült HC-23/43 részjavítások
+ élesek; aktív az r18 (REPAIR-061). Az r10 korábbi HC-35/36 + HC-41/44 javításait
+ az aktív kiadás megőrzi (REPAIR-049); az ESP legacy kivétel miatt
+@@ -3490,3 +3490,47 @@
+ [összesítés](docs/audit-evidence/hc16-20261102/summary.json),
+ [scope](docs/audit-evidence/hc16-20261102/scope-check.json),
+ [éles változatlanság](docs/audit-evidence/hc16-20261102/production-unchanged.json).
++
++
++## REPAIR-064 — HC-20: elérhetetlen legacy öntözési végrehajtó kivezetése (2026-11-02)
++
++- **Hatókör / fázis:** kizárólag HC-20, F0/F8. Elolvasva HC-20, D.1 bizonyítékai,
++  F8 viselkedésmegőrzési/teszt-/rollback feltételei, F0 és G.5. Az eredeti audit
++  SHA-256 változatlan. Az r18 visszaállítással ellenőrzött mentése rendelkezésre
++  állt; a most lefagyasztott HC-15/16 állapot 810 baseline unit tesztje sikeres.
++- **Státusz:** Ellenőrzött, izolált szoftveres környezetben; **nem élesített**.
++  Aktív továbbra is `hc-security-20261102-r18`. Más auditpont státusza nem módosult.
++- **Bizonyíték / javítás:** a három zárt legacy metódus (`start_scheduled_session`,
++  `run_due_schedules`, `stop_due_schedules`) kivezetve, 185 definíciós sor törölve.
++  Mind a 86 megmaradó service-metódus és a teljes modul AST-je a törléseket
++  leszámítva változatlan. A 491 kezelt aktív forrás-/unit-/config fájlban nincs
++  hivatkozás a régi nevekre; az öntözési domain-guide a tényleges V2 utat írja le.
++- **Tesztigazítás:** az audit óta készült HC-04 legacy-indítási teszthivatkozások
++  a megmaradó manual/V2 kapukat követik; a tranzakciós hiba-/versenytesztek
++  megmaradtak. A régi legacy–V2 teszt helyett tényleges V2 service-hívás védi a
++  napi egyszeri startot lezárt session és service-újrapéldányosítás után.
++  Hat új unit és egy további PG-teszt fedi a navigator/pilot, skip/hibás start,
++  kéziszelep-guard, stopnaplózás és valódi SQL-alapú effektív stop szerződését.
++- **Ellenőrzés:** **816 unit + 198 PostgreSQL = 1014 egyedi végső backendteszt,
++  0 failure/error/skip**. A PG 15 külön eldobható klaszteren/modulban futott.
++  A külön 57 célzott teszt átfedő, nem hozzáadott. Tizenkét előtte/utána V2
++  forgatókönyvben pontos reservation/MQTT payload/SQL/eredmény/recovery egyezés.
++  Az app 163 route-ját ellenőrző és a HC-15/16 regressziós tesztek is sikeresek.
++- **Megőrzött határok:** 62 SQL-migráció, történeti sessionök és publikus API-k
++  változatlanok. HC-01–04/08, szezonprofil, stop-authority és egyworkeres
++  tulajdonlás megmaradt. Nincs új eszközparancs, ütemezési szemantikaváltozás,
++  runtime DDL vagy DB-migráció. Frontend és AI letiltás változatlan.
++- **Függőségek / bevezetés:** a következő backendkiadás a korábbi HC-15/16 és
++  HC-20 forrását együtt tartalmazza. A HC-15 service-fájlja csak a HC-20 három
++  törlésével változott; a korábbi javítás működése megmaradt. HC-24/26 és
++  HC-23/41/43 külön munka marad. Fizikai öntözési próba nem történt.
++- **Éles változatlanság / rollback:** 736 runtime-hash és 16 konténer
++  ID/image/futás állapota változatlan; deploy/restart és éles DB/eszközművelet
++  nem történt. Az eredeti fájlok és patch alapján tiszta kód-revert lehetséges
++  a HC-15/16 megtartásával, adat- vagy DB-visszaállítás nélkül.
++
++[Tételes leírás](docs/hc-20-repair.md),
++[összesítés](docs/audit-evidence/hc20-20261102/summary.json),
++[scope](docs/audit-evidence/hc20-20261102/scope-check.json),
++[payload-egyezés](docs/audit-evidence/hc20-20261102/payload-parity.json),
++[éles változatlanság](docs/audit-evidence/hc20-20261102/production-unchanged.json).
+--- a/DEPLOYMENT_PREP.md
++++ b/DEPLOYMENT_PREP.md
+@@ -1,4 +1,12 @@
+ # HomeControl – aktuális éles kiadás
++
++**Új, ellenőrzött kódjavítás: HC-20 (REPAIR-064), még nem éles.**
++Az elérhetetlen három legacy öntözési metódus kivezetve; a 86 megmaradó metódus,
++V2 stop-policy, történeti adatok és publikus API-k megmaradtak. A domain-guide
++az aktív V2 végrehajtást írja le. 816 unit + 198 izolált PostgreSQL-teszt
++sikeres; 12 előtte/utána payload-/SQL-forgatókönyv pontos egyezést adott.
++Az éles r18 változatlan. A következő backendkiadásnak a HC-15/16/20 javításait
++együtt kell tartalmaznia. [Scope, ellenőrzés, függőségek](docs/hc-20-repair.md).
+ 
+ **Új, ellenőrzött kódjavítás: HC-16 (REPAIR-063), még nem éles.**
+ A rover ötmodulos importköre megszűnt; a tiszta validáció közös levélmodulba
+--- a/docs/ai/irrigation-domain.md
++++ b/docs/ai/irrigation-domain.md
+@@ -387,8 +387,9 @@
+ 
+ ## Atomic Start Admission (HC-04)
+ 
+-`IrrigationSessionAdmission.reserve()` is shared by manual, V2 scheduled and
+-retained legacy start methods. It uses a fresh connection and one short
++`IrrigationSessionAdmission.reserve()` is shared by manual and V2 scheduled
++starts. The unreachable legacy executor was removed in [HC-20](../hc-20-repair.md).
++Admission uses a fresh connection and one short
+ READ COMMITTED transaction: acquire a SHARE ROW EXCLUSIVE lock on the session
+ table, recheck `starting`/`running`/`stop_failed`, and insert a `starting` row.
+ Reads remain available; session writers are serialized during this transaction.
+@@ -421,8 +422,8 @@
+ constraint for arbitrary SQL writers. All HC insert paths use it; mixed old/new
+ controllers and uncoordinated SQL writes are not supported. Keep one active
+ backend: HC-02 command ordering, HC-03 startup recovery and scheduler workers
+-are not distributed ownership mechanisms. HC-08 audit-chain recovery, HC-20
+-legacy removal and HC-13 full I/O/worker deadlines remain separate work.
++are not distributed ownership mechanisms. Removing the legacy executor does
++not change admission, audit-chain recovery or I/O/worker deadline behavior.
+ 
+ ## Valve Confirmation
+ 
+@@ -524,29 +525,51 @@
+ - `armed`
+ - `disabled`
+ 
+-Legacy scheduled start:
+-
+-1. `run_due_schedules()` checks the manual valve guard.
+-2. It selects due active rows ordered by `start_time, id`.
+-3. `start_scheduled_session()` rejects if another session is `running` or
+-   `starting`.
+-4. It evaluates the pilot rules.
+-5. It always marks `last_started_on = current_date` before command execution.
+-6. In `navigator` mode, pilot decision is logged as `navigator_only`, but
+-   scheduled duration remains authoritative.
+-7. In `pilot` mode, `final_duration <= 0` means skip watering and log
+-   `skipped`.
+-8. Otherwise it opens the valve, creates a session, and stores confirmation.
+-
+-Legacy scheduled stop:
+-
+-- Runs when local time is at or after `stop_time`, the schedule started today,
+-  and it has not been stopped today.
+-- Finds today's matching `scheduler` or `pilot` session.
+-- If session is `running`, publishes close with reason `schedule_stop`.
+-- Does not mark schedule stopped when the session is `stop_failed`.
+-- Marks stopped when there is no session, or session status is already
+-  `stopped`/`auto_stopped`.
++Scheduled start (the active V2 path):
++
++1. `scheduler_tick()` checks the V2 `irrigation` publish-domain gate, then calls
++   `run_v2_due_schedules()` and the separate solar-pump tick. Stop supervision
++   runs on the safety worker, independently of opening waits.
++2. `run_v2_due_schedules()` checks the physical manual-valve guard, then selects
++   due active rows ordered by `start_time, id`.
++3. `start_v2_scheduled_session()` checks seasonal `scheduled_watering` capability,
++   initializes session recovery and refuses unresolved starts/stops. Its schedule
++   SELECT excludes `starting`, `running` and `stop_failed` sessions.
++4. It evaluates the existing pilot rules. In `navigator` mode the scheduled
++   duration is authoritative; the recommendation does not change it and this
++   path does not create the former `navigator_only` execution log.
++5. In `pilot` mode, `final_duration <= 0` logs `v2_skipped`, consumes the schedule
++   day and marks the V2 open execution skipped with no reservation or OPEN.
++6. Otherwise the duration is bounded by the existing `manual_max_minutes`.
++   HC-04 atomically rechecks eligibility, consumes `last_started_on` and inserts
++   a `starting` session before OPEN. A losing/failed reservation authorizes no
++   command and consumes no day. The session uses `started_by = 'v2_scheduler'`.
++7. OPEN carries the unchanged scheduler/pilot command payload. The stored
++   session additionally records `hc_executor`, rule information and `stop_policy`.
++   Navigator uses `schedule_stop_event`; pilot uses `v2_rule_effective_stop`.
++   The effective deadline is the admitted session's `requested_stop_at`; pilot
++   duration may differ from the original schedule window.
++8. Fresh physical confirmation conditionally changes `starting` to `running`
++   and marks V2 execution confirmed. Failed opening leaves `stop_failed`
++   uncertainty and blocks further starts for recovery; it is not successful
++   watering. MQTT publication and physical completion are separate evidence.
++
++Scheduled stop:
++
++- `scheduler_stop_tick()` applies the V2 domain gate and invokes
++  `stop_v2_due_schedules()`. The generic safety/recovery passes remain separate.
++- For an active schedule started today and not stopped today, V2 selects today's
++  matching `v2_scheduler` session. Its `requested_stop_at` is authoritative;
++  the original `stop_time` is only the fallback when no matching session exists.
++- A due `running` session closes with reason `v2_effective_stop`; execution is
++  confirmed only after successful close confirmation. Failed close does not
++  consume `last_stopped_on`.
++- A `stop_failed` session is not marked stopped. Already `stopped`/`auto_stopped`
++  sessions, or the due no-session fallback, may mark the schedule day stopped.
++- The three unreachable legacy executor methods are absent from current source.
++  Historical `scheduler`/`pilot` sessions, SQL migrations, history/read APIs,
++  manual controls and the separate solar-pump scheduler remain available.
++  Generic overdue/no-water/recovery rules are unchanged by this removal.
+ 
+ ## Pilot And Navigator
+ 
+@@ -570,8 +593,9 @@
+ 
+ Modes:
+ 
+-- `navigator`: calculate and log recommendation, but do not change scheduled
+-  watering duration.
++- `navigator`: calculate a recommendation, but do not change scheduled watering
++  duration. Explicit evaluation can log a decision; V2 start does not add the
++  removed legacy `navigator_only` execution log.
+ - `pilot`: apply the calculated `final_duration`; may skip watering.
+ 
+ Analysis rule for AI:
+@@ -666,8 +690,9 @@
+ - `scheduler_stop_tick()` applies the same V2 domain gate and runs only
+   `stop_v2_due_schedules()` on the safety worker. Generic overdue-session
+   supervision remains available independently of the V2 domain gate.
+-- `run_v2_due_schedules()` follows the same manual valve guard and due-schedule
+-  selection as legacy.
++- `run_v2_due_schedules()` checks the physical manual-valve guard and selects
++  eligible schedules by local weekday/window and per-date markers. It is the
++  sole scheduled-start dispatcher; no legacy executor remains.
+ - `start_v2_scheduled_session()` creates sessions with
+   `started_by = 'v2_scheduler'`.
+ - V2 uses a single effective stop policy.
+--- /dev/null
++++ b/docs/hc-20-repair.md
+@@ -0,0 +1,120 @@
++# HC-20 — Elérhetetlen öntözési végrehajtó kivezetése
++
++2026-11-02, Europe/Budapest. **Ellenőrzött forrásjavítás, nincs élesítve.**
++Aktív továbbra is a `hc-security-20261102-r18`. A korábbi HC-15/16 javítás
++megmaradt; más auditpont implementációja és státusza nem változott.
++
++## Kiinduló bizonyíték és hatókör
++
++Elolvasva az eredeti HC-20 megállapítás és hivatkozási bizonyítéka, D.1
++kivezetési feltétele, F0/F8 előfeltételei, ellenőrzése és rollbackje, valamint
++G.5 megőrzendő szezon-/kéziszelep-/stop-authority szabálya. Az eredeti audit
++változatlan SHA-256 lenyomata:
++`51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2`.
++
++A jelenlegi forrásban a `start_scheduled_session()`, `run_due_schedules()` és
++`stop_due_schedules()` zárt, üzemi hívó nélküli csoportot alkotott. A régi run
++hívta a régi startot; az aktív tick már V2-t használt. Az audit óta készült
++HC-04 admission-tesztek közvetlenül is hívták a régi startot: ezeket a mostani
++állapot alapján kellett igazítani, nem egyszerűen a korábbi audit leltárát követni.
++
++F0: a korábban teljes visszaolvasással és izolált PostgreSQL-visszaállítással
++ellenőrzött r18 mentés rendelkezésre állt
++(`86b8ed71e4104b3a8eb909ae86e8ea91`). A most lefagyasztott HC-15/16 állapot
++**810 kiinduló unit tesztje sikeres**, hiba és kihagyás nélkül. Az eredeti
++fájlok, hivatkozások, 185 backend-Python-fájl és 62 SQL-fájl ujjlenyomata a
++[HC-20 bizonyítékok](audit-evidence/hc20-20261102/) között szerepel.
++
++## Módosítás
++
++- Az `IrrigationService` három legacy metódusa, összesen 185 definíciós sor
++  kikerült. A teljes modul AST-je a három törlést leszámítva azonos; mind a
++  **86 megmaradó metódus változatlan**, beleértve a HC-15 session-lookupját,
++  a V2 végrehajtót, a manual/safety/recovery és a solar-pump útvonalakat.
++- Az elavult tesztbeli legacy run/stop helyettesítések megszűntek. Az admission
++  hiba-/timeout-tesztek továbbra is a manual és V2 indításokat védik. A korábbi
++  legacy–V2 versenyteszt helyett a tényleges V2 service-hívással ellenőrizzük,
++  hogy lezárt session és új service-példány után sincs második napi OPEN.
++  A két V2 indító közötti konkurenciatesztek megmaradtak.
++- Hat új unit teszt ellenőrzi a navigator eredeti időtartamát, a pilot eltérő
++  effektív időtartamát, a pilot miatti kihagyást, a sikertelen start bizonytalan
++  állapotát, a fizikai kéziszelep guardot és a stopnaplózás feltételeit.
++  Egy további PostgreSQL-teszt a valódi V2 stopkiválasztó SQL-lel bizonyítja,
++  hogy a session lejárata a későbbi eredeti ütemezett stop előtt is érvényesül.
++- Az öntözési domain-guide az aktív V2 start/stop, tranzakciós foglalás,
++  navigator/pilot és effektív stop folyamatát írja le. Nem állítja, hogy a
++  törölt végrehajtó fut, vagy hogy V2 navigator-start `navigator_only` naplót ír.
++
++Nincs új eszközparancs, ütemezési szemantikaváltás, DB-migráció vagy történeti
++adattörlés. A publikus API-k, history/read felületek, korábbi `scheduler`/`pilot`
++sessionök kezelése, stop-authority és a HC-01–04/08 védelmei megmaradtak.
++
++## Ellenőrzés és eredmény
++
++| Ellenőrzés | Eredmény |
++|---|---|
++| Teljes backend unit suite | 816 sikeres |
++| Valódi PostgreSQL, 15 külön eldobható klaszter/modul | 198 sikeres |
++| Külön célzott irrigation/admission unit kör | 57 sikeres, átfed a teljes körrel |
++| Előtte/utána V2 payload-/SQL-/eredmény-összevetés | 12 forgatókönyvben pontos egyezés |
++| Aktív forrás- és kezelt unit/config hivatkozáskeresés | 491 fájl; nincs hivatkozás a törölt metódusokra |
++| Öntözési service AST-egyezés | kizárólag a három metódus törlése |
++| SQL-migrációk | mind a 62 változatlan |
++| Éles változatlanság | 736 runtime-hash és 16 konténer ID/image/futás állapota egyezik |
++
++**1014 különböző végső backendteszt, 0 failure/error/skip.** A 57 célzott teszt
++átfedő, nem hozzáadott darabszám. A 12 külön payloadpróba szintetikus I/O-val
++az eredeti és új service-példányok reservation inputját, MQTT payloadját,
++SQL-jét/paramétereit, végrehajtási és döntési eredményeit, valamint recovery
++állapotát hasonlította össze. Külső kapcsolatot, szál-/folyamatindítást és
++fájlírást a probe tiltott. Nem állít fizikai eszközminősítést.
++
++A PostgreSQL-kör ellenőrizte az admission versenyeket, napi egyszeri V2
++indítást, commit-/rollback-határokat, kiesési/recovery és scheduler-audit
++szerződéseket. A teljes unit-kör megtartotta a HC-15 query-counter és app-wiring,
++valamint a HC-16 rover/import/auth regresszióit. A korábbi 163 app-route
++szerződését ellenőrző teszt is sikeres.
++
++Tényleges végső parancsok:
++
++```bash
++python3 -B docs/audit-evidence/hc20-20261102/check_scope.py
++python3 -B scripts/check_hc_tests.py --profile unit --output docs/audit-evidence/hc20-20261102/unit
++python3 -B scripts/check_hc_tests.py --profile postgres --output docs/audit-evidence/hc20-20261102/postgres
++```
++
++A tesztek hálózat nélküli konténerekben futottak; a PG-kliensek csak a saját
++eldobható adatbázisuk hálózati névterét osztották. Nincs hostport vagy éles
++DB/eszközkapcsolat. A standard tesztprofil korábbi backup-fixture-jeihez a
++meglévő harness csak az eldobható deployment policy-t teszi opcionálissá;
++az éles kötelező policy változatlan. Frontendkód nem módosult; a korábbi HC-16
++114 frontendtesztjét és buildjét nem számoltuk mostani tesztként. Fizikai
++öntözési próba és éles deploy/restart nem történt.
++
++[Összesítés](audit-evidence/hc20-20261102/summary.json),
++[unit](audit-evidence/hc20-20261102/unit/test-summary.json),
++[PostgreSQL](audit-evidence/hc20-20261102/postgres/test-summary.json),
++[scope és hivatkozások](audit-evidence/hc20-20261102/scope-check.json),
++[payload-egyezés](audit-evidence/hc20-20261102/payload-parity.json),
++[patch](audit-evidence/hc20-20261102/source.diff),
++[éles változatlanság](audit-evidence/hc20-20261102/production-unchanged.json).
++
++## Függőségek, élesítés és rollback
++
++A már meglévő HC-01 friss fizikai visszaigazolás, HC-02 stop-sorrend, HC-03
++recovery, HC-04 tranzakciós foglalás, HC-08 V2 auditlánc és szezonprofil-kapuk
++megőrzött függőségek; ezekhez nem készült új javítás. A pilot skip meglévő,
++a reservation tranzakción kívüli könyvelését sem alakítottuk át.
++
++A következő backendkiadásnak a korábbi, még nem élesített **HC-15, HC-16 és
++HC-20** forrásállapotát együtt kell tartalmaznia. A HC-15 `irrigation_service.py`
++fájlja szándékosan változott a három régi metódus törlésével; a többi része
++AST-azonos. A HC-16 protokollmodulja és kompatibilis importjai megmaradnak.
++HC-24/26 és a HC-23/41/43 nyitott részei külön munkák, nem kerültek javításra.
++AI-újraaktiválás nem előfeltétel; az AI letiltva marad.
++
++**Élesítés nem történt.** A lezárt r18 csomag/runtime/image változatlan.
++Rollbackhez az `original/` és `source.diff` alapján a HC-20 változtatásai
++visszavonhatók, a korábbi HC-15/16 megtartásával. Az eredeti service-másolat
++már tartalmazza a HC-15 session-lookupját. DB-down-migráció vagy történeti
++adat visszaállítása nem szükséges.
+--- a/infra/backend/irrigation_service.py
++++ b/infra/backend/irrigation_service.py
+@@ -2929,195 +2929,6 @@
+                 ),
+             }
+ 
+-
+-    def start_scheduled_session(self, schedule_id: int):
+-        stop_generation = self._open_request_generation()
+-        if not self.capability_allowed("scheduled_watering"):
+-            print(f"[SEASON PROFILE] irrigation schedule_id={schedule_id} blocked", flush=True)
+-            return
+-        self.session_recovery.initialize()
+-        if self.session_recovery.blocked:
+-            return
+-        row = self.fetch_one(
+-            """
+-            select
+-              id,
+-              label,
+-              to_char(start_time, 'HH24:MI') as start_time,
+-              to_char(stop_time, 'HH24:MI') as stop_time,
+-              round(extract(epoch from (stop_time - start_time)) / 60)::int as duration_minutes
+-            from hc.irrigation_schedule
+-            where id = %s
+-              and is_active = true
+-              and day_of_week = extract(isodow from now())::int - 1
+-              and localtime >= start_time
+-              and localtime < stop_time
+-              and (last_started_on is distinct from current_date)
+-              and not exists (
+-                select 1
+-                from hc.irrigation_manual_session
+-                where status in ('running', 'starting')
+-              )
+-            """,
+-            (schedule_id,),
+-        )
+-        if not row:
+-            return
+-
+-        decision = self.evaluate_pilot(base_duration=row["duration_minutes"])
+-        if decision["mode"] == "navigator":
+-            self.log_pilot_decision(decision, schedule_id=row["id"], execution_status="navigator_only")
+-            print(f"[PILOT] navigator schedule_id={row['id']} final={decision['final_duration']} reason={decision['reason']}", flush=True)
+-        else:
+-            decision["executed"] = False
+-
+-        if decision["mode"] == "pilot" and int(decision["final_duration"]) <= 0:
+-            self.execute_one(
+-                """
+-                update hc.irrigation_schedule
+-                set last_started_on = current_date,
+-                    updated_at = now()
+-                where id = %s
+-                returning id
+-                """,
+-                (schedule_id,),
+-            )
+-            decision["executed"] = True
+-            self.log_pilot_decision(decision, schedule_id=row["id"], execution_status="skipped")
+-            print(f"[PILOT] skipped schedule_id={row['id']} reason={decision['reason']}", flush=True)
+-            return
+-
+-        minutes_source = decision["final_duration"] if decision["mode"] == "pilot" else row["duration_minutes"]
+-        minutes = max(1, min(int(minutes_source or 1), self.manual_max_minutes))
+-        valve_payload = {
+-            "cmd": "set",
+-            "value": "open",
+-            "source": "pilot" if decision["mode"] == "pilot" else "scheduler",
+-            "schedule_id": row["id"],
+-            "schedule_label": row["label"],
+-            "schedule_duration_minutes": row["duration_minutes"],
+-            "duration_minutes": minutes,
+-        }
+-        if decision["mode"] == "pilot":
+-            valve_payload.update(
+-                {
+-                    "pilot_final_duration": int(decision["final_duration"]),
+-                    "pilot_triggered_rules": decision.get("triggered_rules", []),
+-                }
+-            )
+-        reservation = self._reserve_start(
+-            minutes, "pilot" if decision["mode"] == "pilot" else "scheduler", valve_payload, schedule_id=row["id"],
+-        )
+-        session = reservation.get("session")
+-        if not session:
+-            print(f"[ADMISSION] legacy schedule_id={row['id']} blocked by {reservation.get('blocked_by')}", flush=True)
+-            return
+-        valve_ok, valve_message, valve_details = self.publish_open_with_confirmation(valve_payload, stop_generation=stop_generation)
+-        confirmed_payload = {
+-            **valve_payload,
+-            "confirmation": {
+-                "ok": valve_ok,
+-                "message": valve_message,
+-                **valve_details,
+-            },
+-        }
+-        if decision["mode"] == "pilot":
+-            self.log_pilot_decision(decision, schedule_id=row["id"], execution_status="command_confirmed" if valve_ok else "start_failed")
+-        if valve_ok and session:
+-            self.execute_one(
+-                """
+-                update hc.irrigation_manual_session
+-                set status = 'running',
+-                    start_payload = %s::jsonb
+-                where id = %s and status = 'starting'
+-                returning *
+-                """,
+-                (json.dumps(confirmed_payload), session["id"]),
+-            )
+-        elif session:
+-            self.execute_one(
+-                """
+-                update hc.irrigation_manual_session
+-                set status = 'start_failed',
+-                    stopped_at = now(),
+-                    start_payload = %s::jsonb,
+-                    error = %s
+-                where id = %s
+-                returning id
+-                """,
+-                (json.dumps(confirmed_payload), f"valve={valve_message}", session["id"]),
+-            )
+-        print(f"[SCHEDULE] start id={row['id']} ok={valve_ok} message={valve_message}", flush=True)
+-
+-    def run_due_schedules(self):
+-        guard = self.manual_valve_scheduler_guard()
+-        if guard["blocked"]:
+-            print(f"[SCHEDULE] blocked by manual valve state={guard['state']}", flush=True)
+-            return
+-
+-        rows = self.fetch_all(
+-            """
+-            select id
+-            from hc.irrigation_schedule
+-            where is_active = true
+-              and day_of_week = extract(isodow from now())::int - 1
+-              and localtime >= start_time
+-              and localtime < stop_time
+-              and (last_started_on is distinct from current_date)
+-            order by start_time, id
+-            """
+-        )
+-        for row in rows:
+-            self.start_scheduled_session(int(row["id"]))
+-
+-    def stop_due_schedules(self):
+-        rows = self.fetch_all(
+-            """
+-            select id
+-            from hc.irrigation_schedule
+-            where is_active = true
+-              and day_of_week = extract(isodow from now())::int - 1
+-              and localtime >= stop_time
+-              and last_started_on = current_date
+-              and (last_stopped_on is distinct from current_date)
+-            order by stop_time, id
+-            """
+-        )
+-        for row in rows:
+-            session = self.fetch_one(
+-                """
+-                select id, status
+-                from hc.irrigation_manual_session
+-                where started_by in ('scheduler', 'pilot')
+-                  and start_payload ->> 'schedule_id' = %s
+-                  and started_at::date = current_date
+-                order by started_at desc
+-                limit 1
+-                """,
+-                (str(row["id"]),),
+-            )
+-            should_mark_stopped = session is None
+-            if session and session["status"] == "running":
+-                ok, message, _ = self.stop_manual_session(int(session["id"]), "schedule_stop")
+-                print(f"[SCHEDULE] stop id={row['id']} ok={ok} message={message}", flush=True)
+-                should_mark_stopped = ok
+-            elif session and session["status"] == "stop_failed":
+-                print(f"[SCHEDULE] stop id={row['id']} still failed; not marking stopped", flush=True)
+-            elif session:
+-                should_mark_stopped = session["status"] in ("stopped", "auto_stopped")
+-
+-            if should_mark_stopped:
+-                self.execute_one(
+-                    """
+-                    update hc.irrigation_schedule
+-                    set last_stopped_on = current_date,
+-                        updated_at = now()
+-                    where id = %s
+-                    returning id
+-                    """,
+-                    (row["id"],),
+-                )
+-
+     def mark_v2_execution(self, schedule_id: Any, value: str, status: str, result: Dict[str, Any], error: Optional[str] = None):
+         return self.execute_one(
+             """
+--- a/infra/backend/tests/test_irrigation_admission.py
++++ b/infra/backend/tests/test_irrigation_admission.py
+@@ -23,16 +23,14 @@
+         self.assertEqual(service.published, [])
+ 
+     def test_rejected_scheduled_reservation_does_not_publish_or_advance_day(self):
+-        for method in ('start_v2_scheduled_session', 'start_scheduled_session'):
+-            with self.subTest(method=method):
+-                service = self.service(reserve_session=lambda **kw: {'session': None, 'blocked_by': 'schedule_not_due'})
+-                service.execute_one = lambda *a: self.fail('losing scheduler advanced state')
+-                service.mark_v2_execution = lambda *a: self.fail('losing scheduler reported execution')
+-                getattr(service, method)(7)
+-                self.assertEqual(service.published, [])
++        service = self.service(reserve_session=lambda **kw: {'session': None, 'blocked_by': 'schedule_not_due'})
++        service.execute_one = lambda *a: self.fail('losing scheduler advanced state')
++        service.mark_v2_execution = lambda *a: self.fail('losing scheduler reported execution')
++        service.start_v2_scheduled_session(7)
++        self.assertEqual(service.published, [])
+ 
+     def test_missing_transactional_dependency_fails_closed(self):
+-        for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7), ('start_scheduled_session', 7)):
++        for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7)):
+             with self.subTest(method=method):
+                 service = self.service(reserve_session=None)
+                 with self.assertRaisesRegex(RuntimeError, 'admission is not configured'):
+@@ -42,7 +40,7 @@
+     def test_reservation_exception_never_authorizes_open(self):
+         def unavailable(**kw):
+             raise TimeoutError('reservation result unknown')
+-        for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7), ('start_scheduled_session', 7)):
++        for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7)):
+             with self.subTest(method=method):
+                 service = self.service(reserve_session=unavailable)
+                 with self.assertRaises(TimeoutError):
+--- a/infra/backend/tests/test_irrigation_admission_postgres.py
++++ b/infra/backend/tests/test_irrigation_admission_postgres.py
+@@ -128,13 +128,34 @@
+                 self.assertEqual(self.calls, ['open'])
+                 self.assertEqual(self.db.fetch_one('select count(*) as n from hc.irrigation_schedule where last_started_on=current_date')['n'], 1)
+ 
+-    def test_legacy_and_v2_use_the_same_reservation(self):
+-        schedule = self.schedule()
+-        second = self.make_service()
+-        self.barrier_reservations(self.service, second)
+-        self.parallel(lambda: self.service.start_scheduled_session(schedule), lambda: second.start_v2_scheduled_session(schedule))
+-        self.assertEqual(len(self.rows()), 1)
+-        self.assertEqual(self.calls, ['open'])
++    def test_v2_schedule_cannot_restart_after_close_and_service_restart(self):
++        schedule = self.schedule()
++        self.service.start_v2_scheduled_session(schedule)
++        self.assertEqual(self.calls, ['open'])
++        self.db.execute_sql("update hc.irrigation_manual_session set status='stopped', stopped_at=now()")
++        restarted = self.make_service()
++        restarted.start_v2_scheduled_session(schedule)
++        self.assertEqual(len(self.rows()), 1)
++        self.assertEqual(self.calls, ['open'])
++        self.assertTrue(self.db.fetch_one('select last_started_on=current_date as consumed from hc.irrigation_schedule')['consumed'])
++
++    def test_v2_effective_stop_uses_session_deadline_before_schedule_stop(self):
++        schedule = self.schedule()
++        self.service.start_v2_scheduled_session(schedule)
++        closed = []
++        def close(session_id, reason):
++            closed.append((session_id, reason))
++            self.db.execute_one("update hc.irrigation_manual_session set status='stopped', stopped_at=now() where id=%s returning id", (session_id,))
++            return True, 'fake fresh CLOSED confirmation', {}
++        self.service.stop_manual_session = close
++        self.db.execute_sql("update hc.irrigation_manual_session set requested_stop_at=now()+interval '1 hour'")
++        self.service.stop_v2_due_schedules()
++        self.assertEqual(closed, [])
++        self.assertIsNone(self.db.fetch_one('select last_stopped_on from hc.irrigation_schedule')['last_stopped_on'])
++        self.db.execute_sql("update hc.irrigation_manual_session set requested_stop_at=now()-interval '1 second'")
++        self.service.stop_v2_due_schedules()
++        self.assertEqual(closed, [(self.rows()[0]['id'], 'v2_effective_stop')])
++        self.assertTrue(self.db.fetch_one('select last_stopped_on=current_date as stopped from hc.irrigation_schedule')['stopped'])
+ 
+     def test_late_prepared_schedule_cannot_replay_after_first_session_closed(self):
+         schedule = self.schedule()
+--- a/infra/backend/tests/test_irrigation_service.py
++++ b/infra/backend/tests/test_irrigation_service.py
+@@ -237,8 +237,6 @@
+     def test_scheduler_tick_skips_without_irrigation_publish_domain(self):
+         calls = []
+         service = self.service()
+-        service.run_due_schedules = lambda: calls.append("run_legacy")
+-        service.stop_due_schedules = lambda: calls.append("stop_legacy")
+         service.run_v2_due_schedules = lambda: calls.append("run_v2")
+         service.stop_v2_due_schedules = lambda: calls.append("stop_v2")
+ 
+@@ -251,8 +249,6 @@
+         service = self.service(
+             v2_execution_engine_state=lambda config: {"publish_domains": ["irrigation"]},
+         )
+-        service.run_due_schedules = lambda: calls.append("run_legacy")
+-        service.stop_due_schedules = lambda: calls.append("stop_legacy")
+         service.run_v2_due_schedules = lambda: calls.append("run_v2")
+         service.stop_v2_due_schedules = lambda: calls.append("stop_v2")
+         service.solar_pump_scheduler_tick = lambda: calls.append("pump")
+@@ -668,5 +664,109 @@
+                     IrrigationServiceTest().service(**{key: value})
+ 
+ 
++class IrrigationV2ScheduleRegressionTest(unittest.TestCase):
++    """HC-20: retain the active scheduler's rule and stop contracts."""
++    def service(self, mode="navigator", final_duration=7, confirmed=True):
++        self.reservations, self.opens, self.writes, self.executions, self.decisions = [], [], [], [], []
++        self.now = datetime(2026, 11, 2, 10, tzinfo=timezone.utc)
++        self.schedule = dict(id=7, label="garden", start_time="10:00", stop_time="10:20", duration_minutes=20)
++        service = IrrigationServiceTest().service(fetch_one=lambda *args: self.schedule)
++        service.evaluate_pilot = lambda **kw: dict(mode=mode, final_duration=final_duration,
++            base_duration=20, reason="fixture rule", triggered_rules=["fixture"], weather_snapshot={})
++        def reserve(**values):
++            self.reservations.append(values)
++            return {"session": dict(id=11, requested_stop_at=self.now + timedelta(minutes=values["minutes"]))}
++        service.reserve_session = reserve
++        def execute(sql, params=()):
++            self.writes.append((sql, params))
++            return dict(id=11, status="running")
++        service.execute_one = execute
++        service.publish_open_with_confirmation = lambda payload, **kw: (
++            self.opens.append(payload) or confirmed, "fixture confirmation", {"sample": "fresh"})
++        service.mark_v2_execution = lambda *args: self.executions.append(args)
++        service.log_pilot_decision = lambda decision, **kw: self.decisions.append((decision.copy(), kw))
++        return service
++
++    def test_navigator_preserves_scheduled_duration_and_stop_payload(self):
++        service = self.service(mode="navigator", final_duration=7)
++        service.start_v2_scheduled_session(7)
++        self.assertEqual(self.reservations[0]["minutes"], 20)
++        self.assertEqual(self.reservations[0]["started_by"], "v2_scheduler")
++        self.assertEqual(self.opens[0]["duration_minutes"], 20)
++        self.assertEqual(self.opens[0]["source"], "scheduler")
++        payload = json.loads(self.writes[0][1][0])
++        self.assertEqual(payload["hc_executor"], "v2_scheduler")
++        self.assertEqual(payload["stop_policy"]["stop_authority"], "schedule_stop_event")
++        self.assertEqual(payload["stop_policy"]["effective_stop_at"], (self.now + timedelta(minutes=20)).isoformat())
++        self.assertEqual(self.executions[0][1:3], ("open", "confirmed"))
++        self.assertEqual(self.decisions, [])  # No legacy navigator_only execution log.
++
++    def test_pilot_uses_rule_duration_even_beyond_original_window(self):
++        service = self.service(mode="pilot", final_duration=30)
++        service.start_v2_scheduled_session(7)
++        self.assertEqual(self.reservations[0]["minutes"], 30)
++        self.assertEqual(self.opens[0]["source"], "pilot")
++        self.assertEqual(self.opens[0]["pilot_final_duration"], 30)
++        payload = json.loads(self.writes[0][1][0])
++        self.assertEqual(payload["stop_policy"]["stop_authority"], "v2_rule_effective_stop")
++        self.assertEqual(payload["stop_policy"]["scheduled_stop"], "10:20")
++        self.assertEqual(payload["stop_policy"]["effective_stop_at"], (self.now + timedelta(minutes=30)).isoformat())
++        self.assertEqual(self.decisions[0][1]["execution_status"], "v2_command_confirmed")
++
++    def test_pilot_skip_consumes_day_without_reservation_or_open(self):
++        service = self.service(mode="pilot", final_duration=0)
++        service.start_v2_scheduled_session(7)
++        self.assertEqual(self.reservations, [])
++        self.assertEqual(self.opens, [])
++        self.assertEqual(len(self.writes), 1)
++        self.assertIn("last_started_on = current_date", self.writes[0][0])
++        self.assertEqual(self.decisions[0][1]["execution_status"], "v2_skipped")
++        result = self.executions[0]
++        self.assertEqual(result[1:3], ("open", "skipped"))
++        self.assertFalse(result[3]["published"])
++        self.assertFalse(result[3]["publish_attempted"])
++
++    def test_failed_start_keeps_uncertainty_and_recovery_block(self):
++        service = self.service(mode="pilot", confirmed=False)
++        service.start_v2_scheduled_session(7)
++        self.assertTrue(service.session_recovery.blocked)
++        self.assertIn("status = 'stop_failed'", self.writes[0][0])
++        self.assertIn("where id = %s and status = 'starting'", self.writes[0][0])
++        self.assertEqual(self.executions[0][1:3], ("open", "failed"))
++        self.assertEqual(self.decisions[0][1]["execution_status"], "v2_start_failed")
++
++    def test_manual_valve_guard_precedes_due_selection_and_dispatch(self):
++        service = self.service()
++        service.manual_valve_scheduler_guard = lambda: dict(blocked=True, state="OPEN")
++        service.fetch_all = lambda *args: self.fail("blocked physical valve selected schedules")
++        service.run_v2_due_schedules()
++        self.assertEqual(self.opens, [])
++        service.manual_valve_scheduler_guard = lambda: dict(blocked=False)
++        service.fetch_all = lambda *args: [{"id": "7"}, {"id": "8"}]
++        calls = []
++        service.start_v2_scheduled_session = calls.append
++        service.run_v2_due_schedules()
++        self.assertEqual(calls, [7, 8])
++
++    def test_effective_stop_marks_day_only_after_confirmed_or_terminal_close(self):
++        for status, ok, expected_day in (("running", True, True), ("running", False, False),
++                                       ("stop_failed", True, False), ("starting", True, False),
++                                       ("stopped", True, True), ("auto_stopped", True, True),
++                                       ("start_failed", True, False), (None, True, True)):
++            with self.subTest(status=status, close_ok=ok):
++                service = self.service()
++                deadline = self.now + timedelta(minutes=7)
++                service.fetch_all = lambda *args: [dict(id=7, session_id=11 if status else None,
++                    session_status=status, requested_stop_at=deadline)]
++                closes = []
++                service.stop_manual_session = lambda *args: (closes.append(args) or ok, "fixture close", {})
++                service.stop_v2_due_schedules()
++                self.assertEqual(bool(self.writes), expected_day)
++                self.assertEqual(closes, [(11, "v2_effective_stop")] if status == "running" else [])
++                if status == "running":
++                    self.assertEqual(self.executions[0][1:3], ("close", "confirmed" if ok else "failed"))
++                    self.assertEqual(self.executions[0][3]["effective_stop_at"], deadline)
++
++
+ if __name__ == "__main__":
+     unittest.main()

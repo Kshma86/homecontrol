@@ -1,0 +1,33 @@
+{
+  "cutoff": "2026-11-02",
+  "hc43_closed": false,
+  "risk_acceptance": false,
+  "matched_records": 98,
+  "advisory_alias_groups": 67,
+  "unresolved_records": 122,
+  "matched_components": [
+    "homeassistant"
+  ],
+  "package_matches": {
+    "pillow": 59,
+    "pyasn1": 4,
+    "oauthlib": 6,
+    "python-jose": 2,
+    "mcp": 4,
+    "authlib": 16,
+    "geopy": 2,
+    "paramiko": 2,
+    "ecdsa": 2,
+    "setuptools": 1
+  },
+  "inventory_delta_from_candidate": {},
+  "private_inventory_uploaded": false,
+  "active_ha_image_upload": true,
+  "pillow_path": "Authenticated HA image upload passes user image data to PIL.Image.open; loaded image_upload component; no exploit attempted.",
+  "vendor_updates": "Supported HA release 2026.10.4; Debian trixie OpenSSH and libxml2 remain vulnerable in vendor tracker.",
+  "not_applicable_limits": [
+    "setuptools Windows-only report does not describe this Linux execution path; this does not dismiss other findings.",
+    "linux-libc-dev is a header package; matching kernel ksmbd advisory does not attest the host kernel."
+  ],
+  "no_automatic_other_audit_fix": true
+}

@@ -1,0 +1,96 @@
+{
+  "ok": true,
+  "checked_at": "2026-11-02T15:29:55.273716+00:00",
+  "active_release": "hc-security-20261102-r18",
+  "runtime_source_count": 736,
+  "runtime_drift": [],
+  "production_containers_unchanged": true,
+  "containers": {
+    "homecontrol-proxy": {
+      "id": "d0c1783bd988f145942b1f146c8f66cd7a512c1571dbe96503d71d28259377e2",
+      "image": "sha256:14e71421340a5f9894c685165f61a39f7b79181f0f00b5d1c3ac5d075fcdc832",
+      "running": true
+    },
+    "homecontrol-frontend": {
+      "id": "52ab2e9746201c5b8633f91854a1335c6ce3c6a5e749620c1579c179368d9bfb",
+      "image": "sha256:dc7182c89fadfc25e094debfd6112ebbc78b4b057ce4e966ee422255d5187dc4",
+      "running": true
+    },
+    "homecontrol-backend": {
+      "id": "0616a5135ddead90c360976dceb5a4e0471862b9b36c55d9c3d02c444e9751e5",
+      "image": "sha256:885e28c69cd957f2c2007715ca8a42e95b5eaccc0ab394552cb66efe3b08d479",
+      "running": true
+    },
+    "homecontrol-ingest": {
+      "id": "402b7efbb01514eacffa301272cb6fa09f18b16a31933be78c9c30633668b869",
+      "image": "sha256:8f166c09c0aa67062b2c0170ba11f154b4aa8aef24a10a31105da440aa25cecf",
+      "running": true
+    },
+    "homecontrol-pgbouncer": {
+      "id": "e333a0ea73d338c3560ce758bfdb22ea685dbdce27a9eaa76ae59ceffe6d9b24",
+      "image": "sha256:121f33add3b5a9281429bd0562ee014630bd2bbc9848072cd5db8c138cb33c20",
+      "running": true
+    },
+    "homecontrol-tuya-poller": {
+      "id": "00eaea48b5e1842877840b17a741c8ed55ff86d8430ea11eca2de7076a3488ea",
+      "image": "sha256:f8bd560df207e0d0dffd8adb955dedcb87de9710695fbf86d6b56333d776a378",
+      "running": true
+    },
+    "homecontrol-gree-climate": {
+      "id": "d4298c0cdbe4a85b11faa60b04761c8f6d78467dd26b9c59969968d45f10625e",
+      "image": "sha256:1170fe37099ad7b3b9db07cb11875ad086bd9d0e32f186920eb44e973e7c3514",
+      "running": true
+    },
+    "homecontrol-xiaomi-x10": {
+      "id": "b3945f9115f0278269c207a51016d4d3391d7a3d969b89347cd5c5cfcb9851a5",
+      "image": "sha256:56fdfbc80dca10ec2f3d9a01174c634471f17b236d4daded3ecc1f2e983c47d0",
+      "running": true
+    },
+    "homecontrol-ha-growatt-poller": {
+      "id": "5823b9dd6a0038b5d9c28613c727a28275188bb3c3e055e51eb90f0e04352230",
+      "image": "sha256:c4cb6f7b58c3c62343e0fd0e4f119e4e2b9406dee4402b6b6fa9472e7209322c",
+      "running": true
+    },
+    "homecontrol-mqtt": {
+      "id": "6416da4a5044bb0076b0d7272add3c68b069171051ce693c98e5562cad4bff6a",
+      "image": "sha256:ea973af3b048e2ab873344fce70ca045beda44ed8a066727ab18a19b79320e18",
+      "running": true
+    },
+    "homecontrol-postgres": {
+      "id": "b76e7c94be1bf373f58c68b38e7a127fae5926055384254a1f5c4730179d2c92",
+      "image": "sha256:518afd764e2fde609ec89ad9873fef6143d754faeffd7b49a93101ccb9e76787",
+      "running": true
+    },
+    "zigbee2mqtt": {
+      "id": "914f65ba1b5561ff1d8a677441b075a79123116b96759d3aa2b9ba8182aced43",
+      "image": "sha256:6b47bf6547787e89d02efdfe3279d2fe39b6d6206a839d1ebcc6fdc38d92ee6e",
+      "running": true
+    },
+    "homecontrol-ai-server": {
+      "id": "f554a09b48c5d00e155cfa0c629d262730bbe5641029ce9d3d3307cfb161d12e",
+      "image": "sha256:0c70389808bb7a7a8674169bc3b79f49e2a8080812ebc101e5bb723e11868ef5",
+      "running": true
+    },
+    "homecontrol-mdns": {
+      "id": "5b9851cf743073e20fb99c730b2efa4970d4d48ceafb7b52fa2f0277dc4ec3e3",
+      "image": "sha256:eefa73a28b2f3d337636cb3f70a43d940e182dc06c67a866338ccf50a50aa87d",
+      "running": true
+    },
+    "homeassistant": {
+      "id": "215f77962313f9cda90b5c01af5402c4eabcfeabf5956e32bbbb17dd10e417a1",
+      "image": "sha256:422d416cb27deba90b680a044ee83f695a6bd9dfa219ab54e55eb86b94d590d0",
+      "running": true
+    },
+    "homecontrol-adminer": {
+      "id": "0ad15d9c2e815cc351746cdb9586cd90c75de018c563d1e6f52d5585e4b0b506",
+      "image": "sha256:19f38bc71f743beb2ad28bf31dfeb352deb19eb167692d250a66cda40b25de93",
+      "running": false
+    }
+  },
+  "comparison": "HC-24 read-only production baseline; same r18 IDs/images/running flags",
+  "production_deploy_or_restart": false,
+  "live_db_queries": 0,
+  "live_ha_mutation_commands": 0,
+  "live_mqtt_publish_commands": 0,
+  "live_readonly_ha_measurement": true
+}

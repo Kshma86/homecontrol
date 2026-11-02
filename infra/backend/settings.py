@@ -61,8 +61,6 @@ class BackendSettings:
     mower_v3_read_only: bool = env_bool("MOWER_V3_READ_ONLY")
     rover_api_token: str = field(default_factory=load_rover_api_token, repr=False)
     rover_api_token_file: str = field(default_factory=lambda: os.environ.get("ROVER_API_TOKEN_FILE", "").strip(), repr=False)
-    mower_operator_password_hash: str = field(default_factory=lambda: os.environ.get("MOWER_OPERATOR_PASSWORD_HASH", "").strip(), repr=False)
-    mower_operator_session_secret: str = field(default_factory=lambda: os.environ.get("MOWER_OPERATOR_SESSION_SECRET", "").strip(), repr=False)
     gree_climate_ip: str = os.environ.get("GREE_CLIMATE_IP", "192.168.1.72")
     gree_climate_port: int = env_int("GREE_CLIMATE_PORT", 7000)
     gree_climate_mac: str = os.environ.get("GREE_CLIMATE_MAC", "9424b8ba43f7")

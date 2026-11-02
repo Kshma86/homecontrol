@@ -94,9 +94,15 @@ HC firmware staging and explicit native STM session create/status.
 - The UI expires cached source evidence locally after 1500 ms, even if HTTP
   hangs or disconnects. Unknown/stale stopped and armed are shown as unknown.
 - During update_locked, do not request ordinary STM state.
-- `mower_operator_auth.py` owns revocable one-hour operator sessions, separate
-  from rover Bearer credentials. Mutation/manual routes require the operator
-  cookie and same-origin checks before a rover connection/WS upgrade.
+- The current app constructs `MowerOperatorAuth(superuser=True)`: one HC user,
+  no separate mower login or operator cookie requirement. Same-origin checks
+  still precede mutation/manual access and WS upgrade; native Bearer credentials
+  remain backend-only. `mower_operator_auth.py` retains the tested optional
+  revocable one-hour session adapter for explicitly constructed callers.
+- `mower_v3_protocol.py` owns pure wire validators and shared error types.
+  Service/command/manual/parameter/motor-test imports point toward this leaf;
+  old public validator paths remain aliases. No timing, ownership or I/O lives
+  in the protocol module.
 - `mower_v3_commands.py` owns exact v3 payloads and single-send commands:
   arm/disarm/pause/reset_fault/heading_set/start/resume and independent STOP.
   HTTP admission is not execution; only correlated STM ACK permits APPLIED.
@@ -113,9 +119,11 @@ HC firmware staging and explicit native STM session create/status.
   Native lease is 350 ms; manual blade target is deliberately zero.
 - Browser manual control loses authority on stale evidence, boot/epoch changes,
   auth loss, visibility loss or stalled send; blur/pointer release zero targets.
-- `MOWER_OPERATOR_PASSWORD_HASH` and `MOWER_OPERATOR_SESSION_SECRET` configure
-  the operator gate; both excluded from settings repr. Missing settings disable
-  control. Current auth/owner/ledger require exactly one backend worker.
+- `MOWER_OPERATOR_PASSWORD_HASH` and `MOWER_OPERATOR_SESSION_SECRET` are obsolete
+  and no longer read by settings. Current owner/ledger require exactly one
+  backend worker. See [single-user handoff](../rover-single-user-control-20261013.md)
+  and [HC-16 repair](../hc-16-repair.md) for current wiring; older login examples
+  in historical handoffs do not override it.
 - Advertised rover capabilities are distinct from implemented HC controls.
   Native STM upload/ABORT/FINISH exist with strict per-action gates; live
   parameter apply, ESP OTA and RVM3 mission upload are not implemented yet.
@@ -132,8 +140,9 @@ HC firmware staging and explicit native STM session create/status.
   immutable history and exact saved-revision downloads. Read responses are
   no-store; no legacy context invalidation or rover/network side effects.
 - Parameter editing does not require a connected/configured rover. HC draft
-  save requires the independent HC operator configuration. Incomplete valid-
-  shape drafts can be saved/exported JSON; binary export requires full validity.
+  save uses the current single HC user and same-origin guard, without separate
+  operator configuration. Incomplete valid-shape drafts can be saved/exported
+  JSON; binary export requires full validity.
 - HC rover_key, package robot_id, draft_revision, draft_sha256 and rcp1_crc32 are
   not evidence of STM identity, native revision, firmware profile CRC or physical
   qualification. source is HC_DRAFT; active_configuration is null; live apply

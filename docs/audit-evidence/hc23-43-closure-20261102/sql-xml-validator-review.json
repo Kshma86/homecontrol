@@ -1,0 +1,7 @@
+{
+  "benign_xml_select_accepted_by_validator": true,
+  "database_connection_opened": false,
+  "sql_executed": false,
+  "exploit_attempted": false,
+  "matches_deployed_r18_validator_source": true
+}

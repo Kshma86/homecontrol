@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "finding": "HC-15",
+  "audit_phase": "F0/F8",
+  "active_release": "hc-security-20261102-r18",
+  "production_deployed": false,
+  "tests": {
+    "baseline_unit": 795,
+    "candidate_unit": 806,
+    "postgres": 197,
+    "postgres_modules": 15,
+    "focused_unit_with_startup": 24,
+    "unique_final_backend_tests": 1003,
+    "new_contract_tests": 19,
+    "removed_forwarding_test": 1,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "route_contract_count": 163,
+  "behavior": [
+    "Exactly one request-local increment per measured helper attempt, including failures",
+    "Raw connection/health-check counting unchanged",
+    "Original restricted hc_app role retained; SQL Lab reader unchanged",
+    "Context manager rollback, close and nested savepoint semantics retained",
+    "Old/new domain SQL payloads agree in a real disposable PostgreSQL transaction",
+    "Guarded app import and real lazy factories start no threads/connections/processes and write no files"
+  ],
+  "dependencies": {
+    "already_present_and_preserved": [
+      "HC-08 scheduler audit and transaction adapter",
+      "HC-07/38 schema contracts",
+      "HC-39 application/reader roles"
+    ],
+    "required_before_production": [
+      "New reviewed backend release; this source change is not installed into r18"
+    ]
+  },
+  "scope_exclusions": [
+    "HC-16 rover/auth refactoring",
+    "HC-20 dead legacy executor removal",
+    "Any other audit fix or status change"
+  ],
+  "commands": [
+    "python3 -B scripts/check_hc_tests.py --profile unit --output docs/audit-evidence/hc15-20261102/unit",
+    "python3 -B scripts/check_hc_tests.py --profile postgres --output docs/audit-evidence/hc15-20261102/postgres"
+  ],
+  "limitations": [
+    "No production deployment/restart or live DB writes",
+    "No performance improvement claim; helper query counting retains its original definition",
+    "The generic legacy standard profile uses optional policy only in disposable copies, as recorded in test source provenance"
+  ],
+  "initial_attempt": "focused-initial-image-cwd.log records an initial focused invocation which imported old image modules; corrected invocation sets the source working directory. It is not a passing acceptance run."
+}

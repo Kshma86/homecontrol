@@ -1,0 +1,178 @@
+{
+  "ok": true,
+  "finding": "HC-26",
+  "repair": "REPAIR-066",
+  "completed_at": "2026-11-02T15:32:19.430140+00:00",
+  "status": "verified_source_not_deployed",
+  "active_release": "hc-security-20261102-r18",
+  "audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "usage": {
+    "enabled_and_running": true,
+    "configured_metrics": 27,
+    "ha_states": 86
+  },
+  "measured": {
+    "rounds": 3,
+    "individual_gets": 27,
+    "batch_gets": 1,
+    "individual_median_seconds": 0.029755,
+    "batch_median_seconds": 0.002524,
+    "first_individual_bytes": 11976,
+    "first_batch_bytes": 38037,
+    "raw_states_saved": false,
+    "credentials_exported": false,
+    "live_ha_mutations": 0,
+    "live_mqtt_publishes": 0
+  },
+  "candidate_live_readonly": {
+    "ok": true,
+    "get_count": 1,
+    "payload_metric_count": 26,
+    "per_metric_age_fields": 26,
+    "not_deployment": true,
+    "not_mqtt_publish": true
+  },
+  "final": {
+    "profiles": {
+      "growatt": {
+        "tests": 18,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "unit": {
+        "tests": 816,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "mdns": {
+        "tests": 19,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "ingest": {
+        "tests": 52,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "unique_tests": 905,
+    "original_payload_compatibility_scenarios": 4,
+    "postgres_newly_tested": false,
+    "frontend_newly_tested": false
+  },
+  "source_provenance": {
+    "all_test_profiles_match_current_changed_python_paths": true,
+    "python_paths": [
+      "apps/ha-growatt-poller/ha_growatt_poller.py",
+      "apps/ha-growatt-poller/tests/test_ha_growatt_poller.py",
+      "scripts/check_hc_tests.py",
+      "scripts/hc_test_suite.py"
+    ],
+    "growatt_image": "sha256:c4cb6f7b58c3c62343e0fd0e4f119e4e2b9406dee4402b6b6fa9472e7209322c",
+    "growatt_deployed_policy_unchanged": true
+  },
+  "contract_checks": {
+    "original_metric_map_and_value_coercion_ast_unchanged": true,
+    "original_MQTT_fields_preserved": true,
+    "additive_meta_fields": [
+      "observed_at",
+      "ha_state_age_seconds"
+    ],
+    "sample_time": "UTC observation after read, not physical acquisition",
+    "failed_batch": "Empty cycle; no per-entity fallback; no stale snapshot replay",
+    "backend_python_unchanged": 185,
+    "sql_migrations_unchanged": 62,
+    "ingest_source_mdns_source_dependency_locks_Dockerfile_and_helpers_unchanged": true,
+    "prior_repair_evidence_preserved": true
+  },
+  "scope": {
+    "only_status_changed": "HC-26",
+    "registry_counts": {
+      "Nyitott": 0,
+      "Folyamatban": 3,
+      "Ellen\u0151rz\u00f6tt": 45
+    },
+    "other_audit_points_fixed": false,
+    "production_changed": false
+  },
+  "earlier_attempt": {
+    "initial_growatt": {
+      "tests": 18,
+      "failures": 0,
+      "errors": 1,
+      "skipped": 0
+    },
+    "cause": "Test-only datetime mock lacked fromisoformat; fixed fixture, no production-code change",
+    "counted_as_acceptance": false
+  },
+  "commands": [
+    "python3 -B docs/audit-evidence/hc26-20261102/check_scope.py",
+    "python3 -B scripts/check_hc_tests.py --profile growatt --output docs/audit-evidence/hc26-20261102/growatt-final",
+    "python3 -B scripts/check_hc_tests.py --profile unit --output docs/audit-evidence/hc26-20261102/unit",
+    "python3 -B scripts/check_hc_tests.py --profile mdns --output docs/audit-evidence/hc26-20261102/mdns",
+    "python3 -B scripts/check_hc_tests.py --profile ingest --output docs/audit-evidence/hc26-20261102/ingest"
+  ],
+  "dependencies": [
+    "HA GET /api/states and current optional ha-growatt profile verified",
+    "Existing JSON meta ingest/SQL 019 path; no migration required",
+    "New independent Growatt-poller image/release required; pending HC-15/16/20/24 preserved"
+  ],
+  "limitations": [
+    "Requests connect/read timeouts are not hard whole-cycle deadlines",
+    "HA last_updated age is not inverter physical measurement age",
+    "No new stale threshold, automatic DB value deletion or frontend freshness display",
+    "Live tests were read-only GETs; no production deployment/restart",
+    "HC-23/41/43 remain in progress"
+  ],
+  "sources": [
+    "https://contributors.home-assistant.io/core/internals/rest-api/#get-apistates",
+    "https://requests.readthedocs.io/en/latest/user/advanced/#timeouts"
+  ],
+  "documentation_links_verified": 10,
+  "changed_files": [
+    {
+      "path": "AUDIT_REPAIR.md",
+      "state": "modified",
+      "sha256": "4350ec303c41a2d06917a3899016751f9c378996004957844a1303527f0078e9"
+    },
+    {
+      "path": "DEPLOYMENT_PREP.md",
+      "state": "modified",
+      "sha256": "b0276f004b2ca01640f3315e2bf8e3a40e92b51cfcc74d8a771c1ced8fed6966"
+    },
+    {
+      "path": "apps/ha-growatt-poller/ha_growatt_poller.py",
+      "state": "modified",
+      "sha256": "a5195aa3dc4fcb7b9af4165b7ccc742dc16a99a9761bc9737ff05c4d7157aaed"
+    },
+    {
+      "path": "apps/ha-growatt-poller/tests/test_ha_growatt_poller.py",
+      "state": "added",
+      "sha256": "7398739f19d3c2bc42d94d67a688dc3261f1807fa35923099317ec34e03ee225"
+    },
+    {
+      "path": "docs/ai/solar-domain.md",
+      "state": "modified",
+      "sha256": "8598836accc086effd6fcb4ee4f34ee333449b315686e98fef90efe373863aa3"
+    },
+    {
+      "path": "docs/hc-26-repair.md",
+      "state": "added",
+      "sha256": "b1629950f1cbe11d7276c93d298a39f026cfa378fe36d5ba20c1691d13389525"
+    },
+    {
+      "path": "scripts/check_hc_tests.py",
+      "state": "modified",
+      "sha256": "7e1a873bab1654a0a18eceaa9f25011c9008a41f213b99430a63fa4ca64ed3f9"
+    },
+    {
+      "path": "scripts/hc_test_suite.py",
+      "state": "modified",
+      "sha256": "b5cc910edfacc5fb560f7e4483162832105fcf718638f4195e53f508a79695e4"
+    }
+  ]
+}

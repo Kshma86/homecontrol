@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "actual_secrets_absent_from_public_evidence": true,
+  "audit_counts": {
+    "Ellen\u0151rz\u00f6tt": 38,
+    "Nyitott": 9,
+    "Folyamatban": 1
+  },
+  "private_lab_inputs_deleted": true
+}

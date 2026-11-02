@@ -1,3 +1,12 @@
+> **2026-11-02: this AI node is disabled.** The commands below describe the
+> dormant deployment and must not be run as part of HC recovery or this audit
+> closure. Router backup and external Git replace the former AI-host backup path.
+> The three image references are now immutable official stable-release manifest
+> digests. Only public metadata/platform availability was verified; the images
+> were not downloaded or run, and AI hardware/data compatibility was not tested.
+> Any future reactivation needs a separate reviewed deployment, data backup and
+> runtime checks. [Current audit scope](../../docs/hc23-43-closure-20261102.md).
+
 # HomeControl AI Node
 
 Portable remote LLM node for the larger Ubuntu AI server.

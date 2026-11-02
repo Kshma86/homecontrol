@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "deadline_seconds": 0.1,
+  "original_cycles": [
+    {
+      "packet_hex": "c000",
+      "timed_out": true
+    },
+    {
+      "packet_hex": "c002c000",
+      "timed_out": true
+    }
+  ],
+  "valid_queries": [
+    {
+      "query_hex": "123400000001000000000000024843056c6f63616c0000010001",
+      "parsed": [
+        [
+          "hc.local",
+          1,
+          1
+        ]
+      ],
+      "should_answer": true,
+      "response_hex": "123484000001000100000000024843056c6f63616c0000010001c00c00018001000000780004c0000217"
+    },
+    {
+      "query_hex": "123400000001000000000000024843056c6f63616c0000ff0001",
+      "parsed": [
+        [
+          "hc.local",
+          255,
+          1
+        ]
+      ],
+      "should_answer": true,
+      "response_hex": "123484000001000100000000024843056c6f63616c0000ff0001c00c00018001000000780004c0000217"
+    }
+  ],
+  "announcement_hex": "000084000000000100000000026863056c6f63616c0000018001000000780004c0000217",
+  "lan_packets_sent": 0
+}

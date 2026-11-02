@@ -21,9 +21,10 @@ This does not globally disable all legacy backend routes.
   firmware/profile/boot identity and advertised capabilities.
 - Monotonic freshness tracking: repeated/older source sequences cannot renew
   freshness, and browser-local ageing expires evidence during HTTP silence.
-- Separate mower operator authentication: one-hour signed HttpOnly/SameSite
-  cookie, origin checks before mutation/WS upgrade, bounded login attempts and
-  revocable sessions. Viewing the tab does not log in or claim control.
+- Current single HC superuser, with origin checks before mutation/WS upgrade.
+  The original optional operator-session adapter remains available for explicit
+  callers (one-hour signed cookie, rate limit and revocation); it is not wired
+  into the current app as a separate login. Viewing the tab does not claim control.
 - Explicit `arm`, `disarm`, `pause`, `reset_fault`, `heading_set`, `start`,
   `resume` and dedicated STOP. Start/resume reference the mission already
   reported by the STM; this slice does not upload/compile missions.
@@ -68,26 +69,31 @@ Do not paste the token into the browser, chat, CLI flags or logs. Missing or
 invalid configuration leaves the page UNCONFIGURED and performs no rover GET.
 The legacy MOWER_REMOTE_URL setting is independent.
 
-To enable browser controls, separately provide `MOWER_OPERATOR_PASSWORD_HASH`
-(Werkzeug-generated scrypt or PBKDF2-SHA256 hash) and
-`MOWER_OPERATOR_SESSION_SECRET` (32 random bytes encoded as 64 hex characters).
-Do not reuse the rover token as a browser password/session secret. Provision
-secrets privately, keep `$` characters in password hashes literal when loading
-Compose configuration, and do not paste passwords/hash/secret values into chat
-or logs. Use HTTPS when authenticating outside a trusted local network.
-Missing authentication settings leave all mutation/WS access disabled.
+The current app uses the single HC superuser (`MowerOperatorAuth(superuser=True)`);
+there is no separate mower operator login or operator environment provisioning.
+`MOWER_OPERATOR_PASSWORD_HASH` and `MOWER_OPERATOR_SESSION_SECRET` are obsolete
+and no longer read by BackendSettings. Existing private environment entries need
+not be changed for this code repair. The native rover Bearer token remains
+backend-only and does not authenticate a browser. Same-origin validation still
+runs before mutation/manual access. See the authoritative
+[single-user handoff](rover-single-user-control-20261013.md) and
+[HC-16 repair](hc-16-repair.md); earlier operator-login examples in historical
+handoffs describe the optional compatibility adapter, not current app wiring.
+The revocable session adapter remains tested for explicitly constructed callers;
+it is not activated by environment variables in the current app.
 The frontend/proxy preserve the original Host including its port, so same-origin
 checks also work when HC is opened through the directly published frontend port.
 
 This first control slice uses the existing **one-worker** Gunicorn deployment:
-operator sessions, the manual owner and command history are process-local.
-Restart requires operator login again. Do not scale backend workers/replicas
-without shared session/owner/command persistence. The bounded ledger retains
+the manual owner and command history are process-local.
+Restart loses ownership; a new explicit native claim is required, with no replay
+of old commands. Do not scale backend workers/replicas without shared owner/command
+persistence. Optional compatibility sessions are also process-local. The bounded ledger retains
 128 results and 512 retired request fingerprints; it is not a durable audit or
 an unlimited idempotency store. Retired IDs return UNKNOWN/GET reconciliation,
 not another POST. Browser code never resubmits a saved mutation across restarts.
-Legacy APIs remain separate and unchanged; the new operator gate is not a
-global authentication retrofit for all HomeControl or legacy rover endpoints.
+Legacy APIs remain separate and unchanged. This single-user mower model does
+not introduce global authentication for HomeControl or legacy rover endpoints.
 
 The package's host fixtures are synthetic; actual rover deployment and hardware
 acceptance still require the separate rover workflow. No physical rover access

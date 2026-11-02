@@ -1,0 +1,77 @@
+[
+  {
+    "path": "infra/backend/app.py",
+    "state": "modified",
+    "sha256": "00e57fc96b7e7b6518474b3ac3199fabb03747888c73243a8a86436987f01978"
+  },
+  {
+    "path": "infra/backend/db_runtime.py",
+    "state": "modified",
+    "sha256": "8baaffaf53a39ae5299f731737fd6521894294ed2eb110fc839a7954099828df"
+  },
+  {
+    "path": "infra/backend/repository_service.py",
+    "state": "deleted",
+    "sha256": null
+  },
+  {
+    "path": "infra/backend/climate_service.py",
+    "state": "modified",
+    "sha256": "6fc106769c2c13e6d5a145a700c0d93f477fcb23c8993ad6c17073cc8b5cc10e"
+  },
+  {
+    "path": "infra/backend/irrigation_service.py",
+    "state": "modified",
+    "sha256": "e78921d90c572bdb30df433c32510d273c94b12ef08a626be3e93683b70cd0fc"
+  },
+  {
+    "path": "infra/backend/tests/test_repository_service.py",
+    "state": "deleted",
+    "sha256": null
+  },
+  {
+    "path": "scripts/stage_hc_test_source.py",
+    "state": "modified",
+    "sha256": "5caedbcec8e26ce0433c202bf9938960b5fa178e9ed3942a74dd79658d9c1fab"
+  },
+  {
+    "path": "scripts/check_hc_tests.py",
+    "state": "modified",
+    "sha256": "7e0688feed4d4b9d695bddb741746dc0318901bc7275440ee52e255e9245db0e"
+  },
+  {
+    "path": "infra/backend/tests/test_db_runtime.py",
+    "state": "added",
+    "sha256": "599c620b72e20696ad1d2dc19b5cae46c90e9c46df52b7f2c3ad858e5d33f8e0"
+  },
+  {
+    "path": "infra/backend/tests/test_domain_schedule_reads.py",
+    "state": "added",
+    "sha256": "4640ff51c67a9a4e1dcc71020f87934a288f2c850d3cecb64faac3c571540b0e"
+  },
+  {
+    "path": "infra/backend/tests/test_app_database_wiring.py",
+    "state": "added",
+    "sha256": "faff538cbd0cfe442267cb425c22e509e6365bfe639ca780183d19a514790208"
+  },
+  {
+    "path": "infra/backend/tests/test_database_runtime_postgres.py",
+    "state": "added",
+    "sha256": "531e12c56163437fd9e60215103dae17eb64b3e3ff14e79de5c56142f290ea9d"
+  },
+  {
+    "path": "infra/backend/tests/fixtures/hc15_queries.json",
+    "state": "added",
+    "sha256": "23684ced7022bd517056b3b41d018f24edd33c59adefce4844eebc7572a1b3a4"
+  },
+  {
+    "path": "infra/backend/tests/fixtures/hc15_routes.json",
+    "state": "added",
+    "sha256": "6771057d332736805cbf2c5ce1d1da853a06f434b944f8f4778559edf06ce621"
+  },
+  {
+    "path": "infra/backend/tests/fixtures/hc15_import_probe.py",
+    "state": "added",
+    "sha256": "6c2d558bcdecb244f250206a0a4ed9b2557932e3853d5f3423a48e0073f1e28f"
+  }
+]

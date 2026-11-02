@@ -1,0 +1,21 @@
+{
+  "files": {
+    "apps/ai-node/docker-compose.yml": "420a5b52d18ddc144f3275c27b73fb534b0eea2d7613eb17cb577eadda08719b",
+    "apps/ai-node/README.md": "4f976a7cec1302a3c7f745dac7f782f2aff08b4161226128f879d015738371fd",
+    "apps/ai-node/image-pins.json": "12754ea4d3106a7f0f592de8e1318e63a5759fbbd36ec714f123a3e8825f8acb",
+    "scripts/access_release/restore_assets.py": "c76b16aebd5824cff45b006a1c48d696547cb60a1c61b8daebb8bdb02575568b",
+    "infra/backend/tests/test_access_release.py": "a2174596bc1d8e7927f55f58235a2e3497027f7d74afef73a356825e1a986e4c",
+    "AUDIT_REPAIR.md": "8a2e2f989ef9e2eee51b0561400806cd753785f04aef390df350224aff868ab6",
+    "DEPLOYMENT_PREP.md": "767cf105eb57623cda84608d3ad02eb5f2e2c14e8ad3f57607403786da166d9e",
+    "docs/hc23-43-platform-release-20261102.md": "7c00dfc75124b3f7a1c21da57c1fe0d7423e49c04e1072d9504445e5656352d3",
+    "docs/hc23-43-closure-20261102.md": "c7d1e05541f3f9f23a21bcb40d4429aaedba73fa05785d24156659510a74795b"
+  },
+  "deployed": false,
+  "other_pending_fingerprints_preserved": true,
+  "sealed_r18_runtime_modified": false,
+  "audit_findings_changed": [
+    "HC-23",
+    "HC-43 review only; user explicitly kept it in progress"
+  ],
+  "hc41_changed": false
+}

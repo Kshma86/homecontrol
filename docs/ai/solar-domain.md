@@ -40,6 +40,53 @@ missing, `/api/solar/state` returns:
 }
 ```
 
+## Home Assistant Polling (HC-26)
+
+The optional `ha-growatt` Compose profile runs the HA poller. Its measured
+production configuration has 27 mapped entities; the inspected HA instance
+returned 86 state objects in about 38 KiB. The HC-26 source repair replaces the
+27 serial per-entity GETs with **one `GET /api/states` per poll**, then selects
+only configured entities locally. No HA action/service or inverter command is
+issued. See [HC-26 repair and measurements](../hc-26-repair.md).
+
+The flat MQTT metric names, value conversion, topic, QoS/retain and existing
+`source`, `entity_count`, `meta` fields remain compatible. Missing entities and
+unknown/unavailable states produce no new metric; usable entities from the
+same response still publish. A failed HTTP/JSON/body read produces an empty
+cycle (`entity_count=0`, `meta={}`), without per-entity fallback or replay of
+previous values. The next cycle makes a new single request. An omitted metric
+does not delete the previously stored DB state; consumers still need to assess
+its age.
+
+`sample_time` is the UTC time **after the snapshot read**, not the inverter's
+physical acquisition time. Each published metric retains its original
+`meta[key].last_updated`, unit and friendly name, with two additive fields:
+
+- `observed_at`: the snapshot observation timestamp, shared by the cycle.
+- `ha_state_age_seconds`: age of the HA `last_updated` value at observation;
+  null for missing, invalid, timezone-less or future timestamps.
+
+An unchanged HA state gets older across polls. Its age is not reset by a fresh
+HTTP read, and `last_updated` is not claimed to prove the inverter/cloud source's
+physical measurement age. Old numeric values are not silently replaced or
+removed by a newly invented freshness threshold. The existing SQL 019 `meta`
+JSON-state metric and ingest generic mapping already carry this information;
+no new schema or ingest path is required.
+
+The interval uses monotonic elapsed time; the default remains 60 seconds, with
+at least a one-second wait after an overrun. There is one existing configured
+HTTP timeout per cycle, with no retry multiplier. Requests' connect/read timeout
+is **not a hard whole-cycle deadline** (DNS, connect attempts and continuous
+response bytes can take longer). The worker-health allowance is now based on
+one request instead of entity count; it reports a stuck worker but does not
+abort its socket. A hard transport deadline or HA freshness policy is separate
+work, not an additional change in HC-26. MQTT success/readiness semantics are
+unchanged.
+
+This code repair is not yet deployed. A new Growatt-poller image is required;
+the HA service, MQTT credentials and entity map need no migration. Live HA
+measurements in the repair used GET only; tests use fake HA/MQTT transports.
+
 ## API Endpoints
 
 Read endpoints:

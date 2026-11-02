@@ -33,6 +33,8 @@ class ClimateService:
         window_guard=None,
         process_binding_payload: Callable[[str], Any] = None,
         process_binding_entity_id: Callable[[str], Any] = None,
+        ensure_season_profile_schema: Callable[[], Any] = None,
+        ensure_scheduler_schema: Callable[[], Any] = None,
     ):
         self.window_guard = window_guard
         self.fetch_all = fetch_all
@@ -54,6 +56,8 @@ class ClimateService:
         self.sync_auto_power_wall = sync_auto_power_wall
         self.process_binding_payload = process_binding_payload
         self.process_binding_entity_id = process_binding_entity_id
+        self.ensure_season_profile_schema = ensure_season_profile_schema
+        self.ensure_scheduler_schema = ensure_scheduler_schema
 
     def scale_power_w(self, value: Any):
         if value is None:
@@ -608,6 +612,61 @@ class ClimateService:
             "auto_power_wall": auto_power_wall,
             "context": self.context_meta("climate", "power_wall"),
         }
+
+    def fetch_schedule_rules(self, profile=None):
+        if self.ensure_season_profile_schema is None or self.ensure_scheduler_schema is None:
+            raise RuntimeError("Climate schedule reading requires explicit schema callbacks")
+        self.ensure_season_profile_schema()
+        self.ensure_scheduler_schema()
+        profile = self.normalize_text(profile) or None
+        if profile not in (None, "summer", "winter"):
+            raise ValueError("profile must be summer or winter")
+        return self.fetch_all(
+            """
+            with schedule_state as (
+              select
+                r.*,
+                a.profile as active_profile,
+                day_of_week = extract(isodow from now())::int - 1 as is_today,
+                is_enabled
+                  and r.season_profile = a.profile
+                  and day_of_week = extract(isodow from now())::int - 1
+                  and to_char(localtime, 'HH24:MI') = to_char(start_time, 'HH24:MI')
+                  as should_run_now
+              from hc.climate_schedule_rule r
+              join hc.domain_season_active a on a.domain = 'climate'
+              where r.season_profile = coalesce(%s, a.profile)
+            )
+            select
+              id,
+              label,
+              day_of_week,
+              to_char(start_time, 'HH24:MI') as start_time,
+              is_enabled,
+              season_profile,
+              active_profile,
+              season_profile = active_profile as is_active_profile,
+              is_today,
+              should_run_now,
+              case
+                when should_run_now then 'due_now'
+                when is_enabled and is_today then 'armed_today'
+                when is_enabled then 'armed'
+                else 'disabled'
+              end as schedule_status,
+              power,
+              mode,
+              target_temperature,
+              fan_speed,
+              light,
+              coalesce(extra_fan, 'keep') as extra_fan,
+              rule_engine,
+              updated_at
+            from schedule_state
+            order by day_of_week, start_time, id
+            """,
+            (profile,),
+        )
 
     def schedule_payload(self, data: dict, default_light: str = "off"):
         start_time = self.validate_schedule_time(data.get("start_time"), "start_time")

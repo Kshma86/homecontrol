@@ -1,0 +1,2098 @@
+--- before/infra/backend/app.py
++++ after/infra/backend/app.py
+@@ -265,10 +265,6 @@
+     return DB_RUNTIME.conn(row_factory)
+ 
+ 
+-def get_repository_registry():
+-    return DB_RUNTIME.repositories
+-
+-
+ def fetch_all(sql: str, params: Iterable[Any] = ()):
+     return DB_RUNTIME.fetch_all(sql, params)
+ 
+@@ -473,57 +469,7 @@
+ 
+ 
+ def fetch_climate_schedule_rules(profile=None):
+-    get_season_profile_service().ensure_schema()
+-    ensure_scheduler_schema()
+-    profile = normalize_text(profile) or None
+-    if profile not in (None, "summer", "winter"):
+-        raise ValueError("profile must be summer or winter")
+-    return fetch_all(
+-        """
+-        with schedule_state as (
+-          select
+-            r.*,
+-            a.profile as active_profile,
+-            day_of_week = extract(isodow from now())::int - 1 as is_today,
+-            is_enabled
+-              and r.season_profile = a.profile
+-              and day_of_week = extract(isodow from now())::int - 1
+-              and to_char(localtime, 'HH24:MI') = to_char(start_time, 'HH24:MI')
+-              as should_run_now
+-          from hc.climate_schedule_rule r
+-          join hc.domain_season_active a on a.domain = 'climate'
+-          where r.season_profile = coalesce(%s, a.profile)
+-        )
+-        select
+-          id,
+-          label,
+-          day_of_week,
+-          to_char(start_time, 'HH24:MI') as start_time,
+-          is_enabled,
+-          season_profile,
+-          active_profile,
+-          season_profile = active_profile as is_active_profile,
+-          is_today,
+-          should_run_now,
+-          case
+-            when should_run_now then 'due_now'
+-            when is_enabled and is_today then 'armed_today'
+-            when is_enabled then 'armed'
+-            else 'disabled'
+-          end as schedule_status,
+-          power,
+-          mode,
+-          target_temperature,
+-          fan_speed,
+-          light,
+-          coalesce(extra_fan, 'keep') as extra_fan,
+-          rule_engine,
+-          updated_at
+-        from schedule_state
+-        order by day_of_week, start_time, id
+-        """,
+-        (profile,),
+-    )
++    return get_climate_service().fetch_schedule_rules(profile)
+ 
+ 
+ def record_scheduler_shadow_audit():
+@@ -695,21 +641,6 @@
+     return _irrigation_service
+ 
+ 
+-def fetch_irrigation_v2_session(source_ref: str):
+-    return fetch_one(
+-        """
+-        select requested_stop_at
+-        from hc.irrigation_manual_session
+-        where started_by = 'v2_scheduler'
+-          and start_payload ->> 'schedule_id' = %s
+-          and started_at::date = current_date
+-        order by started_at desc
+-        limit 1
+-        """,
+-        (str(source_ref),),
+-    )
+-
+-
+ def get_scheduler_service():
+     global _scheduler_service
+     if _scheduler_service is None:
+@@ -740,7 +671,7 @@
+                     v2_allow_x10=HC_V2_EXECUTION_ALLOW_X10,
+                     v2_allow_climate=HC_V2_EXECUTION_ALLOW_CLIMATE,
+                     evaluate_irrigation_pilot=lambda **kwargs: get_irrigation_service().evaluate_pilot(**kwargs),
+-                    fetch_irrigation_v2_session=fetch_irrigation_v2_session,
++                    fetch_irrigation_v2_session=lambda source_ref: get_irrigation_service().fetch_v2_session(source_ref),
+                     irrigation_command_topic=lambda: command_topics()["valve"],
+                     x10_schedule_clean_topic=x10_schedule_clean_topic(X10_BASE_TOPIC),
+                     x10_weekly_schedule_topic=x10_weekly_schedule_topic(X10_BASE_TOPIC),
+@@ -782,6 +713,8 @@
+                     sync_auto_power_wall=sync_auto_climate_power_wall,
+                     process_binding_payload=lambda key: get_process_binding_service().binding(key, include_candidates=True),
+                     process_binding_entity_id=lambda key: get_process_binding_service().selected_entity_id(key),
++                    ensure_season_profile_schema=lambda: get_season_profile_service().ensure_schema(),
++                    ensure_scheduler_schema=ensure_scheduler_schema,
+                 )
+     return _climate_service
+ 
+--- before/infra/backend/db_runtime.py
++++ after/infra/backend/db_runtime.py
+@@ -1,33 +1,31 @@
+ from typing import Any, Iterable, Optional
+ 
+ from database_service import DatabaseService
+-from repository_service import RepositoryRegistry
+ from runtime_utils import record_db_query
+ 
+ 
+ class DatabaseRuntime:
+     def __init__(self, database_url: str):
+         self.database = DatabaseService(database_url, expected_role='hc_app')
+-        self.repositories = RepositoryRegistry(self.database)
+ 
+     def conn(self, row_factory=None):
+-        return self.repositories.shared.conn(row_factory)
++        return self.database.conn(row_factory)
+ 
+     def fetch_all(self, sql: str, params: Iterable[Any] = ()):
+         record_db_query()
+-        return self.repositories.shared.fetch_all(sql, params)
++        return self.database.fetch_all(sql, params)
+ 
+     def fetch_one(self, sql: str, params: Iterable[Any] = ()):
+         record_db_query()
+-        return self.repositories.shared.fetch_one(sql, params)
++        return self.database.fetch_one(sql, params)
+ 
+     def execute_one(self, sql: str, params: Iterable[Any] = ()):
+         record_db_query()
+-        return self.repositories.shared.execute_one(sql, params)
++        return self.database.execute_one(sql, params)
+ 
+     def execute_sql(self, sql: str, params: Optional[Iterable[Any]] = None):
+         record_db_query()
+-        return self.repositories.shared.execute_sql(sql, params)
++        return self.database.execute_sql(sql, params)
+ 
+     def check(self) -> bool:
+         return self.database.check()
+--- before/infra/backend/repository_service.py
++++ after/infra/backend/repository_service.py
+@@ -1,26 +0,0 @@
+-from typing import Any, Iterable, Optional
+-
+-
+-class SqlRepository:
+-    def __init__(self, database):
+-        self.database = database
+-
+-    def conn(self, row_factory=None):
+-        return self.database.conn(row_factory)
+-
+-    def fetch_all(self, sql: str, params: Iterable[Any] = ()):
+-        return self.database.fetch_all(sql, params)
+-
+-    def fetch_one(self, sql: str, params: Iterable[Any] = ()):
+-        return self.database.fetch_one(sql, params)
+-
+-    def execute_one(self, sql: str, params: Iterable[Any] = ()):
+-        return self.database.execute_one(sql, params)
+-
+-    def execute_sql(self, sql: str, params: Optional[Iterable[Any]] = None):
+-        return self.database.execute_sql(sql, params)
+-
+-
+-class RepositoryRegistry:
+-    def __init__(self, database):
+-        self.shared = SqlRepository(database)
+--- before/infra/backend/climate_service.py
++++ after/infra/backend/climate_service.py
+@@ -33,6 +33,8 @@
+         window_guard=None,
+         process_binding_payload: Callable[[str], Any] = None,
+         process_binding_entity_id: Callable[[str], Any] = None,
++        ensure_season_profile_schema: Callable[[], Any] = None,
++        ensure_scheduler_schema: Callable[[], Any] = None,
+     ):
+         self.window_guard = window_guard
+         self.fetch_all = fetch_all
+@@ -54,6 +56,8 @@
+         self.sync_auto_power_wall = sync_auto_power_wall
+         self.process_binding_payload = process_binding_payload
+         self.process_binding_entity_id = process_binding_entity_id
++        self.ensure_season_profile_schema = ensure_season_profile_schema
++        self.ensure_scheduler_schema = ensure_scheduler_schema
+ 
+     def scale_power_w(self, value: Any):
+         if value is None:
+@@ -609,6 +613,61 @@
+             "context": self.context_meta("climate", "power_wall"),
+         }
+ 
++    def fetch_schedule_rules(self, profile=None):
++        if self.ensure_season_profile_schema is None or self.ensure_scheduler_schema is None:
++            raise RuntimeError("Climate schedule reading requires explicit schema callbacks")
++        self.ensure_season_profile_schema()
++        self.ensure_scheduler_schema()
++        profile = self.normalize_text(profile) or None
++        if profile not in (None, "summer", "winter"):
++            raise ValueError("profile must be summer or winter")
++        return self.fetch_all(
++            """
++            with schedule_state as (
++              select
++                r.*,
++                a.profile as active_profile,
++                day_of_week = extract(isodow from now())::int - 1 as is_today,
++                is_enabled
++                  and r.season_profile = a.profile
++                  and day_of_week = extract(isodow from now())::int - 1
++                  and to_char(localtime, 'HH24:MI') = to_char(start_time, 'HH24:MI')
++                  as should_run_now
++              from hc.climate_schedule_rule r
++              join hc.domain_season_active a on a.domain = 'climate'
++              where r.season_profile = coalesce(%s, a.profile)
++            )
++            select
++              id,
++              label,
++              day_of_week,
++              to_char(start_time, 'HH24:MI') as start_time,
++              is_enabled,
++              season_profile,
++              active_profile,
++              season_profile = active_profile as is_active_profile,
++              is_today,
++              should_run_now,
++              case
++                when should_run_now then 'due_now'
++                when is_enabled and is_today then 'armed_today'
++                when is_enabled then 'armed'
++                else 'disabled'
++              end as schedule_status,
++              power,
++              mode,
++              target_temperature,
++              fan_speed,
++              light,
++              coalesce(extra_fan, 'keep') as extra_fan,
++              rule_engine,
++              updated_at
++            from schedule_state
++            order by day_of_week, start_time, id
++            """,
++            (profile,),
++        )
++
+     def schedule_payload(self, data: dict, default_light: str = "off"):
+         start_time = self.validate_schedule_time(data.get("start_time"), "start_time")
+         day_of_week = int(data.get("day_of_week"))
+--- before/infra/backend/irrigation_service.py
++++ after/infra/backend/irrigation_service.py
+@@ -348,6 +348,20 @@
+         finally:
+             self._daily_summary_lock.release()
+ 
++    def fetch_v2_session(self, source_ref: str):
++        return self.fetch_one(
++            """
++            select requested_stop_at
++            from hc.irrigation_manual_session
++            where started_by = 'v2_scheduler'
++              and start_payload ->> 'schedule_id' = %s
++              and started_at::date = current_date
++            order by started_at desc
++            limit 1
++            """,
++            (str(source_ref),),
++        )
++
+     def running_session(self):
+         return self.fetch_one(
+             """
+--- before/infra/backend/tests/test_repository_service.py
++++ after/infra/backend/tests/test_repository_service.py
+@@ -1,31 +0,0 @@
+-import unittest
+-from pathlib import Path
+-import sys
+-
+-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+-
+-from repository_service import RepositoryRegistry
+-
+-
+-class FakeDatabase:
+-    def __init__(self):
+-        self.calls = []
+-
+-    def fetch_one(self, sql, params=()):
+-        self.calls.append(("fetch_one", sql, params))
+-        return {"ok": True}
+-
+-
+-class RepositoryServiceTest(unittest.TestCase):
+-    def test_shared_repository_delegates_to_database(self):
+-        database = FakeDatabase()
+-        registry = RepositoryRegistry(database)
+-
+-        row = registry.shared.fetch_one("select 1", (1,))
+-
+-        self.assertEqual(row, {"ok": True})
+-        self.assertEqual(database.calls, [("fetch_one", "select 1", (1,))])
+-
+-
+-if __name__ == "__main__":
+-    unittest.main()
+--- before/scripts/stage_hc_test_source.py
++++ after/scripts/stage_hc_test_source.py
+@@ -23,10 +23,18 @@
+     for folder in FOLDERS:
+         target = output/folder
+         target.mkdir(parents=True, exist_ok=True)
++        # A source overlay must also honor deletions. Otherwise a removed
++        # repository module/test silently survives from the deployed baseline.
++        for path in target.glob('*.py'):
++            if not (ROOT/folder/path.name).is_file():
++                path.unlink()
+         for path in (ROOT/folder).glob('*.py'):
+             shutil.copyfile(path, target/path.name)
+         tests = ROOT/folder/'tests'
+         if tests.exists():
++            for path in (target/'tests').glob('*.py'):
++                if not (tests/path.name).is_file():
++                    path.unlink()
+             shutil.copytree(tests, target/'tests', dirs_exist_ok=True,
+                             ignore=shutil.ignore_patterns('__pycache__'))
+     for path in (ROOT/'scripts').glob('*.py'):
+--- before/scripts/check_hc_tests.py
++++ after/scripts/check_hc_tests.py
+@@ -16,6 +16,7 @@
+ LABEL='hc23-43-tests'
+ IMAGE_OVERRIDES={}
+ PG_MODULES={
++ 'test_database_runtime_postgres':('HC15','hc15_runtime_test'),
+  'test_about_inventory_postgres':('HC48','hc48_inventory_test'),
+  'test_baseline_postgres':('HC38','hc38_schema_test'),
+  'test_combustion_safety_state_postgres':('HC06','hc06_state_test'),
+--- before/infra/backend/tests/test_db_runtime.py
++++ after/infra/backend/tests/test_db_runtime.py
+@@ -0,0 +1,73 @@
++"""HC-15: measured access preserves its role, arguments and error boundary."""
++import threading
++import unittest
++from unittest.mock import Mock, patch
++
++from flask import Flask
++from psycopg.rows import dict_row
++
++from db_runtime import DatabaseRuntime
++from runtime_utils import current_db_query_count
++
++
++class DatabaseRuntimeTest(unittest.TestCase):
++    def setUp(self):
++        self.database = Mock()
++        with patch('db_runtime.DatabaseService', return_value=self.database) as factory:
++            self.runtime = DatabaseRuntime('postgresql://fixture.invalid/test')
++        factory.assert_called_once_with('postgresql://fixture.invalid/test', expected_role='hc_app')
++        self.app = Flask(__name__)
++
++    def test_each_helper_counts_once_and_preserves_result_and_parameters(self):
++        with self.app.test_request_context():
++            for name, params in [('fetch_all',(1,)), ('fetch_one',()), ('execute_one',[2]), ('execute_sql',None)]:
++                result = object()
++                getattr(self.database,name).return_value = result
++                before = current_db_query_count()
++                self.assertIs(getattr(self.runtime,name)('select %s',params),result)
++                getattr(self.database,name).assert_called_once_with('select %s',params)
++                self.assertEqual(current_db_query_count(), before+1)
++
++    def test_default_parameter_contracts_are_unchanged(self):
++        for name in ('fetch_all','fetch_one','execute_one','execute_sql'):
++            getattr(self.runtime,name)('select 1')
++            getattr(self.database,name).assert_called_once_with('select 1',None if name=='execute_sql' else ())
++
++    def test_failed_attempt_counts_once_and_preserves_the_exception(self):
++        with self.app.test_request_context():
++            for index,name in enumerate(('fetch_all','fetch_one','execute_one','execute_sql'),1):
++                error = RuntimeError('fixture SQL failure')
++                getattr(self.database,name).side_effect = error
++                with self.assertRaises(RuntimeError) as caught:getattr(self.runtime,name)('bad SQL')
++                self.assertIs(caught.exception,error)
++                self.assertEqual(current_db_query_count(),index)
++
++    def test_raw_connection_context_is_not_replaced_or_counted(self):
++        with self.app.test_request_context():
++            self.assertIs(self.runtime.conn(dict_row),self.database.conn.return_value)
++            self.database.conn.assert_called_once_with(dict_row)
++            self.assertEqual(current_db_query_count(),0)
++
++    def test_health_check_does_not_change_query_count(self):
++        self.database.check.return_value = False
++        with self.app.test_request_context():
++            self.assertFalse(self.runtime.check())
++            self.assertEqual(current_db_query_count(),0)
++
++    def test_helpers_work_outside_a_request_context(self):
++        self.runtime.fetch_one('select 1')
++        self.assertIsNone(current_db_query_count())
++
++    def test_request_counters_remain_thread_local(self):
++        counts=[];errors=[];barrier=threading.Barrier(2,timeout=3)
++        def work(number):
++            try:
++                with self.app.test_request_context():
++                    for _ in range(number):self.runtime.fetch_one('select 1')
++                    barrier.wait();counts.append(current_db_query_count())
++            except BaseException as error:errors.append(error)
++        threads=[threading.Thread(target=work,args=(n,)) for n in (1,3)]
++        for thread in threads:thread.start()
++        for thread in threads:thread.join(5)
++        self.assertFalse(any(thread.is_alive() for thread in threads))
++        self.assertEqual(errors,[]);self.assertEqual(sorted(counts),[1,3])
+--- before/infra/backend/tests/test_domain_schedule_reads.py
++++ after/infra/backend/tests/test_domain_schedule_reads.py
+@@ -0,0 +1,59 @@
++"""HC-15: the exact former app queries keep their payload and validation."""
++import json
++from pathlib import Path
++import re
++from types import SimpleNamespace
++import unittest
++from unittest.mock import Mock
++
++from climate_service import ClimateService
++from irrigation_service import IrrigationService
++from runtime_utils import normalize_text
++
++QUERIES=json.loads((Path(__file__).with_name('fixtures')/'hc15_queries.json').read_text())
++
++
++class DomainScheduleReadTest(unittest.TestCase):
++    def climate(self):
++        # Exercise the real domain method with explicit synthetic dependencies.
++        service=ClimateService.__new__(ClimateService)
++        service.normalize_text=normalize_text
++        service.ensure_season_profile_schema=Mock()
++        service.ensure_scheduler_schema=Mock()
++        service.fetch_all=Mock(return_value=[{'id':7,'schedule_status':'armed'}])
++        return service
++
++    def test_climate_profiles_keep_the_old_query_and_payload(self):
++        for profile,normalized in [(None,None),('',None),('  ',None),(' summer ','summer'),('winter','winter')]:
++            with self.subTest(profile=profile):
++                service=self.climate();events=[]
++                service.ensure_season_profile_schema.side_effect=lambda:events.append('season')
++                service.ensure_scheduler_schema.side_effect=lambda:events.append('scheduler')
++                service.fetch_all.side_effect=lambda *args:events.append('query') or [{'id':7,'schedule_status':'armed'}]
++                self.assertEqual(service.fetch_schedule_rules(profile),[{'id':7,'schedule_status':'armed'}])
++                sql,params=service.fetch_all.call_args.args
++                self.assertEqual(re.sub(r'\s+',' ',sql).strip(),re.sub(r'\s+',' ',QUERIES['fetch_climate_schedule_rules']).strip())
++                self.assertEqual(params,(normalized,));self.assertEqual(events,['season','scheduler','query'])
++
++    def test_invalid_profiles_preserve_validation_and_never_query(self):
++        for value in ('autumn','SUMMER',17,['winter']):
++            service=self.climate()
++            with self.subTest(profile=value),self.assertRaisesRegex(ValueError,'profile must be summer or winter'):
++                service.fetch_schedule_rules(value)
++            service.ensure_season_profile_schema.assert_called_once()
++            service.ensure_scheduler_schema.assert_called_once()
++            service.fetch_all.assert_not_called()
++
++    def test_schema_failure_propagates_before_the_domain_query(self):
++        service=self.climate();service.ensure_season_profile_schema.side_effect=RuntimeError('schema unavailable')
++        with self.assertRaisesRegex(RuntimeError,'schema unavailable'):service.fetch_schedule_rules()
++        service.ensure_scheduler_schema.assert_not_called();service.fetch_all.assert_not_called()
++
++    def test_v2_session_preserves_query_conversion_result_and_missing_row(self):
++        for source_ref in ('42',42,None):
++            for result in (None,{'requested_stop_at':'2026-11-02T14:00:00+00:00'}):
++                fetch=Mock(return_value=result)
++                self.assertIs(IrrigationService.fetch_v2_session(SimpleNamespace(fetch_one=fetch),source_ref),result)
++                sql,params=fetch.call_args.args
++                self.assertEqual(re.sub(r'\s+',' ',sql).strip(),re.sub(r'\s+',' ',QUERIES['fetch_irrigation_v2_session']).strip())
++                self.assertEqual(params,(str(source_ref),))
+--- before/infra/backend/tests/test_app_database_wiring.py
++++ after/infra/backend/tests/test_app_database_wiring.py
+@@ -0,0 +1,19 @@
++"""HC-15 app import/production factories, in a guarded fresh interpreter."""
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++import unittest
++
++
++class AppDatabaseWiringTest(unittest.TestCase):
++    def test_import_routes_and_actual_lazy_factories_preserve_contract(self):
++        fixtures=Path(__file__).with_name('fixtures')
++        result=subprocess.run([sys.executable,'-B',str(fixtures/'hc15_import_probe.py')],
++            capture_output=True,text=True,timeout=30,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
++        self.assertEqual(result.returncode,0,result.stderr)
++        value=json.loads(result.stdout)
++        self.assertEqual(value['routes'],json.loads((fixtures/'hc15_routes.json').read_text()))
++        self.assertTrue(value['lazy_import']);self.assertFalse(value['external_work'])
++        self.assertEqual(value['calls'],['season','scheduler',['climate',['winter']],['session',['42']]])
+--- before/infra/backend/tests/test_database_runtime_postgres.py
++++ after/infra/backend/tests/test_database_runtime_postgres.py
+@@ -0,0 +1,134 @@
++"""HC-15 real connection/rollback and former-query parity on a disposable DB."""
++import json
++import os
++from pathlib import Path
++from types import SimpleNamespace
++import unittest
++from urllib.parse import urlparse,urlunparse
++
++from flask import Flask
++import psycopg
++from psycopg.rows import dict_row
++
++from climate_service import ClimateService
++from db_runtime import DatabaseRuntime
++from irrigation_service import IrrigationService
++from runtime_utils import current_db_query_count,normalize_text
++
++QUERIES=json.loads((Path(__file__).with_name('fixtures')/'hc15_queries.json').read_text())
++
++
++@unittest.skipUnless(os.environ.get('HC15_TEST_POSTGRES')=='1','requires isolated HC-15 PostgreSQL')
++class DatabaseRuntimePostgresTest(unittest.TestCase):
++    @classmethod
++    def setUpClass(cls):
++        url=os.environ['HC15_TEST_DATABASE_URL'];parsed=urlparse(url)
++        if parsed.hostname!='127.0.0.1' or parsed.path!='/hc15_runtime_test':
++            raise AssertionError('HC-15 requires its dedicated loopback test database')
++        cls.admin=psycopg.connect(url,autocommit=True);cls.addClassCleanup(cls.admin.close)
++        cls.admin.execute('''
++          create schema hc;
++          create role hc_app login noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls;
++          revoke create on database hc15_runtime_test from public;
++          grant connect on database hc15_runtime_test to hc_app;
++          grant usage on schema hc to hc_app;
++          create table hc.runtime_receipt(id integer primary key,value text);
++          create table hc.domain_season_active(domain text primary key,profile text);
++          insert into hc.domain_season_active values('climate','winter');
++          create table hc.climate_schedule_rule(
++            id bigint primary key,label text,day_of_week integer,start_time time,is_enabled boolean,
++            season_profile text,power text,mode text,target_temperature integer,fan_speed text,
++            light text,extra_fan text,rule_engine text,updated_at timestamptz default now());
++          insert into hc.climate_schedule_rule(id,label,day_of_week,start_time,is_enabled,season_profile,power,mode,target_temperature,fan_speed,light,extra_fan,rule_engine)
++          select n,'fixture-'||n,
++            case when n=4 then (extract(isodow from now())::int)%7 else extract(isodow from now())::int-1 end,
++            case when n=3 then (date_trunc('minute',localtimestamp)+interval '1 minute')::time else date_trunc('minute',localtimestamp)::time end,
++            n<>2,case when n=5 then 'summer' else 'winter' end,'on','heat',22,'auto','off',null,'v2'
++          from generate_series(1,5) n;
++          create table hc.irrigation_manual_session(started_by text,start_payload jsonb,started_at timestamptz,requested_stop_at timestamptz);
++          insert into hc.irrigation_manual_session values
++            ('v2_scheduler','{"schedule_id":"42"}',now()-interval '1 minute',now()+interval '10 minutes'),
++            ('v2_scheduler','{"schedule_id":"42"}',now(),now()+interval '20 minutes'),
++            ('manual','{"schedule_id":"42"}',now(),now()+interval '30 minutes'),
++            ('v2_scheduler','{"schedule_id":"42"}',current_date-interval '1 minute',now()+interval '40 minutes');
++          grant select,insert,update,delete on all tables in schema hc to hc_app;
++        ''')
++        app_url=urlunparse(parsed._replace(netloc='hc_app@127.0.0.1'+(':'+str(parsed.port) if parsed.port else '')))
++        cls.runtime=DatabaseRuntime(app_url);cls.admin_url=url
++
++    def setUp(self):
++        self.admin.execute('truncate hc.runtime_receipt')
++        self.app=Flask(__name__)
++
++    def rows(self):
++        return self.admin.execute('select id from hc.runtime_receipt order by id').fetchall()
++
++    def test_helpers_preserve_results_commits_and_exact_query_counter(self):
++        with self.app.test_request_context():
++            self.runtime.execute_sql("insert into hc.runtime_receipt values(1,'first')")
++            self.assertEqual(self.runtime.execute_one("insert into hc.runtime_receipt values(2,'second') returning id"),{'id':2})
++            self.assertEqual(self.runtime.fetch_one('select value from hc.runtime_receipt where id=%s',(1,)),{'value':'first'})
++            self.assertEqual(self.runtime.fetch_all('select id from hc.runtime_receipt order by id'),[{'id':1},{'id':2}])
++            self.assertEqual(current_db_query_count(),4)
++            self.assertTrue(self.runtime.check());self.assertEqual(current_db_query_count(),4)
++            self.assertIsNone(self.runtime.execute_one("update hc.runtime_receipt set value='updated' where id=2"))
++            self.assertEqual(current_db_query_count(),5)
++        self.assertEqual(self.rows(),[(1,),(2,)])
++
++    def test_raw_context_exception_rolls_back_and_closes_the_connection(self):
++        connection=None
++        with self.assertRaisesRegex(ValueError,'abort'),self.runtime.conn(dict_row) as connection:
++            connection.execute("insert into hc.runtime_receipt values(1,'rolled-back')")
++            raise ValueError('abort')
++        self.assertTrue(connection.closed);self.assertEqual(self.rows(),[])
++
++    def test_nested_transaction_preserves_savepoint_rollback_and_outer_commit(self):
++        with self.runtime.conn(dict_row) as connection:
++            connection.execute("insert into hc.runtime_receipt values(1,'outer')")
++            try:
++                with connection.transaction():
++                    connection.execute("insert into hc.runtime_receipt values(2,'savepoint')")
++                    raise ValueError('cancel inner')
++            except ValueError:pass
++            connection.execute("insert into hc.runtime_receipt values(3,'outer')")
++        self.assertTrue(connection.closed);self.assertEqual(self.rows(),[(1,),(3,)])
++
++    def test_sql_failure_rolls_back_prior_statement_and_counts_one_attempt(self):
++        with self.app.test_request_context():
++            with self.assertRaises(psycopg.errors.DivisionByZero):
++                self.runtime.execute_sql("insert into hc.runtime_receipt values(1,'rolled-back'); select 1/0")
++            self.assertEqual(current_db_query_count(),1)
++        self.assertEqual(self.rows(),[])
++
++    def test_unrestricted_role_is_still_rejected_before_domain_sql(self):
++        with self.assertRaisesRegex(RuntimeError,'restricted HC-39 application role'):
++            DatabaseRuntime(self.admin_url).fetch_one('select 1')
++
++    def test_climate_payload_and_statuses_match_the_original_sql_in_one_transaction(self):
++        with self.runtime.conn(dict_row) as connection:
++            # Both SQL versions see the same transaction clock, including if
++            # setup crossed a minute/day boundary.
++            connection.execute('''update hc.climate_schedule_rule set
++              day_of_week=case when id=4 then extract(isodow from now())::int%7 else extract(isodow from now())::int-1 end,
++              start_time=case when id=3 then (date_trunc('minute',localtimestamp)+interval '1 minute')::time else date_trunc('minute',localtimestamp)::time end''')
++            service=ClimateService.__new__(ClimateService)
++            service.normalize_text=normalize_text
++            service.ensure_season_profile_schema=lambda:None;service.ensure_scheduler_schema=lambda:None
++            calls=[]
++            def query(sql,params=()):
++                calls.append((sql,params));return connection.execute(sql,params).fetchall()
++            service.fetch_all=query
++            for profile in (None,'winter','summer',' winter '):
++                old=connection.execute(QUERIES['fetch_climate_schedule_rules'],(normalize_text(profile) or None,)).fetchall()
++                self.assertEqual(service.fetch_schedule_rules(profile),old)
++            self.assertEqual(len(calls),4)
++            statuses={row['schedule_status'] for row in service.fetch_schedule_rules('winter')}
++            self.assertEqual(statuses,{'due_now','disabled','armed_today','armed'})
++            self.assertTrue(all(row['extra_fan']=='keep' for row in service.fetch_schedule_rules('winter')))
++
++    def test_v2_session_latest_day_source_and_missing_row_match_original_sql(self):
++        with self.runtime.conn(dict_row) as connection:
++            service=SimpleNamespace(fetch_one=lambda sql,params=():connection.execute(sql,params).fetchone())
++            for ref in ('42',42,'missing',None):
++                old=connection.execute(QUERIES['fetch_irrigation_v2_session'],(str(ref),)).fetchone()
++                self.assertEqual(IrrigationService.fetch_v2_session(service,ref),old)
+--- before/infra/backend/tests/fixtures/hc15_queries.json
++++ after/infra/backend/tests/fixtures/hc15_queries.json
+@@ -0,0 +1,4 @@
++{
++  "fetch_climate_schedule_rules": "\n        with schedule_state as (\n          select\n            r.*,\n            a.profile as active_profile,\n            day_of_week = extract(isodow from now())::int - 1 as is_today,\n            is_enabled\n              and r.season_profile = a.profile\n              and day_of_week = extract(isodow from now())::int - 1\n              and to_char(localtime, 'HH24:MI') = to_char(start_time, 'HH24:MI')\n              as should_run_now\n          from hc.climate_schedule_rule r\n          join hc.domain_season_active a on a.domain = 'climate'\n          where r.season_profile = coalesce(%s, a.profile)\n        )\n        select\n          id,\n          label,\n          day_of_week,\n          to_char(start_time, 'HH24:MI') as start_time,\n          is_enabled,\n          season_profile,\n          active_profile,\n          season_profile = active_profile as is_active_profile,\n          is_today,\n          should_run_now,\n          case\n            when should_run_now then 'due_now'\n            when is_enabled and is_today then 'armed_today'\n            when is_enabled then 'armed'\n            else 'disabled'\n          end as schedule_status,\n          power,\n          mode,\n          target_temperature,\n          fan_speed,\n          light,\n          coalesce(extra_fan, 'keep') as extra_fan,\n          rule_engine,\n          updated_at\n        from schedule_state\n        order by day_of_week, start_time, id\n        ",
++  "fetch_irrigation_v2_session": "\n        select requested_stop_at\n        from hc.irrigation_manual_session\n        where started_by = 'v2_scheduler'\n          and start_payload ->> 'schedule_id' = %s\n          and started_at::date = current_date\n        order by started_at desc\n        limit 1\n        "
++}
+--- before/infra/backend/tests/fixtures/hc15_routes.json
++++ after/infra/backend/tests/fixtures/hc15_routes.json
+@@ -0,0 +1,1393 @@
++[
++  {
++    "rule": "/",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "root"
++  },
++  {
++    "rule": "/admin",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "admin_index"
++  },
++  {
++    "rule": "/api/about",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "about_state"
++  },
++  {
++    "rule": "/api/admin/bootstrap",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "admin_bootstrap"
++  },
++  {
++    "rule": "/api/admin/containers",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "admin_containers"
++  },
++  {
++    "rule": "/api/admin/containers/<container_key>/restart",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "admin_container_restart"
++  },
++  {
++    "rule": "/api/admin/devices",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "create_device_with_entity"
++  },
++  {
++    "rule": "/api/admin/devices/<int:device_id>",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "update_device_with_entity"
++  },
++  {
++    "rule": "/api/admin/host-jobs/<job_id>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "host_operation_job"
++  },
++  {
++    "rule": "/api/admin/metrics",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "create_metric"
++  },
++  {
++    "rule": "/api/admin/parameters",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "admin_parameters"
++  },
++  {
++    "rule": "/api/admin/season-profiles",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "admin_season_profiles"
++  },
++  {
++    "rule": "/api/admin/season-profiles/<domain>/<profile>",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "admin_update_season_profile"
++  },
++  {
++    "rule": "/api/admin/season-profiles/<domain>/activate",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "admin_activate_season_profile"
++  },
++  {
++    "rule": "/api/ai/chat",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "ai_chat"
++  },
++  {
++    "rule": "/api/ai/config",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "ai_config"
++  },
++  {
++    "rule": "/api/ai/config",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "ai_config_save"
++  },
++  {
++    "rule": "/api/ai/models",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "ai_models"
++  },
++  {
++    "rule": "/api/ai/models/pull",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "ai_model_pull"
++  },
++  {
++    "rule": "/api/ai/models/pull/status",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "ai_model_pull_status"
++  },
++  {
++    "rule": "/api/ai/node/command",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "ai_node_command"
++  },
++  {
++    "rule": "/api/ai/node/status",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "ai_node_status"
++  },
++  {
++    "rule": "/api/ai/node/wake",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "ai_node_wake"
++  },
++  {
++    "rule": "/api/ai/restart",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "ai_restart"
++  },
++  {
++    "rule": "/api/ai/status",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "ai_status"
++  },
++  {
++    "rule": "/api/backup",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "backup_state"
++  },
++  {
++    "rule": "/api/backup/<path:backup_name>/compare",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "compare_backup_member"
++  },
++  {
++    "rule": "/api/backup/<path:backup_name>/contents",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "get_backup_contents"
++  },
++  {
++    "rule": "/api/backup/create",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "create_backup_now"
++  },
++  {
++    "rule": "/api/backup/full-ai",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "request_full_ai_backup"
++  },
++  {
++    "rule": "/api/backup/gitea/commit",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "gitea_config_commit"
++  },
++  {
++    "rule": "/api/backup/gitea/restore",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "gitea_config_restore"
++  },
++  {
++    "rule": "/api/backup/gitea/status",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "gitea_config_status"
++  },
++  {
++    "rule": "/api/backup/restore",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "restore_backup"
++  },
++  {
++    "rule": "/api/backup/restore/recover",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "api_backup_restore_recover"
++  },
++  {
++    "rule": "/api/backup/settings",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "update_backup_settings"
++  },
++  {
++    "rule": "/api/climate/gree/command",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "gree_climate_command"
++  },
++  {
++    "rule": "/api/climate/gree/parameter-history",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "gree_climate_parameter_history"
++  },
++  {
++    "rule": "/api/climate/gree/power-history",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "gree_climate_power_history"
++  },
++  {
++    "rule": "/api/climate/gree/schedules",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "gree_climate_schedule_create"
++  },
++  {
++    "rule": "/api/climate/gree/schedules",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "gree_climate_schedules"
++  },
++  {
++    "rule": "/api/climate/gree/schedules/<int:schedule_id>",
++    "methods": [
++      "DELETE",
++      "OPTIONS"
++    ],
++    "endpoint": "gree_climate_schedule_delete"
++  },
++  {
++    "rule": "/api/climate/gree/schedules/<int:schedule_id>",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "gree_climate_schedule_update"
++  },
++  {
++    "rule": "/api/climate/gree/state",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "gree_climate_state"
++  },
++  {
++    "rule": "/api/climate/gree/window-guard",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "climate_window_guard_config"
++  },
++  {
++    "rule": "/api/combustion-safety/acknowledge",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "combustion_safety_acknowledge"
++  },
++  {
++    "rule": "/api/combustion-safety/config",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "combustion_safety_config"
++  },
++  {
++    "rule": "/api/combustion-safety/preview-light",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "combustion_safety_preview_light"
++  },
++  {
++    "rule": "/api/combustion-safety/state",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "combustion_safety_state"
++  },
++  {
++    "rule": "/api/context",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "context_snapshot"
++  },
++  {
++    "rule": "/api/context/<section>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "context_section"
++  },
++  {
++    "rule": "/api/context/ai/summary",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "context_ai_summary"
++  },
++  {
++    "rule": "/api/context/events",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "context_events"
++  },
++  {
++    "rule": "/api/context/invalidate",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "context_invalidate"
++  },
++  {
++    "rule": "/api/debug/logs",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "debug_log_sources"
++  },
++  {
++    "rule": "/api/debug/logs/<path:container_ref>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "debug_container_log"
++  },
++  {
++    "rule": "/api/deployment/status",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "deployment_status"
++  },
++  {
++    "rule": "/api/documentation",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "documentation_state"
++  },
++  {
++    "rule": "/api/homecontrol/statistics",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "homecontrol_statistics"
++  },
++  {
++    "rule": "/api/irrigation/command",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "irrigation_command"
++  },
++  {
++    "rule": "/api/irrigation/manual/start",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "start_irrigation_manual"
++  },
++  {
++    "rule": "/api/irrigation/manual/stop",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "stop_irrigation_manual"
++  },
++  {
++    "rule": "/api/irrigation/nano-config",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "irrigation_nano_config"
++  },
++  {
++    "rule": "/api/irrigation/pilot",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "irrigation_pilot_state"
++  },
++  {
++    "rule": "/api/irrigation/pilot/config",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "update_irrigation_pilot_config"
++  },
++  {
++    "rule": "/api/irrigation/pilot/evaluate",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "create_irrigation_pilot_decision"
++  },
++  {
++    "rule": "/api/irrigation/pump-current/live",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "irrigation_pump_current_live_socket"
++  },
++  {
++    "rule": "/api/irrigation/schedules",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "create_irrigation_schedule"
++  },
++  {
++    "rule": "/api/irrigation/schedules/<int:schedule_id>",
++    "methods": [
++      "DELETE",
++      "OPTIONS"
++    ],
++    "endpoint": "delete_irrigation_schedule"
++  },
++  {
++    "rule": "/api/irrigation/schedules/<int:schedule_id>",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "update_irrigation_schedule"
++  },
++  {
++    "rule": "/api/irrigation/solar-pump/config",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "update_irrigation_solar_pump_config"
++  },
++  {
++    "rule": "/api/irrigation/state",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "irrigation_state"
++  },
++  {
++    "rule": "/api/irrigation/statistics",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "irrigation_statistics"
++  },
++  {
++    "rule": "/api/irrigation/weather/fetch",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "fetch_irrigation_weather"
++  },
++  {
++    "rule": "/api/mower/command",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_command"
++  },
++  {
++    "rule": "/api/mower/firmware/<action>",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_firmware_action"
++  },
++  {
++    "rule": "/api/mower/firmware/status",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_firmware_status"
++  },
++  {
++    "rule": "/api/mower/firmware/upload",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_firmware_upload"
++  },
++  {
++    "rule": "/api/mower/mission/<action>",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_mission_action"
++  },
++  {
++    "rule": "/api/mower/mission/deploy",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_mission_deploy"
++  },
++  {
++    "rule": "/api/mower/mission/status",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_mission_status"
++  },
++  {
++    "rule": "/api/mower/notes",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_notes_create"
++  },
++  {
++    "rule": "/api/mower/notes",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_notes_state"
++  },
++  {
++    "rule": "/api/mower/notes/<int:note_id>",
++    "methods": [
++      "DELETE",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_notes_delete"
++  },
++  {
++    "rule": "/api/mower/notes/<int:note_id>",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "mower_notes_update"
++  },
++  {
++    "rule": "/api/mower/route",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_route_status"
++  },
++  {
++    "rule": "/api/mower/route/<action>",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_route_action"
++  },
++  {
++    "rule": "/api/mower/state",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_state"
++  },
++  {
++    "rule": "/api/mower/v3/bringup/snapshot",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_bringup_snapshot"
++  },
++  {
++    "rule": "/api/mower/v3/command",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_v3_command"
++  },
++  {
++    "rule": "/api/mower/v3/command/<id_>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_v3_command_result"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/jobs",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_firmware.jobs"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/jobs",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_firmware.save_job"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/jobs/<job_id>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_firmware.job"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/jobs/<job_id>/session",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_firmware.create_session"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/jobs/requests/<request_id>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_firmware.saved_request"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/operations/requests/<request_id>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_firmware.action_request"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/preflight",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_firmware.preflight"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/releases",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_firmware.releases"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/session",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_firmware.current_session"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/sessions/requests/<request_id>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_firmware.session_request"
++  },
++  {
++    "rule": "/api/mower/v3/firmware/sessions/requests/<session_id>/<action>",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_firmware.session_action"
++  },
++  {
++    "rule": "/api/mower/v3/manual",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_v3_manual"
++  },
++  {
++    "rule": "/api/mower/v3/motor-test/apply",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_motor_test.apply"
++  },
++  {
++    "rule": "/api/mower/v3/motor-test/config",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_motor_test.configuration"
++  },
++  {
++    "rule": "/api/mower/v3/motor-test/config",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_motor_test.save_configuration"
++  },
++  {
++    "rule": "/api/mower/v3/motor-test/initial",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_motor_test.initial"
++  },
++  {
++    "rule": "/api/mower/v3/motor-test/reconcile",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_motor_test.reconcile"
++  },
++  {
++    "rule": "/api/mower/v3/motor-test/status",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_motor_test.status"
++  },
++  {
++    "rule": "/api/mower/v3/operator",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_v3_operator"
++  },
++  {
++    "rule": "/api/mower/v3/operator/login",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_v3_login"
++  },
++  {
++    "rule": "/api/mower/v3/operator/logout",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_v3_logout"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/drafts",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_parameters.drafts"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/drafts/<key>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_parameters.latest"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/drafts/<key>",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_parameters.save"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/drafts/<key>/history",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_parameters.history"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/drafts/<key>/requests/<id_>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_parameters.request_status"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/drafts/<key>/revisions/<int:revision>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_parameters.revision"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/drafts/<key>/revisions/<int:revision>/export.<format_>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_parameters.export"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/import",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_parameters.import_data"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/schema",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_parameters.schema"
++  },
++  {
++    "rule": "/api/mower/v3/parameters/validate",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_parameters.validate"
++  },
++  {
++    "rule": "/api/mower/v3/service/snapshot",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_service_snapshot"
++  },
++  {
++    "rule": "/api/mower/v3/snapshot",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "mower_v3_snapshot"
++  },
++  {
++    "rule": "/api/mower/v3/stop",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "mower_v3_stop"
++  },
++  {
++    "rule": "/api/notes",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "notes_create"
++  },
++  {
++    "rule": "/api/notes",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "notes_state"
++  },
++  {
++    "rule": "/api/notes/<int:note_id>",
++    "methods": [
++      "DELETE",
++      "OPTIONS"
++    ],
++    "endpoint": "notes_delete"
++  },
++  {
++    "rule": "/api/notes/<int:note_id>",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "notes_update"
++  },
++  {
++    "rule": "/api/page-usage/event",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "page_usage_event"
++  },
++  {
++    "rule": "/api/page-usage/summary",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "page_usage_summary"
++  },
++  {
++    "rule": "/api/performance",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "performance_state"
++  },
++  {
++    "rule": "/api/power-wall/command",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "power_wall_command"
++  },
++  {
++    "rule": "/api/power-wall/display-name",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "power_wall_display_name"
++  },
++  {
++    "rule": "/api/power-wall/history",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "power_wall_history"
++  },
++  {
++    "rule": "/api/power-wall/policy",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "power_wall_policy"
++  },
++  {
++    "rule": "/api/power-wall/scheduler",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "power_wall_scheduler_policy"
++  },
++  {
++    "rule": "/api/power-wall/scheduler/sessions",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "power_wall_scheduler_sessions"
++  },
++  {
++    "rule": "/api/power-wall/state",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "power_wall_state"
++  },
++  {
++    "rule": "/api/process-bindings",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "process_bindings"
++  },
++  {
++    "rule": "/api/process-bindings/<process_key>",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "update_process_binding"
++  },
++  {
++    "rule": "/api/scheduler/config",
++    "methods": [
++      "OPTIONS",
++      "PUT"
++    ],
++    "endpoint": "scheduler_config_update"
++  },
++  {
++    "rule": "/api/scheduler/state",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "scheduler_state"
++  },
++  {
++    "rule": "/api/solar/state",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "solar_state"
++  },
++  {
++    "rule": "/api/sql-lab/preview",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "sql_lab_preview"
++  },
++  {
++    "rule": "/api/sql-lab/query",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "sql_lab_query"
++  },
++  {
++    "rule": "/api/sql-lab/schema",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "sql_lab_schema"
++  },
++  {
++    "rule": "/api/tuya/command",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "tuya_command"
++  },
++  {
++    "rule": "/api/tuya/state",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "tuya_state"
++  },
++  {
++    "rule": "/api/v2/simulate/scheduler",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "v2_simulate_scheduler"
++  },
++  {
++    "rule": "/api/xiaomi-x10/cache",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "xiaomi_x10_cache"
++  },
++  {
++    "rule": "/api/xiaomi-x10/command",
++    "methods": [
++      "OPTIONS",
++      "POST"
++    ],
++    "endpoint": "xiaomi_x10_command"
++  },
++  {
++    "rule": "/api/xiaomi-x10/live",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "xiaomi_x10_live_socket"
++  },
++  {
++    "rule": "/api/xiaomi-x10/map",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "xiaomi_x10_map"
++  },
++  {
++    "rule": "/api/xiaomi-x10/maps/<path:filename>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "xiaomi_x10_map_file"
++  },
++  {
++    "rule": "/api/xiaomi-x10/rooms",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "xiaomi_x10_rooms"
++  },
++  {
++    "rule": "/api/xiaomi-x10/state",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "xiaomi_x10_state"
++  },
++  {
++    "rule": "/health",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "health"
++  },
++  {
++    "rule": "/health/live",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "health_live"
++  },
++  {
++    "rule": "/health/ready",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "health_ready"
++  },
++  {
++    "rule": "/health/workers",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "health_workers"
++  },
++  {
++    "rule": "/static/<path:filename>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "static"
++  },
++  {
++    "rule": "/static/<path:path>",
++    "methods": [
++      "GET",
++      "HEAD",
++      "OPTIONS"
++    ],
++    "endpoint": "static_files"
++  }
++]
+--- before/infra/backend/tests/fixtures/hc15_import_probe.py
++++ after/infra/backend/tests/fixtures/hc15_import_probe.py
+@@ -0,0 +1,43 @@
++"""Run in a fresh, isolated interpreter; importing app must do no external work."""
++import json
++import os
++from pathlib import Path
++import sys
++import threading
++from types import SimpleNamespace
++from unittest.mock import Mock,patch
++
++import psycopg
++
++
++def forbidden(*args,**kwargs):
++    raise AssertionError('HC-15: app import/wiring attempted external work')
++
++
++def guard(event,args):
++    if event in ('socket.connect','socket.connect_ex','socket.bind','subprocess.Popen','os.system','os.fork'):
++        forbidden()
++    if event=='open':
++        path,mode,flags=args
++        if isinstance(path,(str,bytes)):
++            name=os.fsdecode(path)
++            if name.startswith('/srv/docker/homecontrol/'):
++                forbidden()
++            if flags & (os.O_WRONLY|os.O_RDWR|os.O_CREAT|os.O_TRUNC):
++                forbidden()
++
++
++sys.addaudithook(guard)
++with patch.object(psycopg,'connect',side_effect=forbidden),patch.object(threading.Thread,'start',side_effect=forbidden):
++    import app as module
++    routes=sorted([{'rule':r.rule,'methods':sorted(r.methods),'endpoint':r.endpoint} for r in module.app.url_map.iter_rules()],key=lambda r:(r['rule'],r['endpoint']))
++    require_lazy=all(getattr(module,n) is None for n in ('_startup_service','_scheduler_service','_irrigation_service','_climate_service'))
++    if not require_lazy:raise AssertionError('App import initialized domain workers')
++    calls=[]
++    module.get_season_profile_service=lambda:SimpleNamespace(ensure_schema=lambda:calls.append('season'))
++    module.ensure_scheduler_schema=lambda:calls.append('scheduler')
++    module.fetch_all=lambda query,params=():calls.append(['climate',list(params)]) or [{'id':7}]
++    module.fetch_one=lambda query,params=():calls.append(['session',list(params)]) or {'requested_stop_at':'fixture'}
++    if module.fetch_climate_schedule_rules(' winter ')!=[{'id':7}]:raise AssertionError('Climate wiring changed result')
++    if module.get_scheduler_service().fetch_irrigation_v2_session(42)!={'requested_stop_at':'fixture'}:raise AssertionError('Session wiring changed result')
++    print(json.dumps({'routes':routes,'lazy_import':require_lazy,'calls':calls,'external_work':False}))

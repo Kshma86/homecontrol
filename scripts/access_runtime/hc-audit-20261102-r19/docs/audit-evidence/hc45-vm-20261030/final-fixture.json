@@ -1,0 +1,12 @@
+{
+  "fixture": {
+    "sha256": "237b05854f436cb49dcc66c2aad0d3d51ea63b2f58d816cc4d785e8cc341565c",
+    "size_bytes": 786093583,
+    "verified_files": 1482
+  },
+  "selected_dump_sha256": "da5025d29278f4e0212ed290eed9975b7290ab4b832fa7f37dc7388c969fcae8",
+  "host_scripts_corrected": true,
+  "core_application_images_changed": false,
+  "production_esp_confirmation": false,
+  "cold_vm_uses_provisioned_os_only": true
+}

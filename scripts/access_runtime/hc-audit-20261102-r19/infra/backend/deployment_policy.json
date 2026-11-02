@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "profile": "ai-offline",
+  "blocked_entity_ids": [
+    121
+  ],
+  "blocked_command_topics": [
+    "homecontrol/cmd/tuya/Mos\u00f3g\u00e9p/switch"
+  ],
+  "blocked_tuya_device_ids": [
+    "bf1d8186d331470cafxzfz"
+  ],
+  "backup_profile": "router-ftp"
+}

@@ -23,12 +23,18 @@ def flatten(suite):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('profile', choices=('unit', 'ownership', 'postgres', 'deployed'))
+    parser.add_argument('profile', choices=('unit', 'ownership', 'postgres', 'deployed', 'mdns', 'growatt'))
     parser.add_argument('--module', help='One PostgreSQL module in its own disposable DB cluster')
     args = parser.parse_args()
     sys.path.insert(0, str(BACKEND))
     loader = unittest.TestLoader()
-    if args.profile == 'ownership':
+    if args.profile == 'mdns':
+        sys.path.insert(0, str(ROOT/'infra/mdns'))
+        suite = loader.discover(str(ROOT/'infra/mdns/tests'))
+    elif args.profile == 'growatt':
+        sys.path.insert(0, str(ROOT/'apps/ha-growatt-poller'))
+        suite = loader.discover(str(ROOT/'apps/ha-growatt-poller/tests'))
+    elif args.profile == 'ownership':
         suite = loader.loadTestsFromNames(sorted(OWNERSHIP))
     elif args.profile == 'postgres':
         if not args.module or not args.module.startswith('tests.test_') or not args.module.endswith('_postgres'):

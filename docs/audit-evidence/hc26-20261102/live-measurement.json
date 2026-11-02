@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "configured_metric_count": 27,
+  "configured_entity_count": 27,
+  "rounds": [
+    {
+      "individual": {
+        "seconds": 0.031599,
+        "response_bytes": 11976,
+        "get_requests": 27,
+        "configured_entities_found": 27
+      },
+      "ha_state_count": 86,
+      "batch": {
+        "seconds": 0.004436,
+        "response_bytes": 38037,
+        "get_requests": 1,
+        "configured_entities_found": 27
+      }
+    },
+    {
+      "ha_state_count": 86,
+      "batch": {
+        "seconds": 0.002524,
+        "response_bytes": 38037,
+        "get_requests": 1,
+        "configured_entities_found": 27
+      },
+      "individual": {
+        "seconds": 0.029698,
+        "response_bytes": 11976,
+        "get_requests": 27,
+        "configured_entities_found": 27
+      }
+    },
+    {
+      "individual": {
+        "seconds": 0.029755,
+        "response_bytes": 11976,
+        "get_requests": 27,
+        "configured_entities_found": 27
+      },
+      "ha_state_count": 86,
+      "batch": {
+        "seconds": 0.00214,
+        "response_bytes": 38037,
+        "get_requests": 1,
+        "configured_entities_found": 27
+      }
+    }
+  ],
+  "individual_median_seconds": 0.029755,
+  "batch_median_seconds": 0.002524,
+  "method": "GET /api/states and GET /api/states/<configured id>; alternating order; one persistent session",
+  "credentials_exported": false,
+  "raw_states_saved": false,
+  "mqtt_publish_commands": 0,
+  "ha_mutation_commands": 0
+}

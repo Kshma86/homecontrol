@@ -1,0 +1,42 @@
+[
+  {
+    "path": "AUDIT_REPAIR.md",
+    "state": "modified",
+    "sha256": "faeff5b602e431cddc76fdd19cea2a2e0dd102b8af66c0df7f668d0dfa4eff6b"
+  },
+  {
+    "path": "DEPLOYMENT_PREP.md",
+    "state": "modified",
+    "sha256": "6e4b587c4621a01a05cba364c17a9c52c645b9a83c64e58f54c9c4dbdb85a213"
+  },
+  {
+    "path": "docs/ai/irrigation-domain.md",
+    "state": "modified",
+    "sha256": "2b439ada774435dcbfd141a01f0abd040cf8a9632a91d247237bb3463b1a72ac"
+  },
+  {
+    "path": "docs/hc-20-repair.md",
+    "state": "added",
+    "sha256": "926ae35f61ed52ec393f97036d7b2621c53bb939a19beeca0f157cf654b42b6c"
+  },
+  {
+    "path": "infra/backend/irrigation_service.py",
+    "state": "modified",
+    "sha256": "7e200c72b503a36a972f1dd0ddb60d0cf151251ba87f340a1a4043c7024b7211"
+  },
+  {
+    "path": "infra/backend/tests/test_irrigation_admission.py",
+    "state": "modified",
+    "sha256": "9051382d8f96ad9af5f4b1280a857aae0050593c0ed2b227cd23c461ba4827d7"
+  },
+  {
+    "path": "infra/backend/tests/test_irrigation_admission_postgres.py",
+    "state": "modified",
+    "sha256": "47ccf9595bd2a163faad93dc6b2f47e09f3ad1c9d8c1b0a6d260fe5b34f17a4e"
+  },
+  {
+    "path": "infra/backend/tests/test_irrigation_service.py",
+    "state": "modified",
+    "sha256": "d835689cbfa09c0f6cf6a17f5eaa25f02b560f647b1a7aeeea5fb6ebc2a34ebf"
+  }
+]

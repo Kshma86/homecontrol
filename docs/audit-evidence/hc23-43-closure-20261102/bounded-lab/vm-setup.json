@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "release": "hc-security-20261102-r18",
+  "snapshot_id": "16cce464df928667d89eb16065c72eebd6c9e02a25867a0aff2037f7660488cb",
+  "git_commit": "09c74d093a4276e8d5cb90b4fe454055b09010fb",
+  "empty_initial_image_store": true,
+  "repository_shadow": "read_only_with_temporary_locks",
+  "production_network": false,
+  "production_credentials_unchanged": true
+}

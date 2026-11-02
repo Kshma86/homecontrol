@@ -1,0 +1,20 @@
+{
+  "only_hc15": true,
+  "f8_exclusions": [
+    "HC-16 rover/auth",
+    "HC-20 legacy executor removal"
+  ],
+  "unchanged_services": {
+    "database_service.py": true,
+    "scheduler_service.py": true,
+    "scheduler_audit.py": true
+  },
+  "all_previous_irrigation_methods_ast_unchanged": true,
+  "hc16_modules_and_settings_match_active_release": true,
+  "repository_module_and_forwarding_test_absent_in_both_test_profiles": true,
+  "tested_domain_source_hashes_match_current_files": true,
+  "app_lines_before": 1406,
+  "app_lines_after": 1339,
+  "new_framework": false,
+  "schema_migrations": false
+}

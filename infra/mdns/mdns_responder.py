@@ -7,6 +7,8 @@ import time
 MDNS_GROUP = "224.0.0.251"
 MDNS_PORT = 5353
 DEFAULT_TTL = 120
+MAX_NAME_BYTES = 255  # Expanded wire name, including label lengths and root.
+MAX_POINTER_JUMPS = 128  # Local work limit, not a DNS wire-format limit.
 
 
 def env_name() -> str:
@@ -39,10 +41,17 @@ def encode_name(name: str) -> bytes:
 
 
 def read_name(packet: bytes, offset: int):
+    """Decode one bounded name; end stays after the first on-wire pointer."""
     labels = []
     jumped = False
     end = offset
-    while offset < len(packet):
+    visited = set()
+    name_bytes = 1  # The terminating root label counts toward the wire limit.
+    jumps = 0
+    while True:
+        if offset < 0 or offset >= len(packet) or offset in visited:
+            raise ValueError("Truncated or cyclic DNS name")
+        visited.add(offset)
         length = packet[offset]
         if length == 0:
             offset += 1
@@ -51,31 +60,46 @@ def read_name(packet: bytes, offset: int):
             return ".".join(labels).lower(), end
         if length & 0xC0 == 0xC0:
             if offset + 1 >= len(packet):
-                return "", end
+                raise ValueError("Truncated DNS pointer")
             pointer = ((length & 0x3F) << 8) | packet[offset + 1]
+            jumps += 1
+            if pointer >= len(packet) or jumps > MAX_POINTER_JUMPS:
+                raise ValueError("Invalid or excessive DNS pointer chain")
             if not jumped:
                 end = offset + 2
             jumped = True
             offset = pointer
             continue
+        if length & 0xC0:
+            raise ValueError("Unsupported DNS label type")
+        if offset + 1 + length > len(packet):
+            raise ValueError("Truncated DNS label")
+        name_bytes += 1 + length
+        if name_bytes > MAX_NAME_BYTES:
+            raise ValueError("DNS name exceeds wire length limit")
         offset += 1
         labels.append(packet[offset:offset + length].decode("ascii", errors="ignore"))
         offset += length
         if not jumped:
             end = offset
-    return "", end
 
 
 def parse_questions(packet: bytes):
     if len(packet) < 12:
         return []
     qdcount = struct.unpack("!H", packet[4:6])[0]
+    # Even a root question needs one name byte and four type/class bytes.
+    if qdcount > (len(packet) - 12) // 5:
+        return []
     offset = 12
     questions = []
     for _ in range(qdcount):
-        name, offset = read_name(packet, offset)
+        try:
+            name, offset = read_name(packet, offset)
+        except ValueError:
+            return []
         if offset + 4 > len(packet):
-            break
+            return []
         qtype, qclass = struct.unpack("!HH", packet[offset:offset + 4])
         offset += 4
         questions.append((name, qtype, qclass))

@@ -16,6 +16,7 @@ ROOT=Path(__file__).resolve().parents[1]
 LABEL='hc23-43-tests'
 IMAGE_OVERRIDES={}
 PG_MODULES={
+ 'test_database_runtime_postgres':('HC15','hc15_runtime_test'),
  'test_about_inventory_postgres':('HC48','hc48_inventory_test'),
  'test_baseline_postgres':('HC38','hc38_schema_test'),
  'test_combustion_safety_state_postgres':('HC06','hc06_state_test'),
@@ -27,7 +28,7 @@ PG_MODULES={
  'test_scheduler_feedback_postgres':('HC08','hc08_audit_test'),
  'test_startup_schema_postgres':('HC07','hc07_schema_test'),
 }
-PROFILES=('unit','ownership','deployed','postgres','frontend','bridges','ingest','x10')
+PROFILES=('unit','ownership','deployed','postgres','frontend','bridges','ingest','x10','mdns','growatt')
 
 
 def command(args,**kwargs):
@@ -141,11 +142,13 @@ def main():
          'source_policies':{v:json.loads((s/'.hc-test-source.json').read_text()) for v,s in sources.items()}}
  try:
   for profile in PROFILES if args.profile=='all' else (args.profile,):
-   source=sources['deployed' if profile in ('deployed','ownership') else 'standard']
+   source=sources['deployed' if profile in ('deployed','ownership','mdns','growatt') else 'standard']
    if profile=='postgres':
     result=postgres(source,backend,pgimage,out,runid)
-   elif profile in ('unit','ownership','deployed'):
-    result=execute(base_run(source,root=profile=='ownership')+[backend,'python','-B','/src/scripts/hc_test_suite.py',profile],out/(profile+'.log'))
+   elif profile in ('unit','ownership','deployed','mdns','growatt'):
+    selected=image({'mdns':'homecontrol-mdns','growatt':'homecontrol-ha-growatt-poller'}[profile]) if profile in ('mdns','growatt') else backend
+    result=execute(base_run(source,root=profile=='ownership')+[selected,'python','-B','/src/scripts/hc_test_suite.py',profile],out/(profile+'.log'))
+    result['image']=selected
    elif profile=='frontend':
     node=re.search(r'^FROM (node@sha256:[0-9a-f]+)',(ROOT/'infra/frontend/Dockerfile').read_text(),re.M)[1]
     # node_modules and build output exist only in the disposable tmpfs.

@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "hc23_code_verified": true,
+  "hc23_fix_deployed": false,
+  "hc43_remediated": false,
+  "hc41_unchanged": true,
+  "ai_enabled": false,
+  "unmodified_r18_fresh_restore": "failed_before_target_apply",
+  "corrected_candidate_fresh_repeat_reboot": "verified",
+  "production_deploy_or_restart": false,
+  "unique_tests": 1308,
+  "frontend_build": true,
+  "release": "hc-security-20261102-r18",
+  "required_next_step": "Publish/deploy a new sealed recovery release; keep existing pending HC15/16/20/24/26 fixes explicit. HC43 remains in progress until supported vendor patches, per explicit user decision."
+}

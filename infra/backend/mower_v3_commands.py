@@ -5,14 +5,12 @@ import threading
 import time
 import uuid
 
-from mower_v3_service import STATES, RoverReadError, UnknownMutation, hex_id, integer, require
+from mower_v3_protocol import (
+    STATES, RoverReadError, UnknownMutation, hex_id, integer, require, request_id, motor_identity,
+)
 
 COMMANDS = {"arm", "disarm", "pause", "reset_fault", "heading_set", "start", "resume"}
 ACK_FIELDS = {"v", "request_id", "command", "result", "code", "detail", "stm_boot", "control_epoch", "state_seq", "state"}
-
-
-def request_id(value):
-    return type(value) is str and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", value) is not None
 
 
 def validate_command(body, stop=False):
@@ -121,7 +119,6 @@ class MowerV3Commands:
                 if identity.get("mode") == "HC_BRINGUP":
                     return self._save(record, outcome(id_, command, "REJECTED", "READ_ONLY")), 409
                 if identity.get("mode") == "MOTOR_TEST":
-                    from mower_motor_test import motor_identity
                     if not motor_identity(identity) or command not in {"arm", "disarm", "reset_fault"}:
                         return self._save(record, outcome(id_, command, "REJECTED", "TEST_MODE_ONLY")), 409
                     if command == "arm" and not getattr(self.rover,"simple_control",False) and not snapshot["capabilities"].get("manual_erpm"):

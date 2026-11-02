@@ -1,0 +1,35 @@
+{
+  "checked_at": "2026-11-02T15:44:43.212135+00:00",
+  "images": {
+    "ollama": {
+      "source_version": "0.40.13",
+      "image": "ollama/ollama@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429",
+      "manifest_digest": "sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429",
+      "linux_amd64": true,
+      "metadata_url": "https://registry-1.docker.io/v2/ollama/ollama/manifests/0.40.13",
+      "manifest_bytes": 647,
+      "status": "dormant_metadata_pinned_not_started_or_runtime_qualified"
+    },
+    "open-webui": {
+      "source_version": "v0.12.5",
+      "image": "ghcr.io/open-webui/open-webui@sha256:03443b8de6b617da9d900edd09b4bf1cb0ddbfdcba6afb42c548336a0b821ded",
+      "manifest_digest": "sha256:03443b8de6b617da9d900edd09b4bf1cb0ddbfdcba6afb42c548336a0b821ded",
+      "linux_amd64": true,
+      "metadata_url": "https://ghcr.io/v2/open-webui/open-webui/manifests/v0.12.5",
+      "manifest_bytes": 1611,
+      "status": "dormant_metadata_pinned_not_started_or_runtime_qualified"
+    },
+    "gitea": {
+      "source_version": "28.3.0",
+      "image": "gitea/gitea@sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d",
+      "manifest_digest": "sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d",
+      "linux_amd64": true,
+      "metadata_url": "https://registry-1.docker.io/v2/gitea/gitea/manifests/28.3.0",
+      "manifest_bytes": 2364,
+      "status": "dormant_metadata_pinned_not_started_or_runtime_qualified"
+    }
+  },
+  "ai_enabled": false,
+  "images_pulled": 0,
+  "containers_started": 0
+}

@@ -128,13 +128,34 @@ class IrrigationAdmissionPostgresTest(unittest.TestCase):
                 self.assertEqual(self.calls, ['open'])
                 self.assertEqual(self.db.fetch_one('select count(*) as n from hc.irrigation_schedule where last_started_on=current_date')['n'], 1)
 
-    def test_legacy_and_v2_use_the_same_reservation(self):
+    def test_v2_schedule_cannot_restart_after_close_and_service_restart(self):
         schedule = self.schedule()
-        second = self.make_service()
-        self.barrier_reservations(self.service, second)
-        self.parallel(lambda: self.service.start_scheduled_session(schedule), lambda: second.start_v2_scheduled_session(schedule))
+        self.service.start_v2_scheduled_session(schedule)
+        self.assertEqual(self.calls, ['open'])
+        self.db.execute_sql("update hc.irrigation_manual_session set status='stopped', stopped_at=now()")
+        restarted = self.make_service()
+        restarted.start_v2_scheduled_session(schedule)
         self.assertEqual(len(self.rows()), 1)
         self.assertEqual(self.calls, ['open'])
+        self.assertTrue(self.db.fetch_one('select last_started_on=current_date as consumed from hc.irrigation_schedule')['consumed'])
+
+    def test_v2_effective_stop_uses_session_deadline_before_schedule_stop(self):
+        schedule = self.schedule()
+        self.service.start_v2_scheduled_session(schedule)
+        closed = []
+        def close(session_id, reason):
+            closed.append((session_id, reason))
+            self.db.execute_one("update hc.irrigation_manual_session set status='stopped', stopped_at=now() where id=%s returning id", (session_id,))
+            return True, 'fake fresh CLOSED confirmation', {}
+        self.service.stop_manual_session = close
+        self.db.execute_sql("update hc.irrigation_manual_session set requested_stop_at=now()+interval '1 hour'")
+        self.service.stop_v2_due_schedules()
+        self.assertEqual(closed, [])
+        self.assertIsNone(self.db.fetch_one('select last_stopped_on from hc.irrigation_schedule')['last_stopped_on'])
+        self.db.execute_sql("update hc.irrigation_manual_session set requested_stop_at=now()-interval '1 second'")
+        self.service.stop_v2_due_schedules()
+        self.assertEqual(closed, [(self.rows()[0]['id'], 'v2_effective_stop')])
+        self.assertTrue(self.db.fetch_one('select last_stopped_on=current_date as stopped from hc.irrigation_schedule')['stopped'])
 
     def test_late_prepared_schedule_cannot_replay_after_first_session_closed(self):
         schedule = self.schedule()

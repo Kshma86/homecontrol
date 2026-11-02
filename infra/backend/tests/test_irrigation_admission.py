@@ -23,16 +23,14 @@ class IrrigationAdmissionTest(unittest.TestCase):
         self.assertEqual(service.published, [])
 
     def test_rejected_scheduled_reservation_does_not_publish_or_advance_day(self):
-        for method in ('start_v2_scheduled_session', 'start_scheduled_session'):
-            with self.subTest(method=method):
-                service = self.service(reserve_session=lambda **kw: {'session': None, 'blocked_by': 'schedule_not_due'})
-                service.execute_one = lambda *a: self.fail('losing scheduler advanced state')
-                service.mark_v2_execution = lambda *a: self.fail('losing scheduler reported execution')
-                getattr(service, method)(7)
-                self.assertEqual(service.published, [])
+        service = self.service(reserve_session=lambda **kw: {'session': None, 'blocked_by': 'schedule_not_due'})
+        service.execute_one = lambda *a: self.fail('losing scheduler advanced state')
+        service.mark_v2_execution = lambda *a: self.fail('losing scheduler reported execution')
+        service.start_v2_scheduled_session(7)
+        self.assertEqual(service.published, [])
 
     def test_missing_transactional_dependency_fails_closed(self):
-        for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7), ('start_scheduled_session', 7)):
+        for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7)):
             with self.subTest(method=method):
                 service = self.service(reserve_session=None)
                 with self.assertRaisesRegex(RuntimeError, 'admission is not configured'):
@@ -42,7 +40,7 @@ class IrrigationAdmissionTest(unittest.TestCase):
     def test_reservation_exception_never_authorizes_open(self):
         def unavailable(**kw):
             raise TimeoutError('reservation result unknown')
-        for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7), ('start_scheduled_session', 7)):
+        for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7)):
             with self.subTest(method=method):
                 service = self.service(reserve_session=unavailable)
                 with self.assertRaises(TimeoutError):

@@ -1,0 +1,9 @@
+{
+  "path": "homeassistant/docker-compose.yml",
+  "format": "JSON",
+  "services": {
+    "homeassistant": {
+      "image": "sha256:422d416cb27deba90b680a044ee83f695a6bd9dfa219ab54e55eb86b94d590d0"
+    }
+  }
+}

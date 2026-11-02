@@ -1,0 +1,636 @@
+{
+  "comparison": "Exact fake-MQTT payloads, reservation inputs, SQL/parameters, execution/decision outputs and recovery state",
+  "external_work": false,
+  "ok": true,
+  "results": [
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [],
+        "executions": [
+          [
+            7,
+            "open",
+            "confirmed",
+            {
+              "confirmation": {
+                "sample": "fresh"
+              },
+              "message": "fixture confirmation",
+              "publish_attempted": true,
+              "published": true,
+              "rule_engine": {
+                "base_duration": 20,
+                "final_duration": 7,
+                "mode": "navigator",
+                "reason": "fixture rule",
+                "triggered_rules": [
+                  "fixture"
+                ]
+              },
+              "stop_policy": {
+                "effective_duration_minutes": 20,
+                "effective_stop_at": "2026-11-02T10:20:00+00:00",
+                "legacy_requested_stop_at_is_diagnostic": true,
+                "rule_engine_mode": "navigator",
+                "rule_engine_reason": "fixture rule",
+                "scheduled_duration_minutes": 20,
+                "scheduled_start": "10:00",
+                "scheduled_stop": "10:20",
+                "stop_authority": "schedule_stop_event",
+                "triggered_rules": [
+                  "fixture"
+                ]
+              }
+            }
+          ]
+        ],
+        "opens": [
+          {
+            "cmd": "set",
+            "duration_minutes": 20,
+            "schedule_duration_minutes": 20,
+            "schedule_id": 7,
+            "schedule_label": "garden",
+            "source": "scheduler",
+            "value": "open"
+          }
+        ],
+        "recovery_blocked": false,
+        "reservations": [
+          {
+            "minutes": 20,
+            "safety_minutes": 180,
+            "schedule_id": 7,
+            "start_payload": {
+              "cmd": "set",
+              "duration_minutes": 20,
+              "hc_executor": "v2_scheduler",
+              "pilot_final_duration": null,
+              "pilot_reason": "fixture rule",
+              "pilot_triggered_rules": [
+                "fixture"
+              ],
+              "schedule_duration_minutes": 20,
+              "schedule_id": 7,
+              "schedule_label": "garden",
+              "source": "scheduler",
+              "stop_policy": {
+                "effective_duration_minutes": 20,
+                "effective_stop_at": "2026-11-02T10:20:00+00:00",
+                "legacy_requested_stop_at_is_diagnostic": true,
+                "rule_engine_mode": "navigator",
+                "rule_engine_reason": "fixture rule",
+                "scheduled_duration_minutes": 20,
+                "scheduled_start": "10:00",
+                "scheduled_stop": "10:20",
+                "stop_authority": "schedule_stop_event",
+                "triggered_rules": [
+                  "fixture"
+                ]
+              },
+              "value": "open",
+              "weather_snapshot": {}
+            },
+            "started_by": "v2_scheduler"
+          }
+        ],
+        "writes": [
+          [
+            "\n                update hc.irrigation_manual_session\n                set status = 'running',\n                    start_payload = %s::jsonb\n                where id = %s and status = 'starting'\n                returning *\n                ",
+            [
+              "{\"cmd\": \"set\", \"value\": \"open\", \"source\": \"scheduler\", \"schedule_id\": 7, \"schedule_label\": \"garden\", \"schedule_duration_minutes\": 20, \"duration_minutes\": 20, \"hc_executor\": \"v2_scheduler\", \"pilot_final_duration\": null, \"pilot_triggered_rules\": [\"fixture\"], \"pilot_reason\": \"fixture rule\", \"weather_snapshot\": {}, \"stop_policy\": {\"stop_authority\": \"schedule_stop_event\", \"scheduled_start\": \"10:00\", \"scheduled_stop\": \"10:20\", \"scheduled_duration_minutes\": 20, \"effective_duration_minutes\": 20, \"effective_stop_at\": \"2026-11-02T10:20:00+00:00\", \"rule_engine_mode\": \"navigator\", \"rule_engine_reason\": \"fixture rule\", \"triggered_rules\": [\"fixture\"], \"legacy_requested_stop_at_is_diagnostic\": true}, \"command_payload\": {\"cmd\": \"set\", \"value\": \"open\", \"source\": \"scheduler\", \"schedule_id\": 7, \"schedule_label\": \"garden\", \"schedule_duration_minutes\": 20, \"duration_minutes\": 20}, \"confirmation\": {\"ok\": true, \"message\": \"fixture confirmation\", \"sample\": \"fresh\"}}",
+              11
+            ]
+          ]
+        ]
+      },
+      "scenario": {
+        "minutes": 7,
+        "mode": "navigator"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [
+          [
+            {
+              "base_duration": 20,
+              "executed": true,
+              "final_duration": 30,
+              "mode": "pilot",
+              "reason": "fixture rule",
+              "triggered_rules": [
+                "fixture"
+              ],
+              "weather_snapshot": {}
+            },
+            {
+              "execution_status": "v2_command_confirmed",
+              "schedule_id": 7
+            }
+          ]
+        ],
+        "executions": [
+          [
+            7,
+            "open",
+            "confirmed",
+            {
+              "confirmation": {
+                "sample": "fresh"
+              },
+              "message": "fixture confirmation",
+              "publish_attempted": true,
+              "published": true,
+              "rule_engine": {
+                "base_duration": 20,
+                "final_duration": 30,
+                "mode": "pilot",
+                "reason": "fixture rule",
+                "triggered_rules": [
+                  "fixture"
+                ]
+              },
+              "stop_policy": {
+                "effective_duration_minutes": 30,
+                "effective_stop_at": "2026-11-02T10:30:00+00:00",
+                "legacy_requested_stop_at_is_diagnostic": true,
+                "rule_engine_mode": "pilot",
+                "rule_engine_reason": "fixture rule",
+                "scheduled_duration_minutes": 20,
+                "scheduled_start": "10:00",
+                "scheduled_stop": "10:20",
+                "stop_authority": "v2_rule_effective_stop",
+                "triggered_rules": [
+                  "fixture"
+                ]
+              }
+            }
+          ]
+        ],
+        "opens": [
+          {
+            "cmd": "set",
+            "duration_minutes": 30,
+            "pilot_final_duration": 30,
+            "pilot_triggered_rules": [
+              "fixture"
+            ],
+            "schedule_duration_minutes": 20,
+            "schedule_id": 7,
+            "schedule_label": "garden",
+            "source": "pilot",
+            "value": "open"
+          }
+        ],
+        "recovery_blocked": false,
+        "reservations": [
+          {
+            "minutes": 30,
+            "safety_minutes": 180,
+            "schedule_id": 7,
+            "start_payload": {
+              "cmd": "set",
+              "duration_minutes": 30,
+              "hc_executor": "v2_scheduler",
+              "pilot_final_duration": 30,
+              "pilot_reason": "fixture rule",
+              "pilot_triggered_rules": [
+                "fixture"
+              ],
+              "schedule_duration_minutes": 20,
+              "schedule_id": 7,
+              "schedule_label": "garden",
+              "source": "pilot",
+              "stop_policy": {
+                "effective_duration_minutes": 30,
+                "effective_stop_at": "2026-11-02T10:30:00+00:00",
+                "legacy_requested_stop_at_is_diagnostic": true,
+                "rule_engine_mode": "pilot",
+                "rule_engine_reason": "fixture rule",
+                "scheduled_duration_minutes": 20,
+                "scheduled_start": "10:00",
+                "scheduled_stop": "10:20",
+                "stop_authority": "v2_rule_effective_stop",
+                "triggered_rules": [
+                  "fixture"
+                ]
+              },
+              "value": "open",
+              "weather_snapshot": {}
+            },
+            "started_by": "v2_scheduler"
+          }
+        ],
+        "writes": [
+          [
+            "\n                update hc.irrigation_manual_session\n                set status = 'running',\n                    start_payload = %s::jsonb\n                where id = %s and status = 'starting'\n                returning *\n                ",
+            [
+              "{\"cmd\": \"set\", \"value\": \"open\", \"source\": \"pilot\", \"schedule_id\": 7, \"schedule_label\": \"garden\", \"schedule_duration_minutes\": 20, \"duration_minutes\": 30, \"pilot_final_duration\": 30, \"pilot_triggered_rules\": [\"fixture\"], \"hc_executor\": \"v2_scheduler\", \"pilot_reason\": \"fixture rule\", \"weather_snapshot\": {}, \"stop_policy\": {\"stop_authority\": \"v2_rule_effective_stop\", \"scheduled_start\": \"10:00\", \"scheduled_stop\": \"10:20\", \"scheduled_duration_minutes\": 20, \"effective_duration_minutes\": 30, \"effective_stop_at\": \"2026-11-02T10:30:00+00:00\", \"rule_engine_mode\": \"pilot\", \"rule_engine_reason\": \"fixture rule\", \"triggered_rules\": [\"fixture\"], \"legacy_requested_stop_at_is_diagnostic\": true}, \"command_payload\": {\"cmd\": \"set\", \"value\": \"open\", \"source\": \"pilot\", \"schedule_id\": 7, \"schedule_label\": \"garden\", \"schedule_duration_minutes\": 20, \"duration_minutes\": 30, \"pilot_final_duration\": 30, \"pilot_triggered_rules\": [\"fixture\"]}, \"confirmation\": {\"ok\": true, \"message\": \"fixture confirmation\", \"sample\": \"fresh\"}}",
+              11
+            ]
+          ]
+        ]
+      },
+      "scenario": {
+        "minutes": 30,
+        "mode": "pilot"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [
+          [
+            {
+              "base_duration": 20,
+              "executed": true,
+              "final_duration": 0,
+              "mode": "pilot",
+              "reason": "fixture rule",
+              "triggered_rules": [
+                "fixture"
+              ],
+              "weather_snapshot": {}
+            },
+            {
+              "execution_status": "v2_skipped",
+              "schedule_id": 7
+            }
+          ]
+        ],
+        "executions": [
+          [
+            7,
+            "open",
+            "skipped",
+            {
+              "publish_attempted": false,
+              "published": false,
+              "reason": "fixture rule",
+              "triggered_rules": [
+                "fixture"
+              ],
+              "weather_snapshot": {}
+            }
+          ]
+        ],
+        "opens": [],
+        "recovery_blocked": false,
+        "reservations": [],
+        "writes": [
+          [
+            "\n                update hc.irrigation_schedule\n                set last_started_on = current_date,\n                    updated_at = now()\n                where id = %s\n                returning id\n                ",
+            [
+              7
+            ]
+          ]
+        ]
+      },
+      "scenario": {
+        "minutes": 0,
+        "mode": "pilot"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [
+          [
+            {
+              "base_duration": 20,
+              "final_duration": 7,
+              "mode": "pilot",
+              "reason": "fixture rule",
+              "triggered_rules": [
+                "fixture"
+              ],
+              "weather_snapshot": {}
+            },
+            {
+              "execution_status": "v2_start_failed",
+              "schedule_id": 7
+            }
+          ]
+        ],
+        "executions": [
+          [
+            7,
+            "open",
+            "failed",
+            {
+              "confirmation": {
+                "sample": "fresh"
+              },
+              "message": "fixture confirmation",
+              "publish_attempted": true,
+              "published": false,
+              "rule_engine": {
+                "base_duration": 20,
+                "final_duration": 7,
+                "mode": "pilot",
+                "reason": "fixture rule",
+                "triggered_rules": [
+                  "fixture"
+                ]
+              },
+              "stop_policy": {
+                "effective_duration_minutes": 7,
+                "effective_stop_at": "2026-11-02T10:07:00+00:00",
+                "legacy_requested_stop_at_is_diagnostic": true,
+                "rule_engine_mode": "pilot",
+                "rule_engine_reason": "fixture rule",
+                "scheduled_duration_minutes": 20,
+                "scheduled_start": "10:00",
+                "scheduled_stop": "10:20",
+                "stop_authority": "v2_rule_effective_stop",
+                "triggered_rules": [
+                  "fixture"
+                ]
+              }
+            },
+            "fixture confirmation"
+          ]
+        ],
+        "opens": [
+          {
+            "cmd": "set",
+            "duration_minutes": 7,
+            "pilot_final_duration": 7,
+            "pilot_triggered_rules": [
+              "fixture"
+            ],
+            "schedule_duration_minutes": 20,
+            "schedule_id": 7,
+            "schedule_label": "garden",
+            "source": "pilot",
+            "value": "open"
+          }
+        ],
+        "recovery_blocked": true,
+        "reservations": [
+          {
+            "minutes": 7,
+            "safety_minutes": 180,
+            "schedule_id": 7,
+            "start_payload": {
+              "cmd": "set",
+              "duration_minutes": 7,
+              "hc_executor": "v2_scheduler",
+              "pilot_final_duration": 7,
+              "pilot_reason": "fixture rule",
+              "pilot_triggered_rules": [
+                "fixture"
+              ],
+              "schedule_duration_minutes": 20,
+              "schedule_id": 7,
+              "schedule_label": "garden",
+              "source": "pilot",
+              "stop_policy": {
+                "effective_duration_minutes": 7,
+                "effective_stop_at": "2026-11-02T10:07:00+00:00",
+                "legacy_requested_stop_at_is_diagnostic": true,
+                "rule_engine_mode": "pilot",
+                "rule_engine_reason": "fixture rule",
+                "scheduled_duration_minutes": 20,
+                "scheduled_start": "10:00",
+                "scheduled_stop": "10:20",
+                "stop_authority": "v2_rule_effective_stop",
+                "triggered_rules": [
+                  "fixture"
+                ]
+              },
+              "value": "open",
+              "weather_snapshot": {}
+            },
+            "started_by": "v2_scheduler"
+          }
+        ],
+        "writes": [
+          [
+            "\n                update hc.irrigation_manual_session\n                set status = 'stop_failed',\n                    stopped_at = null,\n                    start_payload = %s::jsonb,\n                    error = %s,\n                    stop_payload = coalesce(stop_payload, '{}'::jsonb) || jsonb_build_object(\n                      'recovery', jsonb_build_object('origin_status', 'starting', 'state', 'pending')\n                        || coalesce(stop_payload -> 'recovery', '{}'::jsonb))\n                where id = %s and status = 'starting'\n                returning id\n                ",
+            [
+              "{\"cmd\": \"set\", \"value\": \"open\", \"source\": \"pilot\", \"schedule_id\": 7, \"schedule_label\": \"garden\", \"schedule_duration_minutes\": 20, \"duration_minutes\": 7, \"pilot_final_duration\": 7, \"pilot_triggered_rules\": [\"fixture\"], \"hc_executor\": \"v2_scheduler\", \"pilot_reason\": \"fixture rule\", \"weather_snapshot\": {}, \"stop_policy\": {\"stop_authority\": \"v2_rule_effective_stop\", \"scheduled_start\": \"10:00\", \"scheduled_stop\": \"10:20\", \"scheduled_duration_minutes\": 20, \"effective_duration_minutes\": 7, \"effective_stop_at\": \"2026-11-02T10:07:00+00:00\", \"rule_engine_mode\": \"pilot\", \"rule_engine_reason\": \"fixture rule\", \"triggered_rules\": [\"fixture\"], \"legacy_requested_stop_at_is_diagnostic\": true}, \"command_payload\": {\"cmd\": \"set\", \"value\": \"open\", \"source\": \"pilot\", \"schedule_id\": 7, \"schedule_label\": \"garden\", \"schedule_duration_minutes\": 20, \"duration_minutes\": 7, \"pilot_final_duration\": 7, \"pilot_triggered_rules\": [\"fixture\"]}, \"confirmation\": {\"ok\": false, \"message\": \"fixture confirmation\", \"sample\": \"fresh\"}}",
+              "valve=fixture confirmation",
+              11
+            ]
+          ]
+        ]
+      },
+      "scenario": {
+        "confirmed": false,
+        "minutes": 7,
+        "mode": "pilot"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [
+          [
+            11,
+            "v2_effective_stop"
+          ]
+        ],
+        "decisions": [],
+        "executions": [
+          [
+            7,
+            "close",
+            "confirmed",
+            {
+              "effective_stop_at": "2026-11-02T10:00:00+00:00",
+              "message": "fixture close",
+              "publish_attempted": true,
+              "published": true,
+              "reason": "v2_effective_stop"
+            },
+            null
+          ]
+        ],
+        "opens": [],
+        "recovery_blocked": false,
+        "reservations": [],
+        "writes": [
+          [
+            "\n                    update hc.irrigation_schedule\n                    set last_stopped_on = current_date,\n                        updated_at = now()\n                    where id = %s\n                    returning id\n                    ",
+            [
+              7
+            ]
+          ]
+        ]
+      },
+      "scenario": {
+        "confirmed": true,
+        "stop": true,
+        "stop_status": "running"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [
+          [
+            11,
+            "v2_effective_stop"
+          ]
+        ],
+        "decisions": [],
+        "executions": [
+          [
+            7,
+            "close",
+            "failed",
+            {
+              "effective_stop_at": "2026-11-02T10:00:00+00:00",
+              "message": "fixture close",
+              "publish_attempted": true,
+              "published": false,
+              "reason": "v2_effective_stop"
+            },
+            "fixture close"
+          ]
+        ],
+        "opens": [],
+        "recovery_blocked": false,
+        "reservations": [],
+        "writes": []
+      },
+      "scenario": {
+        "confirmed": false,
+        "stop": true,
+        "stop_status": "running"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [],
+        "executions": [],
+        "opens": [],
+        "recovery_blocked": false,
+        "reservations": [],
+        "writes": []
+      },
+      "scenario": {
+        "confirmed": true,
+        "stop": true,
+        "stop_status": "stop_failed"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [],
+        "executions": [],
+        "opens": [],
+        "recovery_blocked": false,
+        "reservations": [],
+        "writes": []
+      },
+      "scenario": {
+        "confirmed": true,
+        "stop": true,
+        "stop_status": "starting"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [],
+        "executions": [],
+        "opens": [],
+        "recovery_blocked": false,
+        "reservations": [],
+        "writes": [
+          [
+            "\n                    update hc.irrigation_schedule\n                    set last_stopped_on = current_date,\n                        updated_at = now()\n                    where id = %s\n                    returning id\n                    ",
+            [
+              7
+            ]
+          ]
+        ]
+      },
+      "scenario": {
+        "confirmed": true,
+        "stop": true,
+        "stop_status": "stopped"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [],
+        "executions": [],
+        "opens": [],
+        "recovery_blocked": false,
+        "reservations": [],
+        "writes": [
+          [
+            "\n                    update hc.irrigation_schedule\n                    set last_stopped_on = current_date,\n                        updated_at = now()\n                    where id = %s\n                    returning id\n                    ",
+            [
+              7
+            ]
+          ]
+        ]
+      },
+      "scenario": {
+        "confirmed": true,
+        "stop": true,
+        "stop_status": "auto_stopped"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [],
+        "executions": [],
+        "opens": [],
+        "recovery_blocked": false,
+        "reservations": [],
+        "writes": []
+      },
+      "scenario": {
+        "confirmed": true,
+        "stop": true,
+        "stop_status": "start_failed"
+      }
+    },
+    {
+      "exact_side_effect_parity": true,
+      "result": {
+        "closes": [],
+        "decisions": [],
+        "executions": [],
+        "opens": [],
+        "recovery_blocked": false,
+        "reservations": [],
+        "writes": [
+          [
+            "\n                    update hc.irrigation_schedule\n                    set last_stopped_on = current_date,\n                        updated_at = now()\n                    where id = %s\n                    returning id\n                    ",
+            [
+              7
+            ]
+          ]
+        ]
+      },
+      "scenario": {
+        "confirmed": true,
+        "stop": true,
+        "stop_status": null
+      }
+    }
+  ],
+  "scenarios": 12
+}

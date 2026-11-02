@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "only_bounded_vm_and_own_disks_removed": true,
+  "temporary_guest_ssh_key_removed": true,
+  "original_operator_recovery_input_preserved": true,
+  "previous_r16_lab_preserved": true,
+  "root_free_bytes": 54302498816,
+  "project_free_bytes": 24114720768
+}

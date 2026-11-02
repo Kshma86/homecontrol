@@ -98,14 +98,68 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def ha_get_state(session: requests.Session, entity_id: str) -> Optional[Dict[str, Any]]:
-    url = f"{HA_BASE_URL}/api/states/{entity_id}"
-    response = session.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
-    if response.status_code == 404:
-        print(f"[HA] missing entity: {entity_id}")
+def ha_get_states(session: requests.Session, entity_ids) -> Dict[str, Dict[str, Any]]:
+    """One HA snapshot per cycle; keep only configured entity objects."""
+    with session.get(f"{HA_BASE_URL}/api/states", timeout=REQUEST_TIMEOUT_SECONDS) as response:
+        response.raise_for_status()
+        states = response.json()
+    if not isinstance(states, list):
+        raise ValueError("HA states response must be a list")
+    wanted = set(entity_ids)
+    return {state["entity_id"]: state for state in states
+            if isinstance(state, dict) and isinstance(state.get("entity_id"), str)
+            and state["entity_id"] in wanted}
+
+
+def ha_state_age(last_updated: Any, observed_at: datetime) -> Optional[float]:
+    """HA state-update age, not the inverter's physical measurement age."""
+    if not isinstance(last_updated, str):
         return None
-    response.raise_for_status()
-    return response.json()
+    try:
+        updated = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
+        if updated.tzinfo is None:
+            return None
+        age = (observed_at - updated).total_seconds()
+    except (ValueError, TypeError, OverflowError):
+        return None
+    return age if age >= 0 else None
+
+
+def build_payload(states, entity_map, *, observed_at: datetime) -> Dict[str, Any]:
+    observed = observed_at.isoformat()
+    payload: Dict[str, Any] = {"source": "home_assistant", "sample_time": observed}
+    meta = {}
+    for key, entity_id in entity_map.items():
+        state = states.get(entity_id)
+        if not state:
+            continue
+        value = coerce_state(state.get("state"))
+        if value is None:
+            continue
+        payload[key] = value
+        attrs = state.get("attributes")
+        attrs = attrs if isinstance(attrs, dict) else {}
+        meta[key] = {
+            "entity_id": entity_id,
+            "unit": attrs.get("unit_of_measurement"),
+            "friendly_name": attrs.get("friendly_name"),
+            "last_updated": state.get("last_updated"),
+            "observed_at": observed,
+            "ha_state_age_seconds": ha_state_age(state.get("last_updated"), observed_at),
+        }
+    payload["entity_count"] = len(meta)
+    payload["meta"] = meta
+    return payload
+
+
+def poll_payload(session: requests.Session, entity_map) -> Dict[str, Any]:
+    try:
+        states = ha_get_states(session, entity_map.values())
+    except Exception as exc:
+        # Do not replay a previous snapshot or fall back to N serial requests.
+        print(f"[HA] snapshot fetch error: {type(exc).__name__}")
+        states = {}
+    return build_payload(states, entity_map, observed_at=datetime.now(timezone.utc))
 
 
 def publish_json(client: mqtt.Client, topic: str, payload: Dict[str, Any], retain: bool = False):
@@ -118,7 +172,7 @@ def main():
 
     entity_map = load_entity_map()
     health = WorkerHealth(maximum=max(POLL_SECONDS * 3,
-        (REQUEST_TIMEOUT_SECONDS + 1) * len(entity_map) * 3, 120))
+        (REQUEST_TIMEOUT_SECONDS + 1) * 3, 120))
     session = requests.Session()
     session.headers.update({
         "Authorization": f"Bearer {HA_TOKEN}",
@@ -138,47 +192,20 @@ def main():
     print(f"[RUN] HA Growatt poller started: ha={HA_BASE_URL} mqtt={MQTT_HOST}:{MQTT_PORT} topic={BASE_TOPIC}")
     try:
         while running:
-            started = time.time()
-            payload: Dict[str, Any] = {
-                "source": "home_assistant",
-                "sample_time": now_iso(),
-            }
-            meta: Dict[str, Dict[str, Any]] = {}
-
-            ok_count = 0
-            for key, entity_id in entity_map.items():
-                try:
-                    state = ha_get_state(session, entity_id)
-                except Exception as exc:
-                    print(f"[HA] fetch error entity={entity_id}: {exc}")
-                    continue
-                if not state:
-                    continue
-                value = coerce_state(state.get("state"))
-                if value is None:
-                    continue
-                payload[key] = value
-                attrs = state.get("attributes") or {}
-                meta[key] = {
-                    "entity_id": entity_id,
-                    "unit": attrs.get("unit_of_measurement"),
-                    "friendly_name": attrs.get("friendly_name"),
-                    "last_updated": state.get("last_updated"),
-                }
-                ok_count += 1
-
-            payload["entity_count"] = ok_count
-            payload["meta"] = meta
+            started = time.monotonic()
+            payload = poll_payload(session, entity_map)
+            ok_count = payload["entity_count"]
             publish_json(client, BASE_TOPIC, payload, retain=MQTT_RETAIN)
             print(f"[MQTT] published {ok_count}/{len(entity_map)} Growatt states")
             health.progress(success=ok_count > 0)
 
-            sleep_for = max(1.0, POLL_SECONDS - (time.time() - started))
-            end_at = time.time() + sleep_for
-            while running and time.time() < end_at:
-                time.sleep(min(1.0, end_at - time.time()))
+            sleep_for = max(1.0, POLL_SECONDS - (time.monotonic() - started))
+            end_at = time.monotonic() + sleep_for
+            while running and time.monotonic() < end_at:
+                time.sleep(min(1.0, max(0.0, end_at - time.monotonic())))
     finally:
         health.close()
+        session.close()
         try:
             client.publish(f"{BASE_TOPIC}/availability", "offline", qos=MQTT_QOS, retain=True)
             client.loop_stop()

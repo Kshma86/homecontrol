@@ -1,0 +1,1128 @@
+--- a/AUDIT_REPAIR.md
++++ b/AUDIT_REPAIR.md
+@@ -16,8 +16,8 @@
+ A teljes privát HA-előpróba, hitelesített HA API/64 Growatt-entitás és PG16/kolláció
+ sikeres. Friss HC/Git/router mentés, 6373 checksum, visszaolvasás és külön PG-restore
+ sikeres. Az AI tiltva, ESP MQTT kivétel változatlan. HC-23/43 részjavításai élesek;
+-a globális pontok/upstream találatok nyitottak. A későbbi HC-15 kódjavítás
+-ellenőrzött, de még nincs ebben az éles kiadásban (REPAIR-062).
++a globális pontok/upstream találatok nyitottak. A későbbi HC-15 és HC-16 kódjavítás
++ellenőrzött, de még nincs ebben az éles kiadásban (REPAIR-062/063).
+ [Éles átadás](backups/deployments/hc-security-20261102-r18/DEPLOYMENT.md),
+ [utóellenőrzés](docs/audit-evidence/hc23-43-r18-live-20261102/production-check.json).
+ 
+@@ -33,8 +33,8 @@
+ ellenőrzéseknek már nem akadálya.
+ [Éles r16 átvétel és rollback](backups/deployments/hc-router-backup-20261101-r16/DEPLOYMENT.md).
+ 
+-**Auditösszesítés:** 41 ellenőrzött, 4 nyitott, 3 folyamatban.
+-HC-15 izoláltan ellenőrzött kódjavítás; éles bevezetése még nem történt meg.
++**Auditösszesítés:** 42 ellenőrzött, 3 nyitott, 3 folyamatban.
++HC-15 és HC-16 izoláltan ellenőrzött kódjavítás; éles bevezetésük még nem történt meg.
+ HC-12 és HC-32 javítása éles; az aktív runtime r18. HC-23/43 globális részei és
+ HC-41 az ESP legacy kivétel miatt folyamatban. HC-31 fizikai shutdown/OFF/wake
+ próba nem futott, csak későbbi AI-újraaktiválás előtt szükséges. A régi AI-Gitea
+@@ -43,13 +43,14 @@
+ ## Az áttekintés eredménye
+ 
+ **Legújabb lezárt kiadási munka:** REPAIR-061, aktív r18.
+-**Legújabb ellenőrzött kódjavítás:** REPAIR-062, kizárólag HC-15; nem éles.
+-[Módosítás és ellenőrzés](docs/hc-15-repair.md).
++**Legújabb ellenőrzött kódjavítás:** REPAIR-063, kizárólag HC-16; nem éles.
++[Módosítás és ellenőrzés](docs/hc-16-repair.md). A korábbi HC-15 javítás
++(REPAIR-062) megőrzött, szintén nem éles.
+ A HC-23/43 kontrollált platformfrissítése éles és szoftveresen átvett;
+ a globális auditpontok továbbra is folyamatban. [Scope, bizonyítékok és nyitott találatok](docs/hc23-43-platform-release-20261102.md).
+ Az SSD miatt korábban félretett, jelenlegi mentési láncra vonatkozó ellenőrzések
+ lezárva; [tételes bizonyítékok](docs/ai-ssd-backup-closure-20261101.md).
+-HC-16/20/24/26 továbbra is nyitott, HC-23/41/43 folyamatban. Más feladat
++HC-20/24/26 továbbra is nyitott, HC-23/41/43 folyamatban. Más feladat
+ besorolása nem változott; a korábbi naplóbejegyzések történeti állapotot őriznek.
+ 
+ - A dokumentum 48, folytonosan számozott megállapítást tartalmaz: **20 P1, 26 P2, 2 P3**. A tételes besorolás egyezik az N.5 összesítésével. P0 megállapítást nem rögzít.
+@@ -88,7 +89,7 @@
+ | HC-13 | P2 | Háttérszálak életciklusa, hosszú kapcsolatok és teljes határidők | F10 | Ellenőrzött |
+ | HC-14 | P2 | Olvasás közbeni drága összesítésírás és hibás refresh-időzítés | F9 | Ellenőrzött |
+ | HC-15 | P2 | DB-wrapperlánc és az app összekötési felelősségei | F8 | Ellenőrzött |
+-| HC-16 | P2 | Rover-modulfüggőségek és kikapcsolt auth-kompatibilitás | F8 | Nyitott |
++| HC-16 | P2 | Rover-modulfüggőségek és kikapcsolt auth-kompatibilitás | F8 | Ellenőrzött |
+ | HC-17 | P1 | Hitelesítési backup fájl kizárása a Gitea-exportból | F1 | Ellenőrzött |
+ | HC-18 | P2 | Hiányos konfigurációexport és hatástalan megjelenített útlista | F1 | Ellenőrzött |
+ | HC-19 | P1 | Kettős backup-végrehajtó, közös névtér és redundáns timerek | F6 | Ellenőrzött |
+@@ -124,8 +125,9 @@
+ 
+ **Kezdő összesítés:** 48 nyitott; 0 folyamatban; 0 javított; 0 ellenőrzött; 0 halasztott. Éles bevezetés nem történt.
+ 
+-**Aktuális összesítés:** 4 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
+-41 ellenőrzött; 0 halasztott. HC-15 kódja ellenőrzött, de még nem éles (REPAIR-062).
++**Aktuális összesítés:** 3 nyitott; 3 folyamatban (HC-23/41/43); 0 javítva – ellenőrzésre vár;
++42 ellenőrzött; 0 halasztott. HC-15 és HC-16 kódja ellenőrzött, de még nem éles
++(REPAIR-062/063).
+ HC-12/32 és az elkészült HC-23/43 részjavítások
+ élesek; aktív az r18 (REPAIR-061). Az r10 korábbi HC-35/36 + HC-41/44 javításait
+ az aktív kiadás megőrzi (REPAIR-049); az ESP legacy kivétel miatt
+@@ -3440,3 +3442,51 @@
+ [scope](docs/audit-evidence/hc15-20261102/scope-check.json),
+ [éles változatlanság](docs/audit-evidence/hc15-20261102/production-unchanged.json),
+ [patch](docs/audit-evidence/hc15-20261102/source.diff).
++
++
++## REPAIR-063 — HC-16: egyirányú rover-protokoll és használatlan settings kivezetése (2026-11-02)
++
++- **Hatókör / fázis:** kizárólag HC-16, F0/F8. Elolvasva a megállapítás,
++  D.1 bizonyítékai/kivezetési feltételei, F8 teljes kapcsolódó suite-ra,
++  viselkedésmegőrzésre és rollbackre vonatkozó feltételei, G.3–4 és az aktuális
++  egykezelős átadás. Az eredeti audit SHA-256 változatlan. F0 alapja az r18
++  visszaállítással ellenőrzött mentése és a mostani 806 tesztes baseline.
++- **Státusz:** Ellenőrzött, izolált szoftveres környezetben; **nem élesített**.
++  Aktív továbbra is `hc-security-20261102-r18`. A korábbi HC-15 javítás mind
++  a 15 fájlujjlenyomata változatlan; más auditpont státusza nem módosult.
++- **Javítás:** a 14 közös, tiszta rover-definíció a `mower_v3_protocol.py`
++  levélmodulba került. A service/commands/manual/motor-test/parameters
++  ötmodulos kölcsönös függősége megszűnt, a késleltetett importokat is számítva.
++  A korábbi nyilvános importok aliasok, azonos hibatípusokkal/függvényekkel.
++  Az áthelyezett definíciók és az öt üzleti modultörzs AST-je importokat
++  leszámítva azonos; protokollkonstans, payload és időzítés változatlan.
++- **Auth:** két használatlan operator-env settings-mező kivezetve, három
++  érintett guide javítva. Az app fix superuser módja, a same-origin ellenőrzés,
++  a natív Bearer/tokenfájl és a tesztelt opcionális session-adapter megmaradt.
++  A teljes auth-modult D.1 alapján nem töröltük; privát env nem módosult.
++- **Ellenőrzés:** végső 810 unit (249 roverhez kapcsolódó), 197 valódi
++  PostgreSQL-teszt 15 külön eldobható klaszterben és 114 frontendteszt,
++  továbbá offline frontend-build. **1121 végső teszt, 0 failure/error/skip.**
++  A 4 célzott teszt átfedő: 120 importálási sorrend, alias-/exceptionazonosság,
++  importgráf és őrzött tényleges app-wiring; 28 idegen/hiányzó originű POST
++  elutasítva külső I/O előtt, natív teszttoken nem látható repr/API válaszban.
++  Normál v3/MOTOR_TEST/HC_BRINGUP, lease/deadman/UNKNOWN és firmware/store
++  szerződések ellenőrizve. Nincs fizikai roverpróba vagy éles DB/eszközkapcsolat.
++- **Korábbi kísérletek:** a teszt téves parameter-URL-jét javítottuk; az első
++  teljes kör 11 hibáját okozó hiányzó `re` importot visszaállítottuk. A végső
++  backend/PG-körök már a javított forráson sikeresek. A sikertelen logok
++  megőrzöttek és nem részei a sikeres elfogadásnak.
++- **Függőségek / bevezetés:** a következő backendkiadás a megőrzött HC-15 és
++  az új HC-16 forrásállapotát együtt tartalmazza; az új protokollmodult az öt
++  importálóval/settings-szel együtt kell szállítani. HC-20 külön feladat,
++  nem előfeltétel. HC-23/43 globális nyitott részei és HC-41 ESP kivétele
++  nem változtak. Nincs DB-migráció, új parancs vagy új worker-szemantika.
++- **Éles változatlanság / rollback:** 736 runtime-hash és 16 konténer
++  ID/image/futás állapota változatlan. Deploy/restart nem történt. Az eredeti
++  fájlok és patch alapján tiszta kód-revert lehetséges a HC-15 megőrzésével;
++  adat-/DB-visszaállítás nem szükséges.
++
++[Tételes leírás](docs/hc-16-repair.md),
++[összesítés](docs/audit-evidence/hc16-20261102/summary.json),
++[scope](docs/audit-evidence/hc16-20261102/scope-check.json),
++[éles változatlanság](docs/audit-evidence/hc16-20261102/production-unchanged.json).
+--- a/DEPLOYMENT_PREP.md
++++ b/DEPLOYMENT_PREP.md
+@@ -1,4 +1,12 @@
+ # HomeControl – aktuális éles kiadás
++
++**Új, ellenőrzött kódjavítás: HC-16 (REPAIR-063), még nem éles.**
++A rover ötmodulos importköre megszűnt; a tiszta validáció közös levélmodulba
++került, két használatlan operator-settings mező kivezetve. A same-origin és
++natív Bearer megmaradt. 810 unit + 197 PostgreSQL + 114 frontendteszt és build
++sikeres, hiba/kihagyás nélkül. Az r18 változatlan; a következő backendkiadásnak
++az új protokollmodult és a korábbi HC-15 javítást is tartalmaznia kell.
++[Scope, ellenőrzés és függőségek](docs/hc-16-repair.md).
+ 
+ **Új, ellenőrzött kódjavítás: HC-15 (REPAIR-062), még nem éles.**
+ A DB-wrapperlánc egyszerűsítése és az app domainlekérdezéseinek service-be
+--- a/docs/ai/mower-domain.md
++++ b/docs/ai/mower-domain.md
+@@ -94,9 +94,15 @@
+ - The UI expires cached source evidence locally after 1500 ms, even if HTTP
+   hangs or disconnects. Unknown/stale stopped and armed are shown as unknown.
+ - During update_locked, do not request ordinary STM state.
+-- `mower_operator_auth.py` owns revocable one-hour operator sessions, separate
+-  from rover Bearer credentials. Mutation/manual routes require the operator
+-  cookie and same-origin checks before a rover connection/WS upgrade.
++- The current app constructs `MowerOperatorAuth(superuser=True)`: one HC user,
++  no separate mower login or operator cookie requirement. Same-origin checks
++  still precede mutation/manual access and WS upgrade; native Bearer credentials
++  remain backend-only. `mower_operator_auth.py` retains the tested optional
++  revocable one-hour session adapter for explicitly constructed callers.
++- `mower_v3_protocol.py` owns pure wire validators and shared error types.
++  Service/command/manual/parameter/motor-test imports point toward this leaf;
++  old public validator paths remain aliases. No timing, ownership or I/O lives
++  in the protocol module.
+ - `mower_v3_commands.py` owns exact v3 payloads and single-send commands:
+   arm/disarm/pause/reset_fault/heading_set/start/resume and independent STOP.
+   HTTP admission is not execution; only correlated STM ACK permits APPLIED.
+@@ -113,9 +119,11 @@
+   Native lease is 350 ms; manual blade target is deliberately zero.
+ - Browser manual control loses authority on stale evidence, boot/epoch changes,
+   auth loss, visibility loss or stalled send; blur/pointer release zero targets.
+-- `MOWER_OPERATOR_PASSWORD_HASH` and `MOWER_OPERATOR_SESSION_SECRET` configure
+-  the operator gate; both excluded from settings repr. Missing settings disable
+-  control. Current auth/owner/ledger require exactly one backend worker.
++- `MOWER_OPERATOR_PASSWORD_HASH` and `MOWER_OPERATOR_SESSION_SECRET` are obsolete
++  and no longer read by settings. Current owner/ledger require exactly one
++  backend worker. See [single-user handoff](../rover-single-user-control-20261013.md)
++  and [HC-16 repair](../hc-16-repair.md) for current wiring; older login examples
++  in historical handoffs do not override it.
+ - Advertised rover capabilities are distinct from implemented HC controls.
+   Native STM upload/ABORT/FINISH exist with strict per-action gates; live
+   parameter apply, ESP OTA and RVM3 mission upload are not implemented yet.
+@@ -132,8 +140,9 @@
+   immutable history and exact saved-revision downloads. Read responses are
+   no-store; no legacy context invalidation or rover/network side effects.
+ - Parameter editing does not require a connected/configured rover. HC draft
+-  save requires the independent HC operator configuration. Incomplete valid-
+-  shape drafts can be saved/exported JSON; binary export requires full validity.
++  save uses the current single HC user and same-origin guard, without separate
++  operator configuration. Incomplete valid-shape drafts can be saved/exported
++  JSON; binary export requires full validity.
+ - HC rover_key, package robot_id, draft_revision, draft_sha256 and rcp1_crc32 are
+   not evidence of STM identity, native revision, firmware profile CRC or physical
+   qualification. source is HC_DRAFT; active_configuration is null; live apply
+--- /dev/null
++++ b/docs/hc-16-repair.md
+@@ -0,0 +1,124 @@
++# HC-16 — Egyirányú rover-protokollfüggőségek
++
++2026-11-02, Europe/Budapest. **Ellenőrzött forrásjavítás, nincs élesítve.**
++Az aktív kiadás változatlanul `hc-security-20261102-r18`. A korábbi, még nem
++élesített HC-15 javítás minden fájlujjlenyomata megmaradt.
++
++## Bizonyíték és hatókör
++
++Elolvasva az eredeti audit HC-16 megállapítása és hivatkozási bizonyítékai,
++D.1 kivezetési feltétele, F0/F8 előfeltételei, elfogadása és rollbackje,
++valamint G.3–4 megőrzendő rover-/store-szabályai. Az aktuális működéshez a
++[2026-10-13-i egykezelős átadás](rover-single-user-control-20261013.md) az irányadó.
++Az eredeti audit változatlan SHA-256 lenyomata:
++`51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2`.
++
++Az előállapot teljes backend-importgráfja valóban egy ötmodulos kölcsönös
++függőségi csoportot mutatott. Ez szerkezeti csatolás, nem igazolt indulási hiba.
++A settings két operator-jelszó/session mezőjét az app nem használta: az app
++és a frontend már rögzített egykezelős módot követett. F0 alapja a korábban
++visszaállítással ellenőrzött r18 HC/Git/router mentés és izolált PG-restore
++(`86b8ed71e4104b3a8eb909ae86e8ea91`), továbbá a most újrafuttatott, sikeres
++806 tesztes kiinduló unit-kör.
++
++Csak HC-16 módosult. A közös F8 fázisban szereplő HC-20 legacy öntözéskód,
++valamint a többi auditpont implementációja és státusza változatlan maradt.
++
++## Módosítás
++
++- Az új `mower_v3_protocol.py` tartalmazza a 14 közös, tiszta definíciót:
++  hibatípusok, JSON-/típus-/azonosító-, identity/state és MOTOR_TEST validáció.
++  Egyetlen helyi függősége a változatlan, tiszta `rover_parameters` codec;
++  nincs benne hálózat, tárolás, tulajdonlás, időzítés vagy parancsvégrehajtás.
++- A service, commands, manual, motor-test és parameters modulok közvetlenül
++  ezt használják. Az ötmodulos importkör megszűnt, a függvényen belüli importok
++  figyelembevételével is. Az egyirányú transport→manual/commands késleltetett
++  importok megmaradtak.
++- A régi nyilvános validátor-importútvonalak közvetlen aliasok. A függvények
++  és kivételosztályok objektumazonossága megmarad a hívók között; nincs wrapper
++  vagy második validációs megvalósítás. A protokollkonstansok változatlanok.
++- A `BackendSettings` két használatlan operator-mezője kikerült. A jelenlegi
++  app továbbra is `MowerOperatorAuth(superuser=True)` módot használ. A teljes
++  auth-modult és az explicit példányosítással használt, tesztelt opcionális
++  session-adaptert a D.1 feltételének megfelelően megőriztük. A két korábbi env
++  változó nem aktivál külön login-kaput. Privát env-fájlt nem módosítottunk.
++- A három érintett rover-guide a tényleges egykezelős wiringot írja le; nem
++  kér külön operator-env provisioninget vagy új bejelentkezést. Az origin-
++  ellenőrzés, a natív Bearer és a privát tokenfájl betöltése változatlan.
++
++Nincs új eszközparancs, payload-, időzítési vagy ütemezési szemantikaváltás,
++DB-migráció vagy firmware-változtatás. A lease/deadman, boot/epoch, sequence,
++forráséletkor, single-send/UNKNOWN és tartós firmware/store szabályai megmaradtak.
++
++## Ellenőrzés
++
++| Végső ellenőrzés | Eredmény |
++|---|---|
++| Teljes backend unit suite | 810 sikeres, ebből 249 roverhez kapcsolódó |
++| Valódi PostgreSQL, 15 külön eldobható klaszter/modul | 197 sikeres |
++| Frontend szerződéstesztek | 114 sikeres |
++| Frontend production build | sikeres, offline cache-ből |
++| Importálási sorrendek | mind a 120 permutáció sikeres |
++| Aktuális app-origin próbák | 28 idegen/hiányzó originű POST elutasítva, I/O előtt |
++| Protokoll- és service-törzsek AST-egyezése | 14 áthelyezett definíció és 5 modultörzs egyezik, importokat leszámítva |
++| HC-15 megőrzése | mind a 15 rögzített fájlujjlenyomat változatlan |
++| Éles változatlanság | 736 runtime-hash és 16 konténer ID/image/futás állapota egyezik |
++
++**1121 végső teszt, 0 failure/error/skip.** Az import/origin/AST ellenőrzések
++és a külön 4 célzott teszt a fenti unit-körrel átfednek, nem hozzáadott darabszámok.
++A suite lefedi a normál v3, MOTOR_TEST és HC_BRINGUP olvasást, parancs-/ACK-
++szerződést, STOP-elsőbbséget, UNKNOWN utáni GET-only egyeztetést, valódi izolált
++WebSocket lease/deadman működést, origin-elutasítást, tokenredakciót, parameter-
++és firmware/store tranzakciókat. Az őrzött friss interpreteres app-próba tiltja
++az eszköz-/DB-kapcsolatot, szál-/folyamatindítást és fájlírást. A natív teszttoken
++nem jelenik meg a settings repr-ben vagy az operator API válaszában.
++
++Tényleges végső parancsok:
++
++```bash
++python3 -B docs/audit-evidence/hc16-20261102/check_scope.py
++python3 -B scripts/check_hc_tests.py --profile unit --output docs/audit-evidence/hc16-20261102/unit-final
++python3 -B scripts/check_hc_tests.py --profile postgres --output docs/audit-evidence/hc16-20261102/postgres-final
++python3 -B scripts/check_hc_tests.py --profile frontend --output docs/audit-evidence/hc16-20261102/frontend --npm-cache /tmp/hc23-43-20261102/npm-cache
++```
++
++A konténerek hálózat nélkül futottak; a PG-kliensek csak a saját eldobható
++klaszterük hálózati névterét osztották. Éles hostport, DB vagy rover nem szerepelt
++a próbákban. A standard tesztprofil korábbi backup-fixture-jeihez az eddigi
++harness csak az eldobható másolat deployment policy-ját teszi opcionálissá;
++az éles kötelező policy megmaradt. Fizikai roverpróba nem történt.
++
++Az első célzott próbában a teszt téves parameter-URL-je 404-et adott; a tesztet
++a tényleges `/parameters/drafts/<key>` API-ra javítottuk. Az első teljes
++unit-kör 11 hibát jelzett a commands modul túl korán törölt `re` importja miatt;
++az import visszaállítása után a végső 810 teszt sikeres. Mindkét korábbi log
++megmaradt; egyik sem elfogadási bizonyíték. A PG-kört is újrafuttattuk a végső
++backendforrással. A frontend forrása a két backend-futás között változatlan volt.
++
++[Összesítés](audit-evidence/hc16-20261102/summary.json),
++[unit](audit-evidence/hc16-20261102/unit-final/test-summary.json),
++[PostgreSQL](audit-evidence/hc16-20261102/postgres-final/test-summary.json),
++[frontend](audit-evidence/hc16-20261102/frontend/test-summary.json),
++[scope és importgráf](audit-evidence/hc16-20261102/scope-check.json),
++[patch](audit-evidence/hc16-20261102/source.diff),
++[éles változatlanság](audit-evidence/hc16-20261102/production-unchanged.json).
++
++## Függőségek, bevezetés és rollback
++
++A korábbi HC-15 munkapéldány-javítás megőrzött függőség a következő kiadás
++összeállításakor: a backendforrásban már jelen van, ezért a kiadási scope-nak
++mindkét javítást fel kell tüntetnie. Az új protokollmodult az öt importáló
++modullal és a settings-szel együtt kell szállítani. Az app, a frontend auth-hook,
++a natív tokenbetöltés, a firmware/store modulok és a 052–055 migrációk nem
++változtak. Az egyworkeres tulajdonlási korlát megmarad.
++
++HC-20 nem előfeltétele a javításnak, külön munka marad. A HC-23/43 globális
++kiadási/függőségi nyitott részeit és a HC-41 ESP MQTT kivételét ez a javítás
++nem rendezi. AI-újraaktiválás és fizikai AI-próba nem szükséges hozzá.
++
++**Élesítés nem történt.** Új, ellenőrzött backendkiadás szükséges; a lezárt
++r18 csomag-, runtime- és image-állományokat nem módosítottuk. Nincs éles
++újraindítás vagy eszközparancs. Forrásoldali rollbackhez az `original/` fájlokat
++és a `source.diff` változtatásait együtt kell visszavonni, az új protokollmodult
++és teszteket is eltávolítva. A korábbi HC-15 munkát meg kell tartani.
++DB-down-migráció vagy történeti adat törlése nem szükséges.
+--- a/docs/mower-v3-bringup.md
++++ b/docs/mower-v3-bringup.md
+@@ -22,10 +22,13 @@
+    `stm_remote_update=false` vagy 501-es telepítést.
+ 2. A backend privát konfigurációjába kerüljön a pontos `MOWER_V3_REMOTE_URL`
+    origin és a provisionált `ROVER_API_TOKEN`. Nincs legacy URL/token fallback.
+-3. A külön HC kezelői kapuhoz `MOWER_OPERATOR_PASSWORD_HASH` és
+-   `MOWER_OPERATOR_SESSION_SECRET` kell. Titkot ne másolj chatbe, böngészőtárba
+-   vagy parancssori argumentumba. Részletek: `mower-v3-foundation.md`.
+-4. Konfigurációváltás után backend-újraindítás és új kezelői bejelentkezés kell.
++3. A jelenlegi app egyetlen HC-superusert használ, külön rover-kezelői login
++   nélkül. A `MOWER_OPERATOR_PASSWORD_HASH` és `MOWER_OPERATOR_SESSION_SECRET`
++   már nem settings-mező; az origin-ellenőrzés és a privát natív Bearer megmarad.
++   [Aktuális szerződés](rover-single-user-control-20261013.md),
++   [HC-16 módosítás és tesztek](hc-16-repair.md).
++4. Konfigurációváltás után backend-újraindítás kell. A korábbi kézi tulajdonlás
++   nem folytatódik: új, explicit natív claim szükséges, automatikus replay nélkül.
+    Maradjon egy backend worker; távoli hozzáféréshez védett hálózat/TLS szükséges.
+ 
+ A repó gyökeréből futtatható, jelszó nélküli, csak olvasó ellenőrzés:
+@@ -50,7 +53,7 @@
+ 1. A valódi RFU2 `.bin` és hozzá tartozó valódi `.elf` kapjon független szerveroldali
+    kiadásjóváhagyást (`mower-firmware-preflight.md`). Kiválasztás/hash önmagában
+    nem kiadói jóváhagyás; nincs előre jóváhagyott teszt-FW.
+-2. Explicit előellenőrzés, kezelői login és mentés a HC-ba. HC_STAGED nem natív frissítés.
++2. Explicit előellenőrzés és mentés a HC-ba az aktuális HC-kezelővel. HC_STAGED nem natív frissítés.
+ 3. Válaszd a mentett feladatot: **Session létrehozása — runtime törléssel**.
+    Ez eldobja a rover futó küldetését/checkpointját/headingjét/kézi lease-ét.
+ 4. Várd meg a kötött, friss loader READY-t: **RFU2-kép feltöltése — egyszer**.
+--- a/docs/mower-v3-foundation.md
++++ b/docs/mower-v3-foundation.md
+@@ -21,9 +21,10 @@
+   firmware/profile/boot identity and advertised capabilities.
+ - Monotonic freshness tracking: repeated/older source sequences cannot renew
+   freshness, and browser-local ageing expires evidence during HTTP silence.
+-- Separate mower operator authentication: one-hour signed HttpOnly/SameSite
+-  cookie, origin checks before mutation/WS upgrade, bounded login attempts and
+-  revocable sessions. Viewing the tab does not log in or claim control.
++- Current single HC superuser, with origin checks before mutation/WS upgrade.
++  The original optional operator-session adapter remains available for explicit
++  callers (one-hour signed cookie, rate limit and revocation); it is not wired
++  into the current app as a separate login. Viewing the tab does not claim control.
+ - Explicit `arm`, `disarm`, `pause`, `reset_fault`, `heading_set`, `start`,
+   `resume` and dedicated STOP. Start/resume reference the mission already
+   reported by the STM; this slice does not upload/compile missions.
+@@ -68,26 +69,31 @@
+ invalid configuration leaves the page UNCONFIGURED and performs no rover GET.
+ The legacy MOWER_REMOTE_URL setting is independent.
+ 
+-To enable browser controls, separately provide `MOWER_OPERATOR_PASSWORD_HASH`
+-(Werkzeug-generated scrypt or PBKDF2-SHA256 hash) and
+-`MOWER_OPERATOR_SESSION_SECRET` (32 random bytes encoded as 64 hex characters).
+-Do not reuse the rover token as a browser password/session secret. Provision
+-secrets privately, keep `$` characters in password hashes literal when loading
+-Compose configuration, and do not paste passwords/hash/secret values into chat
+-or logs. Use HTTPS when authenticating outside a trusted local network.
+-Missing authentication settings leave all mutation/WS access disabled.
++The current app uses the single HC superuser (`MowerOperatorAuth(superuser=True)`);
++there is no separate mower operator login or operator environment provisioning.
++`MOWER_OPERATOR_PASSWORD_HASH` and `MOWER_OPERATOR_SESSION_SECRET` are obsolete
++and no longer read by BackendSettings. Existing private environment entries need
++not be changed for this code repair. The native rover Bearer token remains
++backend-only and does not authenticate a browser. Same-origin validation still
++runs before mutation/manual access. See the authoritative
++[single-user handoff](rover-single-user-control-20261013.md) and
++[HC-16 repair](hc-16-repair.md); earlier operator-login examples in historical
++handoffs describe the optional compatibility adapter, not current app wiring.
++The revocable session adapter remains tested for explicitly constructed callers;
++it is not activated by environment variables in the current app.
+ The frontend/proxy preserve the original Host including its port, so same-origin
+ checks also work when HC is opened through the directly published frontend port.
+ 
+ This first control slice uses the existing **one-worker** Gunicorn deployment:
+-operator sessions, the manual owner and command history are process-local.
+-Restart requires operator login again. Do not scale backend workers/replicas
+-without shared session/owner/command persistence. The bounded ledger retains
++the manual owner and command history are process-local.
++Restart loses ownership; a new explicit native claim is required, with no replay
++of old commands. Do not scale backend workers/replicas without shared owner/command
++persistence. Optional compatibility sessions are also process-local. The bounded ledger retains
+ 128 results and 512 retired request fingerprints; it is not a durable audit or
+ an unlimited idempotency store. Retired IDs return UNKNOWN/GET reconciliation,
+ not another POST. Browser code never resubmits a saved mutation across restarts.
+-Legacy APIs remain separate and unchanged; the new operator gate is not a
+-global authentication retrofit for all HomeControl or legacy rover endpoints.
++Legacy APIs remain separate and unchanged. This single-user mower model does
++not introduce global authentication for HomeControl or legacy rover endpoints.
+ 
+ The package's host fixtures are synthetic; actual rover deployment and hardware
+ acceptance still require the separate rover workflow. No physical rover access
+--- a/infra/backend/mower_manual_service.py
++++ b/infra/backend/mower_manual_service.py
+@@ -5,8 +5,9 @@
+ import time
+ from collections import deque
+ 
+-from mower_v3_commands import request_id
+-from mower_v3_service import MANUAL_PROTOCOL, STATES, RoverReadError, integer, require, unique_object, reject_constant
++from mower_v3_protocol import (
++    MANUAL_PROTOCOL, STATES, RoverReadError, integer, require, unique_object, reject_constant, request_id,
++)
+ 
+ 
+ def decode_frame(raw):
+--- a/infra/backend/mower_motor_test.py
++++ b/infra/backend/mower_motor_test.py
+@@ -6,103 +6,10 @@
+ 
+ import rover_parameters as codec
+ from mower_parameters_service import DraftError, validate_draft
+-from mower_v3_commands import request_id
+-from mower_v3_service import RoverReadError, hex_id, integer, require
+-
+-
+-def motor_identity(identity):
+-    return (identity.get("mode") == "MOTOR_TEST" and identity.get("contract") == "3.1.0"
+-            and identity.get("compatible") is True and identity.get("manual_protocol") == "homecontrol.mower.manual.v3")
+-
+-
+-def validate_parameters_status(payload):
+-    require(type(payload) is dict and type(payload.get("v")) is int and payload["v"] == 3)
+-    for key in ("available", "source_valid", "can_apply", "busy", "applied", "commissioned", "motion_permitted"):
+-        require(type(payload.get(key)) is bool)
+-    require(payload["commissioned"] is False and payload["motion_permitted"] is False)
+-    require(payload.get("storage") in ("EMPTY", "ACTIVE", "PENDING", "FAULT"))
+-    require(type(payload.get("parameters_version")) is int and payload["parameters_version"] in (1, 2))
+-    for key in ("control_epoch", "revision"):
+-        require(integer(payload.get(key)))
+-    require(payload.get("source_age_ms") is None or integer(payload["source_age_ms"]))
+-    for key in ("esp_boot", "stm_boot"):
+-        require(type(payload.get(key)) is str and (payload[key] == "" or hex_id(payload[key], 16)))
+-    require(payload.get("request_id") is None or request_id(payload["request_id"]))
+-    require(payload.get("parameters_crc") is None or hex_id(payload["parameters_crc"], 8))
+-    require(type(payload.get("code")) is str and len(payload["code"]) <= 64)
+-    parameters = payload.get("parameters")
+-    if parameters is not None:
+-        try:
+-            codec.validate(parameters)
+-            require(parameters["parameters_version"] == payload["parameters_version"]
+-                    and f"{codec.checksum(parameters):08X}" == payload["parameters_crc"])
+-        except (ValueError, TypeError):
+-            require(False)
+-    if payload.get("necessary_parameters") is not None:
+-        try:
+-            codec.validate(payload["necessary_parameters"])
+-            require(parameters is not None and codec.necessary(parameters) == payload["necessary_parameters"])
+-        except (ValueError, TypeError):
+-            require(False)
+-    if "stored_parameters_valid" in payload or "stored_parameters" in payload:
+-        require(type(payload.get("stored_parameters_valid")) is bool)
+-        stored = payload.get("stored_parameters")
+-        require((stored is not None) == payload["stored_parameters_valid"])
+-        if stored is not None:
+-            try:
+-                codec.validate(stored)
+-                require(stored["parameters_version"] == payload["parameters_version"]
+-                        and f"{codec.checksum(stored):08X}" == payload["parameters_crc"])
+-            except (ValueError, TypeError):
+-                require(False)
+-    keys = ("v", "parameters_version", "esp_boot", "stm_boot", "control_epoch", "revision", "request_id",
+-            "parameters_crc", "storage", "busy", "available", "source_valid", "source_age_ms", "can_apply",
+-            "applied", "code", "parameters", "commissioned", "motion_permitted", "necessary_parameters", "stored_parameters_valid", "stored_parameters")
+-    return {key: payload.get(key) for key in keys}
+-
+-
+-def validate_motor_state(payload, identity):
+-    # Native MOTOR_TEST uses hex masks and independently timestamped SAFE evidence.
+-    # Keep the ordinary deployed schema unchanged.
+-    from mower_v3_service import validate_state
+-    require(type(payload) is dict)
+-    normalized = dict(payload, source_valid=False)
+-    for key in ("fault_mask", "safety_installed_mask", "safety_active_mask"):
+-        value = payload.get(key)
+-        require(value is None or hex_id(value, 8))
+-        normalized[key] = int(value, 16) if value is not None else None
+-    require(type(payload.get("source_valid")) is bool)
+-    require(type(payload.get("safety_source_valid")) is bool and integer(payload.get("safety_source_seq")))
+-    require(payload.get("safety_source_age_ms") is None or integer(payload["safety_source_age_ms"]))
+-    result = validate_state(normalized, identity)
+-    if payload["source_valid"]:
+-        require(integer(payload["source_seq"], 1) and integer(payload["source_age_ms"])
+-                and integer(payload["state_seq"], 1) and integer(payload["control_epoch"], 1)
+-                and integer(payload["event_seq"]) and result["fault_mask"] is not None
+-                and payload["state"] in {"DISARMED", "IDLE", "MANUAL", "FAULT"}
+-                and payload["armed"] == (payload["state"] in {"IDLE", "MANUAL"})
+-                and payload["phase"] == "NONE" and payload["store"] == "EMPTY"
+-                and payload["mission_id"] is None and payload["revision"] is None and payload["crc32"] is None
+-                and payload["segment_index"] == payload["segment_count"] == 0
+-                and payload["ready_for_start"] is False and payload["ready_for_resume"] is False)
+-        if payload["state"] == "MANUAL":
+-            require(integer(payload["manual_lease_id"], 1) and integer(payload["manual_input_seq"]))
+-        else:
+-            require(payload["manual_lease_id"] is None and payload["manual_input_seq"] is None)
+-    safe = payload["safety_source_valid"] and payload["safety_source_age_ms"] is not None and payload["safety_source_age_ms"] <= 1500
+-    if safe:
+-        require(integer(payload["safety_source_seq"], 1) and all(result[key] is not None for key in ("safety_installed_mask", "safety_active_mask")))
+-    else:
+-        result["safety_installed_mask"] = result["safety_active_mask"] = None
+-    return result | {"source_valid": payload["source_valid"], "safety_source_valid": bool(safe),
+-                     "safety_source_seq": payload["safety_source_seq"], "safety_source_age_ms": payload["safety_source_age_ms"]}
+-
+-
+-def parameters_fresh(parameters, identity, state):
+-    return (parameters["available"] and parameters["source_valid"] and parameters["source_age_ms"] is not None
+-            and parameters["source_age_ms"] <= 1500
+-            and (parameters["esp_boot"], parameters["stm_boot"], parameters["control_epoch"]) ==
+-                (identity["esp_boot"], identity["stm_boot"], state["control_epoch"]))
++from mower_v3_protocol import (
++    request_id, RoverReadError, hex_id, integer, require, motor_identity,
++    validate_parameters_status, validate_motor_state, parameters_fresh,
++)
+ 
+ 
+ class MotorTestService:
+--- a/infra/backend/mower_parameters_service.py
++++ b/infra/backend/mower_parameters_service.py
+@@ -4,8 +4,7 @@
+ import re
+ 
+ import rover_parameters as rcp1
+-from mower_v3_commands import request_id
+-from mower_v3_service import integer
++from mower_v3_protocol import request_id, integer
+ 
+ LIMIT = 16384
+ MAX_REVISION = 0xFFFFFFFF
+--- a/infra/backend/mower_v3_commands.py
++++ b/infra/backend/mower_v3_commands.py
+@@ -5,14 +5,12 @@
+ import time
+ import uuid
+ 
+-from mower_v3_service import STATES, RoverReadError, UnknownMutation, hex_id, integer, require
++from mower_v3_protocol import (
++    STATES, RoverReadError, UnknownMutation, hex_id, integer, require, request_id, motor_identity,
++)
+ 
+ COMMANDS = {"arm", "disarm", "pause", "reset_fault", "heading_set", "start", "resume"}
+ ACK_FIELDS = {"v", "request_id", "command", "result", "code", "detail", "stm_boot", "control_epoch", "state_seq", "state"}
+-
+-
+-def request_id(value):
+-    return type(value) is str and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", value) is not None
+ 
+ 
+ def validate_command(body, stop=False):
+@@ -121,7 +119,6 @@
+                 if identity.get("mode") == "HC_BRINGUP":
+                     return self._save(record, outcome(id_, command, "REJECTED", "READ_ONLY")), 409
+                 if identity.get("mode") == "MOTOR_TEST":
+-                    from mower_motor_test import motor_identity
+                     if not motor_identity(identity) or command not in {"arm", "disarm", "reset_fault"}:
+                         return self._save(record, outcome(id_, command, "REJECTED", "TEST_MODE_ONLY")), 409
+                     if command == "arm" and not getattr(self.rover,"simple_control",False) and not snapshot["capabilities"].get("manual_erpm"):
+--- /dev/null
++++ b/infra/backend/mower_v3_protocol.py
+@@ -0,0 +1,230 @@
++"""Pure rover wire contracts shared by transports and control services.
++
++No I/O, ownership, retries or device actions belong in this module.
++The former public import paths remain aliases for compatibility.
++"""
++
++
++import re
++
++import rover_parameters as codec
++
++
++CONTRACT = "3.1.0"
++MANUAL_PROTOCOL = "homecontrol.mower.manual.v3"
++STATES = {"DISARMED", "IDLE", "MANUAL", "AUTO", "PAUSED", "FAULT", "MAINTENANCE"}
++
++
++class RoverReadError(Exception):
++    def __init__(self, code, message):
++        super().__init__(message)
++        self.code = code
++
++
++class UnknownMutation(RoverReadError):
++    def __init__(self):
++        super().__init__("REPLY_LOST", "A művelet eredménye ismeretlen; csak olvasási egyeztetés végezhető.")
++
++
++def unique_object(pairs):
++    result = {}
++    for key, value in pairs:
++        if key in result:
++            raise ValueError("Duplicate JSON key")
++        result[key] = value
++    return result
++
++
++def reject_constant(value):
++    raise ValueError("Non-finite JSON number")
++
++
++def integer(value, minimum=0, maximum=0xFFFFFFFF):
++    return type(value) is int and minimum <= value <= maximum
++
++
++def hex_id(value, length, *, nonzero=False):
++    return (type(value) is str and re.fullmatch(r"[0-9A-F]{%d}" % length, value)
++            is not None and (not nonzero or value != "0" * length))
++
++
++def require(condition):
++    if not condition:
++        raise RoverReadError("INVALID_RESPONSE", "Hibás vagy hiányos v3.1 roverválasz.")
++
++
++def validate_identity(payload):
++    require(type(payload) is dict and type(payload.get("v")) is int and payload["v"] == 3)
++    if payload.get("contract") != CONTRACT:
++        raise RoverReadError("INCOMPATIBLE_VERSION", "A rover nem a támogatott 3.1.0 szerződést jelzi.")
++    require(hex_id(payload.get("esp_boot"), 16, nonzero=True))
++    require("stm_boot" in payload and (payload["stm_boot"] is None or hex_id(payload["stm_boot"], 16, nonzero=True)))
++    require(hex_id(payload.get("profile_crc"), 8))
++    for key in ("compatible", "conformant", "stm_remote_update", "stm_reset_recovery", "update_locked"):
++        require(type(payload.get(key)) is bool)
++    for key in ("esp_fw", "stm_flash_layout", "manual_protocol"):
++        require(type(payload.get(key)) is str and 0 < len(payload[key]) <= 48)
++    for key in ("stm_fw", "stm_bootloader_fw"):
++        require(key in payload and (payload[key] is None or type(payload[key]) is str and 0 < len(payload[key]) <= 48))
++    for key in ("update_service_abi", "stm_image_max_bytes", "esp_ota_max_bytes"):
++        require(integer(payload.get(key)))
++    require(type(payload.get("max_mission_bytes")) is int and payload["max_mission_bytes"] == 131072)
++    require(type(payload.get("max_segments")) is int and payload["max_segments"] == 4096)
++    for key, allowed in (("stm_confirmed_slot", {"A", "B", "NONE", None}), ("stm_inactive_slot", {"A", "B", None})):
++        require(key in payload and (payload[key] is None or type(payload[key]) is str) and payload[key] in allowed)
++    if "runtime_parameters" in payload:
++        require(type(payload["runtime_parameters"]) is bool)
++    for key in ("manual_claim_from_disarmed", "minimal_erpm_parameters", "first_configuration_requires_motor_feedback", "test_manual_control", "manual_erpm", "commissioned", "profile_verified", "motion_permitted", "esp_ota_enabled", "autonomous_enabled"):
++        if key in payload:
++            require(type(payload[key]) is bool)
++    if "mode" in payload:
++        require(type(payload["mode"]) is str)
++    if "parameter_versions_supported" in payload:
++        require(type(payload["parameter_versions_supported"]) is list and all(type(v) is int and v in (1, 2) for v in payload["parameter_versions_supported"]))
++    # Whitelist: a remote response can never add credentials to browser diagnostics.
++    keys = ("v", "contract", "esp_boot", "stm_boot", "profile_crc", "compatible", "conformant",
++            "esp_fw", "stm_fw", "stm_bootloader_fw", "stm_remote_update", "stm_reset_recovery",
++            "update_locked", "stm_flash_layout", "update_service_abi", "stm_image_max_bytes",
++            "esp_ota_max_bytes", "max_mission_bytes", "max_segments", "manual_protocol",
++            "stm_confirmed_slot", "stm_inactive_slot", "runtime_parameters", "mode", "manual_claim_from_disarmed", "minimal_erpm_parameters", "first_configuration_requires_motor_feedback", "test_manual_control", "manual_erpm", "parameter_versions_supported", "commissioned", "profile_verified", "motion_permitted", "esp_ota_enabled", "autonomous_enabled")
++    return {key: payload[key] for key in keys if key in payload}
++
++
++def validate_state(payload, identity):
++    require(type(payload) is dict and type(payload.get("v")) is int and payload["v"] == 3)
++    require(payload.get("esp_boot") == identity["esp_boot"])
++    require("stm_boot" in payload and payload["stm_boot"] == identity["stm_boot"])
++    require(type(payload.get("source_valid")) is bool)
++    require(integer(payload.get("published_ms")) and integer(payload.get("source_seq")))
++    require("source_age_ms" in payload and (payload["source_age_ms"] is None or integer(payload["source_age_ms"])))
++    enums = {
++        "state": STATES, "phase": {"NONE", "ALIGN", "TRACK"},
++        "store": {"EMPTY", "RECEIVING", "VALIDATING", "READY"},
++        "outcome": {"NONE", "RUNNING", "PAUSED", "COMPLETED", "STOPPED", "FAULTED"},
++    }
++    for key, allowed in enums.items():
++        require(key in payload and (payload[key] is None or type(payload[key]) is str and payload[key] in allowed))
++    for key in ("state_seq", "control_epoch", "event_seq", "revision", "segment_index",
++                "segment_count", "manual_lease_id", "manual_input_seq"):
++        require(key in payload and (payload[key] is None or integer(payload[key])))
++    for key in ("armed", "stopped", "ready_for_start", "ready_for_resume"):
++        require(key in payload and (payload[key] is None or type(payload[key]) is bool))
++    require("mission_id" in payload and (payload["mission_id"] is None or type(payload["mission_id"]) is str and
++            re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", payload["mission_id"]) is not None))
++    require("crc32" in payload and (payload["crc32"] is None or hex_id(payload["crc32"], 8)))
++    require("reason" in payload and (payload["reason"] is None or type(payload["reason"]) is str and re.fullmatch(r"[A-Z_]{1,32}", payload["reason"]) is not None))
++    for key in ("fault_mask", "safety_installed_mask", "safety_active_mask"):
++        require(key in payload and (payload[key] is None or integer(payload[key])))
++    if payload["source_valid"]:
++        require(identity["stm_boot"] is not None and payload["source_seq"] > 0
++                and payload["source_age_ms"] is not None)
++        for key in (*enums, "armed", "stopped", "ready_for_start", "ready_for_resume", "fault_mask",
++                    "safety_installed_mask", "safety_active_mask", "event_seq", "segment_index", "segment_count", "reason"):
++            require(payload[key] is not None)
++        require(integer(payload["state_seq"], 1) and integer(payload["control_epoch"], 1))
++        require(payload["segment_index"] <= payload["segment_count"] <= 4096)
++        require(payload["armed"] == (payload["state"] in ("IDLE", "MANUAL", "AUTO", "PAUSED")))
++    keys = ("v", "esp_boot", "stm_boot", "published_ms", "source_seq", "source_age_ms", "source_valid",
++            "state_seq", "control_epoch", "event_seq", "state", "phase", "armed", "store", "mission_id",
++            "revision", "crc32", "segment_index", "segment_count", "outcome", "reason", "fault_mask",
++            "stopped", "ready_for_start", "ready_for_resume", "manual_lease_id", "manual_input_seq",
++            "safety_installed_mask", "safety_active_mask")
++    return {key: payload[key] for key in keys}
++
++
++def request_id(value):
++    return type(value) is str and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", value) is not None
++
++
++def motor_identity(identity):
++    return (identity.get("mode") == "MOTOR_TEST" and identity.get("contract") == "3.1.0"
++            and identity.get("compatible") is True and identity.get("manual_protocol") == "homecontrol.mower.manual.v3")
++
++
++def validate_parameters_status(payload):
++    require(type(payload) is dict and type(payload.get("v")) is int and payload["v"] == 3)
++    for key in ("available", "source_valid", "can_apply", "busy", "applied", "commissioned", "motion_permitted"):
++        require(type(payload.get(key)) is bool)
++    require(payload["commissioned"] is False and payload["motion_permitted"] is False)
++    require(payload.get("storage") in ("EMPTY", "ACTIVE", "PENDING", "FAULT"))
++    require(type(payload.get("parameters_version")) is int and payload["parameters_version"] in (1, 2))
++    for key in ("control_epoch", "revision"):
++        require(integer(payload.get(key)))
++    require(payload.get("source_age_ms") is None or integer(payload["source_age_ms"]))
++    for key in ("esp_boot", "stm_boot"):
++        require(type(payload.get(key)) is str and (payload[key] == "" or hex_id(payload[key], 16)))
++    require(payload.get("request_id") is None or request_id(payload["request_id"]))
++    require(payload.get("parameters_crc") is None or hex_id(payload["parameters_crc"], 8))
++    require(type(payload.get("code")) is str and len(payload["code"]) <= 64)
++    parameters = payload.get("parameters")
++    if parameters is not None:
++        try:
++            codec.validate(parameters)
++            require(parameters["parameters_version"] == payload["parameters_version"]
++                    and f"{codec.checksum(parameters):08X}" == payload["parameters_crc"])
++        except (ValueError, TypeError):
++            require(False)
++    if payload.get("necessary_parameters") is not None:
++        try:
++            codec.validate(payload["necessary_parameters"])
++            require(parameters is not None and codec.necessary(parameters) == payload["necessary_parameters"])
++        except (ValueError, TypeError):
++            require(False)
++    if "stored_parameters_valid" in payload or "stored_parameters" in payload:
++        require(type(payload.get("stored_parameters_valid")) is bool)
++        stored = payload.get("stored_parameters")
++        require((stored is not None) == payload["stored_parameters_valid"])
++        if stored is not None:
++            try:
++                codec.validate(stored)
++                require(stored["parameters_version"] == payload["parameters_version"]
++                        and f"{codec.checksum(stored):08X}" == payload["parameters_crc"])
++            except (ValueError, TypeError):
++                require(False)
++    keys = ("v", "parameters_version", "esp_boot", "stm_boot", "control_epoch", "revision", "request_id",
++            "parameters_crc", "storage", "busy", "available", "source_valid", "source_age_ms", "can_apply",
++            "applied", "code", "parameters", "commissioned", "motion_permitted", "necessary_parameters", "stored_parameters_valid", "stored_parameters")
++    return {key: payload.get(key) for key in keys}
++
++
++def validate_motor_state(payload, identity):
++    # Native MOTOR_TEST uses hex masks and independently timestamped SAFE evidence.
++    # Keep the ordinary deployed schema unchanged.
++    require(type(payload) is dict)
++    normalized = dict(payload, source_valid=False)
++    for key in ("fault_mask", "safety_installed_mask", "safety_active_mask"):
++        value = payload.get(key)
++        require(value is None or hex_id(value, 8))
++        normalized[key] = int(value, 16) if value is not None else None
++    require(type(payload.get("source_valid")) is bool)
++    require(type(payload.get("safety_source_valid")) is bool and integer(payload.get("safety_source_seq")))
++    require(payload.get("safety_source_age_ms") is None or integer(payload["safety_source_age_ms"]))
++    result = validate_state(normalized, identity)
++    if payload["source_valid"]:
++        require(integer(payload["source_seq"], 1) and integer(payload["source_age_ms"])
++                and integer(payload["state_seq"], 1) and integer(payload["control_epoch"], 1)
++                and integer(payload["event_seq"]) and result["fault_mask"] is not None
++                and payload["state"] in {"DISARMED", "IDLE", "MANUAL", "FAULT"}
++                and payload["armed"] == (payload["state"] in {"IDLE", "MANUAL"})
++                and payload["phase"] == "NONE" and payload["store"] == "EMPTY"
++                and payload["mission_id"] is None and payload["revision"] is None and payload["crc32"] is None
++                and payload["segment_index"] == payload["segment_count"] == 0
++                and payload["ready_for_start"] is False and payload["ready_for_resume"] is False)
++        if payload["state"] == "MANUAL":
++            require(integer(payload["manual_lease_id"], 1) and integer(payload["manual_input_seq"]))
++        else:
++            require(payload["manual_lease_id"] is None and payload["manual_input_seq"] is None)
++    safe = payload["safety_source_valid"] and payload["safety_source_age_ms"] is not None and payload["safety_source_age_ms"] <= 1500
++    if safe:
++        require(integer(payload["safety_source_seq"], 1) and all(result[key] is not None for key in ("safety_installed_mask", "safety_active_mask")))
++    else:
++        result["safety_installed_mask"] = result["safety_active_mask"] = None
++    return result | {"source_valid": payload["source_valid"], "safety_source_valid": bool(safe),
++                     "safety_source_seq": payload["safety_source_seq"], "safety_source_age_ms": payload["safety_source_age_ms"]}
++
++
++def parameters_fresh(parameters, identity, state):
++    return (parameters["available"] and parameters["source_valid"] and parameters["source_age_ms"] is not None
++            and parameters["source_age_ms"] <= 1500
++            and (parameters["esp_boot"], parameters["stm_boot"], parameters["control_epoch"]) ==
++                (identity["esp_boot"], identity["stm_boot"], state["control_epoch"]))
+--- a/infra/backend/mower_v3_service.py
++++ b/infra/backend/mower_v3_service.py
+@@ -11,55 +11,20 @@
+ from urllib.parse import urlsplit
+ from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
+ 
+-
+-CONTRACT = "3.1.0"
+-MANUAL_PROTOCOL = "homecontrol.mower.manual.v3"
++from mower_v3_protocol import (
++    CONTRACT, MANUAL_PROTOCOL, STATES, RoverReadError, UnknownMutation,
++    unique_object, reject_constant, integer, hex_id, require, validate_identity,
++    validate_state, motor_identity, validate_motor_state, validate_parameters_status,
++    parameters_fresh,
++)
++
+ MAX_RESPONSE_BYTES = 16384
+ STATE_TIMEOUT_MS = 1500
+-STATES = {"DISARMED", "IDLE", "MANUAL", "AUTO", "PAUSED", "FAULT", "MAINTENANCE"}
+-
+-
+-class RoverReadError(Exception):
+-    def __init__(self, code, message):
+-        super().__init__(message)
+-        self.code = code
+-
+-
+-class UnknownMutation(RoverReadError):
+-    def __init__(self):
+-        super().__init__("REPLY_LOST", "A művelet eredménye ismeretlen; csak olvasási egyeztetés végezhető.")
+ 
+ 
+ class NoRedirect(HTTPRedirectHandler):
+     def redirect_request(self, req, fp, code, msg, headers, newurl):
+         return None
+-
+-
+-def unique_object(pairs):
+-    result = {}
+-    for key, value in pairs:
+-        if key in result:
+-            raise ValueError("Duplicate JSON key")
+-        result[key] = value
+-    return result
+-
+-
+-def reject_constant(value):
+-    raise ValueError("Non-finite JSON number")
+-
+-
+-def integer(value, minimum=0, maximum=0xFFFFFFFF):
+-    return type(value) is int and minimum <= value <= maximum
+-
+-
+-def hex_id(value, length, *, nonzero=False):
+-    return (type(value) is str and re.fullmatch(r"[0-9A-F]{%d}" % length, value)
+-            is not None and (not nonzero or value != "0" * length))
+-
+-
+-def require(condition):
+-    if not condition:
+-        raise RoverReadError("INVALID_RESPONSE", "Hibás vagy hiányos v3.1 roverválasz.")
+ 
+ 
+ class RoverHttp:
+@@ -169,85 +134,6 @@
+         return connect_rover(url + "/api/v3/manual", self._token)
+ 
+ 
+-def validate_identity(payload):
+-    require(type(payload) is dict and type(payload.get("v")) is int and payload["v"] == 3)
+-    if payload.get("contract") != CONTRACT:
+-        raise RoverReadError("INCOMPATIBLE_VERSION", "A rover nem a támogatott 3.1.0 szerződést jelzi.")
+-    require(hex_id(payload.get("esp_boot"), 16, nonzero=True))
+-    require("stm_boot" in payload and (payload["stm_boot"] is None or hex_id(payload["stm_boot"], 16, nonzero=True)))
+-    require(hex_id(payload.get("profile_crc"), 8))
+-    for key in ("compatible", "conformant", "stm_remote_update", "stm_reset_recovery", "update_locked"):
+-        require(type(payload.get(key)) is bool)
+-    for key in ("esp_fw", "stm_flash_layout", "manual_protocol"):
+-        require(type(payload.get(key)) is str and 0 < len(payload[key]) <= 48)
+-    for key in ("stm_fw", "stm_bootloader_fw"):
+-        require(key in payload and (payload[key] is None or type(payload[key]) is str and 0 < len(payload[key]) <= 48))
+-    for key in ("update_service_abi", "stm_image_max_bytes", "esp_ota_max_bytes"):
+-        require(integer(payload.get(key)))
+-    require(type(payload.get("max_mission_bytes")) is int and payload["max_mission_bytes"] == 131072)
+-    require(type(payload.get("max_segments")) is int and payload["max_segments"] == 4096)
+-    for key, allowed in (("stm_confirmed_slot", {"A", "B", "NONE", None}), ("stm_inactive_slot", {"A", "B", None})):
+-        require(key in payload and (payload[key] is None or type(payload[key]) is str) and payload[key] in allowed)
+-    if "runtime_parameters" in payload:
+-        require(type(payload["runtime_parameters"]) is bool)
+-    for key in ("manual_claim_from_disarmed", "minimal_erpm_parameters", "first_configuration_requires_motor_feedback", "test_manual_control", "manual_erpm", "commissioned", "profile_verified", "motion_permitted", "esp_ota_enabled", "autonomous_enabled"):
+-        if key in payload:
+-            require(type(payload[key]) is bool)
+-    if "mode" in payload:
+-        require(type(payload["mode"]) is str)
+-    if "parameter_versions_supported" in payload:
+-        require(type(payload["parameter_versions_supported"]) is list and all(type(v) is int and v in (1, 2) for v in payload["parameter_versions_supported"]))
+-    # Whitelist: a remote response can never add credentials to browser diagnostics.
+-    keys = ("v", "contract", "esp_boot", "stm_boot", "profile_crc", "compatible", "conformant",
+-            "esp_fw", "stm_fw", "stm_bootloader_fw", "stm_remote_update", "stm_reset_recovery",
+-            "update_locked", "stm_flash_layout", "update_service_abi", "stm_image_max_bytes",
+-            "esp_ota_max_bytes", "max_mission_bytes", "max_segments", "manual_protocol",
+-            "stm_confirmed_slot", "stm_inactive_slot", "runtime_parameters", "mode", "manual_claim_from_disarmed", "minimal_erpm_parameters", "first_configuration_requires_motor_feedback", "test_manual_control", "manual_erpm", "parameter_versions_supported", "commissioned", "profile_verified", "motion_permitted", "esp_ota_enabled", "autonomous_enabled")
+-    return {key: payload[key] for key in keys if key in payload}
+-
+-
+-def validate_state(payload, identity):
+-    require(type(payload) is dict and type(payload.get("v")) is int and payload["v"] == 3)
+-    require(payload.get("esp_boot") == identity["esp_boot"])
+-    require("stm_boot" in payload and payload["stm_boot"] == identity["stm_boot"])
+-    require(type(payload.get("source_valid")) is bool)
+-    require(integer(payload.get("published_ms")) and integer(payload.get("source_seq")))
+-    require("source_age_ms" in payload and (payload["source_age_ms"] is None or integer(payload["source_age_ms"])))
+-    enums = {
+-        "state": STATES, "phase": {"NONE", "ALIGN", "TRACK"},
+-        "store": {"EMPTY", "RECEIVING", "VALIDATING", "READY"},
+-        "outcome": {"NONE", "RUNNING", "PAUSED", "COMPLETED", "STOPPED", "FAULTED"},
+-    }
+-    for key, allowed in enums.items():
+-        require(key in payload and (payload[key] is None or type(payload[key]) is str and payload[key] in allowed))
+-    for key in ("state_seq", "control_epoch", "event_seq", "revision", "segment_index",
+-                "segment_count", "manual_lease_id", "manual_input_seq"):
+-        require(key in payload and (payload[key] is None or integer(payload[key])))
+-    for key in ("armed", "stopped", "ready_for_start", "ready_for_resume"):
+-        require(key in payload and (payload[key] is None or type(payload[key]) is bool))
+-    require("mission_id" in payload and (payload["mission_id"] is None or type(payload["mission_id"]) is str and
+-            re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", payload["mission_id"]) is not None))
+-    require("crc32" in payload and (payload["crc32"] is None or hex_id(payload["crc32"], 8)))
+-    require("reason" in payload and (payload["reason"] is None or type(payload["reason"]) is str and re.fullmatch(r"[A-Z_]{1,32}", payload["reason"]) is not None))
+-    for key in ("fault_mask", "safety_installed_mask", "safety_active_mask"):
+-        require(key in payload and (payload[key] is None or integer(payload[key])))
+-    if payload["source_valid"]:
+-        require(identity["stm_boot"] is not None and payload["source_seq"] > 0
+-                and payload["source_age_ms"] is not None)
+-        for key in (*enums, "armed", "stopped", "ready_for_start", "ready_for_resume", "fault_mask",
+-                    "safety_installed_mask", "safety_active_mask", "event_seq", "segment_index", "segment_count", "reason"):
+-            require(payload[key] is not None)
+-        require(integer(payload["state_seq"], 1) and integer(payload["control_epoch"], 1))
+-        require(payload["segment_index"] <= payload["segment_count"] <= 4096)
+-        require(payload["armed"] == (payload["state"] in ("IDLE", "MANUAL", "AUTO", "PAUSED")))
+-    keys = ("v", "esp_boot", "stm_boot", "published_ms", "source_seq", "source_age_ms", "source_valid",
+-            "state_seq", "control_epoch", "event_seq", "state", "phase", "armed", "store", "mission_id",
+-            "revision", "crc32", "segment_index", "segment_count", "outcome", "reason", "fault_mask",
+-            "stopped", "ready_for_start", "ready_for_resume", "manual_lease_id", "manual_input_seq",
+-            "safety_installed_mask", "safety_active_mask")
+-    return {key: payload[key] for key in keys}
+-
+-
+ class MowerV3Service:
+     def __init__(self, *, origin="", token="", transport=None, clock=time.monotonic, read_only=False, motor_test_enabled=False, simple_control=False):
+         self.simple_control = simple_control
+@@ -290,7 +176,6 @@
+             self.maintenance_guard()
+             identity = validate_identity(self._transport.get("/api/v3/identity"))
+             result["identity"] = identity
+-            from mower_motor_test import motor_identity, validate_motor_state
+             test_mode = identity.get("mode") == "MOTOR_TEST"
+             if test_mode:
+                 require(motor_identity(identity))
+@@ -346,7 +231,6 @@
+                 self._sample = {"key": sample_key, "age": age, "at": now, "evidence": evidence}
+             result["state"] = state
+             if identity.get("mode") == "MOTOR_TEST":
+-                from mower_motor_test import motor_identity, validate_parameters_status, parameters_fresh
+                 require(motor_identity(identity))
+                 recovering = False
+                 if identity.get("manual_claim_from_disarmed") is True:
+--- a/infra/backend/settings.py
++++ b/infra/backend/settings.py
+@@ -61,8 +61,6 @@
+     mower_v3_read_only: bool = env_bool("MOWER_V3_READ_ONLY")
+     rover_api_token: str = field(default_factory=load_rover_api_token, repr=False)
+     rover_api_token_file: str = field(default_factory=lambda: os.environ.get("ROVER_API_TOKEN_FILE", "").strip(), repr=False)
+-    mower_operator_password_hash: str = field(default_factory=lambda: os.environ.get("MOWER_OPERATOR_PASSWORD_HASH", "").strip(), repr=False)
+-    mower_operator_session_secret: str = field(default_factory=lambda: os.environ.get("MOWER_OPERATOR_SESSION_SECRET", "").strip(), repr=False)
+     gree_climate_ip: str = os.environ.get("GREE_CLIMATE_IP", "192.168.1.72")
+     gree_climate_port: int = env_int("GREE_CLIMATE_PORT", 7000)
+     gree_climate_mac: str = os.environ.get("GREE_CLIMATE_MAC", "9424b8ba43f7")
+--- /dev/null
++++ b/infra/backend/tests/fixtures/hc16_import_probe.py
+@@ -0,0 +1,82 @@
++"""HC-16 fresh-process import permutations and actual app auth contract, no I/O."""
++import importlib
++import itertools
++import json
++import os
++from pathlib import Path
++import sys
++import threading
++from types import SimpleNamespace
++from unittest.mock import patch
++
++
++def forbidden(*args, **kwargs):
++    raise AssertionError('HC-16 import/auth probe attempted external work')
++
++
++def guard(event, args):
++    if event in ('socket.connect', 'socket.connect_ex', 'socket.bind', 'subprocess.Popen', 'os.system', 'os.fork'):
++        forbidden()
++    if event == 'open':
++        path, mode, flags = args
++        if isinstance(path, (str, bytes)):
++            if os.fsdecode(path).startswith('/srv/docker/homecontrol/'):
++                forbidden()
++            if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC):
++                forbidden()
++
++
++sys.addaudithook(guard)
++names = ('mower_v3_service', 'mower_v3_commands', 'mower_manual_service',
++         'mower_motor_test', 'mower_parameters_service')
++with patch.object(threading.Thread, 'start', side_effect=forbidden):
++    orders = 0
++    for order in itertools.permutations(names):
++        for name in (*names, 'mower_v3_protocol'):
++            sys.modules.pop(name, None)
++        for name in order:
++            importlib.import_module(name)
++        protocol = importlib.import_module('mower_v3_protocol')
++        for name in names:
++            module = sys.modules[name]
++            if hasattr(module, 'RoverReadError'):
++                assert module.RoverReadError is protocol.RoverReadError
++            if hasattr(module, 'request_id'):
++                assert module.request_id is protocol.request_id
++        orders += 1
++    import psycopg
++    with patch.object(psycopg, 'connect', side_effect=forbidden):
++        # Deliberately invalid obsolete values cannot activate a browser gate.
++        os.environ.update(MOWER_OPERATOR_PASSWORD_HASH='obsolete-test-value',
++                          MOWER_OPERATOR_SESSION_SECRET='obsolete-test-value',
++                          ROVER_API_TOKEN='a' * 64, ROVER_API_TOKEN_FILE='')
++        import app as module
++        from settings import BackendSettings
++        settings = BackendSettings()
++        assert not hasattr(settings, 'mower_operator_password_hash')
++        assert not hasattr(settings, 'mower_operator_session_secret')
++        assert settings.rover_api_token == 'a' * 64
++        assert 'a' * 64 not in repr(settings)
++        assert module._mower_operator_auth.superuser is True
++        assert module._startup_service is None
++        module.get_startup_service = lambda: SimpleNamespace(ensure_started=lambda: None)
++        module.record_api_request = lambda response: None
++        client = module.app.test_client()
++        status = client.get('/api/mower/v3/operator')
++        assert status.status_code == 200
++        assert status.json == dict(ok=True, configured=True, authenticated=True,
++                                   superuser=True, session_seconds=None)
++        login = client.post('/api/mower/v3/operator/login', headers={'Origin': 'http://localhost'})
++        assert login.status_code == 200 and login.json == status.json
++        assert not login.headers.get('Set-Cookie')
++        rejected = 0
++        for origin in ('https://evil.test', '', 'http://localhost.evil.test', 'http://user@localhost'):
++            for path in ('operator/login', 'operator/logout', 'command', 'stop',
++                         'parameters/drafts/hc16-test', 'motor-test/config', 'motor-test/apply'):
++                response = client.post('/api/mower/v3/' + path, json={}, headers={'Origin': origin})
++                assert response.status_code == 403, (path, origin, response.status_code)
++                assert response.json['code'] == 'ORIGIN_REJECTED'
++                rejected += 1
++        assert 'a' * 64 not in status.get_data(as_text=True) + login.get_data(as_text=True)
++print(json.dumps(dict(import_orders=orders, rejected_origins=rejected, external_work=False,
++                      single_superuser=True, obsolete_settings_absent=True, native_token_private=True)))
+--- /dev/null
++++ b/infra/backend/tests/test_mower_module_boundaries.py
+@@ -0,0 +1,70 @@
++"""HC-16 structural boundary and current single-user API regression."""
++import ast
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++import unittest
++
++BACKEND = Path(__file__).resolve().parents[1]
++SERVICES = {'mower_v3_service', 'mower_v3_commands', 'mower_manual_service',
++            'mower_motor_test', 'mower_parameters_service'}
++
++
++def import_graph():
++    modules = {p.stem: p for p in BACKEND.glob('*.py')}
++    return {name: {n.module.split('.')[0] for n in ast.walk(ast.parse(p.read_text()))
++                   if isinstance(n, ast.ImportFrom) and n.module and n.module.split('.')[0] in modules}
++            | {a.name.split('.')[0] for n in ast.walk(ast.parse(p.read_text()))
++               if isinstance(n, ast.Import) for a in n.names if a.name.split('.')[0] in modules}
++            for name, p in modules.items()}
++
++
++class MowerModuleBoundaryTest(unittest.TestCase):
++    def test_service_dependencies_have_no_cycle_including_lazy_imports(self):
++        graph = import_graph()
++        for root in SERVICES:
++            pending = list(graph[root]); visited = set()
++            while pending:
++                name = pending.pop()
++                self.assertNotEqual(name, root, 'Circular rover import: ' + root)
++                if name not in visited:
++                    visited.add(name); pending.extend(graph[name])
++
++    def test_protocol_has_only_pure_codec_dependency(self):
++        graph = import_graph()
++        self.assertEqual(graph['mower_v3_protocol'], {'rover_parameters'})
++        self.assertEqual(graph['rover_parameters'], set())
++        tree = ast.parse((BACKEND / 'mower_v3_protocol.py').read_text())
++        imports = {n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
++        imports |= {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
++        self.assertEqual(imports, {'re', 'rover_parameters'})
++
++    def test_old_public_paths_reexport_same_contract_objects(self):
++        import mower_v3_protocol as protocol
++        import mower_v3_service as service
++        import mower_v3_commands as commands
++        import mower_motor_test as motor
++        for name in ('RoverReadError', 'UnknownMutation', 'unique_object', 'reject_constant',
++                     'integer', 'hex_id', 'require', 'validate_identity', 'validate_state'):
++            self.assertIs(getattr(service, name), getattr(protocol, name))
++        self.assertIs(commands.request_id, protocol.request_id)
++        for name in ('motor_identity', 'validate_parameters_status', 'validate_motor_state', 'parameters_fresh'):
++            self.assertIs(getattr(motor, name), getattr(protocol, name))
++
++    def test_all_import_orders_and_actual_app_single_user_contract_without_io(self):
++        probe = Path(__file__).with_name('fixtures') / 'hc16_import_probe.py'
++        result = subprocess.run([sys.executable, '-B', str(probe)], capture_output=True,
++                                text=True, timeout=30, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
++        self.assertEqual(result.returncode, 0, result.stderr)
++        value = json.loads(result.stdout)
++        self.assertEqual(value['import_orders'], 120)
++        self.assertEqual(value['rejected_origins'], 28)
++        self.assertFalse(value['external_work'])
++        for name in ('single_superuser', 'obsolete_settings_absent', 'native_token_private'):
++            self.assertTrue(value[name])
++
++
++if __name__ == '__main__':
++    unittest.main()

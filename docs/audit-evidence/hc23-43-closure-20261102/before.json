@@ -1,0 +1,457 @@
+{
+  "audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "active_release": "hc-security-20261102-r18",
+  "source_sha256": {
+    "apps/ai-node/docker-compose.yml": "93123ae1b498edb64789bf4846133a53ea736fa5a02647878d1ea98f2a5a892f",
+    "apps/ai-node/README.md": "347a391ebc23d28232d261d400e13d6a701b322a3fedd70b53cde47f7144ebff",
+    "AUDIT_REPAIR.md": "4350ec303c41a2d06917a3899016751f9c378996004957844a1303527f0078e9",
+    "DEPLOYMENT_PREP.md": "b0276f004b2ca01640f3315e2bf8e3a40e92b51cfcc74d8a771c1ced8fed6966",
+    "docs/hc23-43-platform-release-20261102.md": "aa5909f67a422ab479ece639f7a0ee696beacb96505413ebd25dbb8d27522791"
+  },
+  "pending_changes": {
+    "infra/backend/app.py": {
+      "path": "infra/backend/app.py",
+      "state": "modified",
+      "sha256": "00e57fc96b7e7b6518474b3ac3199fabb03747888c73243a8a86436987f01978"
+    },
+    "infra/backend/db_runtime.py": {
+      "path": "infra/backend/db_runtime.py",
+      "state": "modified",
+      "sha256": "8baaffaf53a39ae5299f731737fd6521894294ed2eb110fc839a7954099828df"
+    },
+    "infra/backend/repository_service.py": {
+      "path": "infra/backend/repository_service.py",
+      "state": "deleted",
+      "sha256": null
+    },
+    "infra/backend/climate_service.py": {
+      "path": "infra/backend/climate_service.py",
+      "state": "modified",
+      "sha256": "6fc106769c2c13e6d5a145a700c0d93f477fcb23c8993ad6c17073cc8b5cc10e"
+    },
+    "infra/backend/irrigation_service.py": {
+      "path": "infra/backend/irrigation_service.py",
+      "state": "modified",
+      "sha256": "7e200c72b503a36a972f1dd0ddb60d0cf151251ba87f340a1a4043c7024b7211"
+    },
+    "infra/backend/tests/test_repository_service.py": {
+      "path": "infra/backend/tests/test_repository_service.py",
+      "state": "deleted",
+      "sha256": null
+    },
+    "scripts/stage_hc_test_source.py": {
+      "path": "scripts/stage_hc_test_source.py",
+      "state": "modified",
+      "sha256": "abc4e1d153bd9205f4c461eeba7364b1ddc94c7f2f79c4891cc9308c52da44ad"
+    },
+    "scripts/check_hc_tests.py": {
+      "path": "scripts/check_hc_tests.py",
+      "state": "modified",
+      "sha256": "7e1a873bab1654a0a18eceaa9f25011c9008a41f213b99430a63fa4ca64ed3f9"
+    },
+    "infra/backend/tests/test_db_runtime.py": {
+      "path": "infra/backend/tests/test_db_runtime.py",
+      "state": "added",
+      "sha256": "599c620b72e20696ad1d2dc19b5cae46c90e9c46df52b7f2c3ad858e5d33f8e0"
+    },
+    "infra/backend/tests/test_domain_schedule_reads.py": {
+      "path": "infra/backend/tests/test_domain_schedule_reads.py",
+      "state": "added",
+      "sha256": "4640ff51c67a9a4e1dcc71020f87934a288f2c850d3cecb64faac3c571540b0e"
+    },
+    "infra/backend/tests/test_app_database_wiring.py": {
+      "path": "infra/backend/tests/test_app_database_wiring.py",
+      "state": "added",
+      "sha256": "faff538cbd0cfe442267cb425c22e509e6365bfe639ca780183d19a514790208"
+    },
+    "infra/backend/tests/test_database_runtime_postgres.py": {
+      "path": "infra/backend/tests/test_database_runtime_postgres.py",
+      "state": "added",
+      "sha256": "531e12c56163437fd9e60215103dae17eb64b3e3ff14e79de5c56142f290ea9d"
+    },
+    "infra/backend/tests/fixtures/hc15_queries.json": {
+      "path": "infra/backend/tests/fixtures/hc15_queries.json",
+      "state": "added",
+      "sha256": "23684ced7022bd517056b3b41d018f24edd33c59adefce4844eebc7572a1b3a4"
+    },
+    "infra/backend/tests/fixtures/hc15_routes.json": {
+      "path": "infra/backend/tests/fixtures/hc15_routes.json",
+      "state": "added",
+      "sha256": "6771057d332736805cbf2c5ce1d1da853a06f434b944f8f4778559edf06ce621"
+    },
+    "infra/backend/tests/fixtures/hc15_import_probe.py": {
+      "path": "infra/backend/tests/fixtures/hc15_import_probe.py",
+      "state": "added",
+      "sha256": "6c2d558bcdecb244f250206a0a4ed9b2557932e3853d5f3423a48e0073f1e28f"
+    },
+    "AUDIT_REPAIR.md": {
+      "path": "AUDIT_REPAIR.md",
+      "state": "modified",
+      "sha256": "4350ec303c41a2d06917a3899016751f9c378996004957844a1303527f0078e9"
+    },
+    "DEPLOYMENT_PREP.md": {
+      "path": "DEPLOYMENT_PREP.md",
+      "state": "modified",
+      "sha256": "b0276f004b2ca01640f3315e2bf8e3a40e92b51cfcc74d8a771c1ced8fed6966"
+    },
+    "docs/ai/mower-domain.md": {
+      "path": "docs/ai/mower-domain.md",
+      "state": "modified",
+      "sha256": "e8ebf7c84b8eb3e2b7ecfc28659df87f9803c7a18e0f5e9bb53421d12c6c925f"
+    },
+    "docs/hc-16-repair.md": {
+      "path": "docs/hc-16-repair.md",
+      "state": "added",
+      "sha256": "81e7e76005b1bb96b03f025334db2446c3f47fd1d68185263a601372c4f0738d"
+    },
+    "docs/mower-v3-bringup.md": {
+      "path": "docs/mower-v3-bringup.md",
+      "state": "modified",
+      "sha256": "cc7b49b5995637459a67ad418479b445e4a6cc0b42c9379175d79d446e96c3cd"
+    },
+    "docs/mower-v3-foundation.md": {
+      "path": "docs/mower-v3-foundation.md",
+      "state": "modified",
+      "sha256": "23add488af63a6f8a35715d17b284ccf231d99a20f36b403087c3e4646330a27"
+    },
+    "infra/backend/mower_manual_service.py": {
+      "path": "infra/backend/mower_manual_service.py",
+      "state": "modified",
+      "sha256": "c8259ccbd42b835443dd3c008b92f40ec6590b95eb0ecc2076424912d7631104"
+    },
+    "infra/backend/mower_motor_test.py": {
+      "path": "infra/backend/mower_motor_test.py",
+      "state": "modified",
+      "sha256": "9cb3a36fe3f9ba74cfd0c38e6059c5c9b4144146de7b61217af7b0cf70ef2fbe"
+    },
+    "infra/backend/mower_parameters_service.py": {
+      "path": "infra/backend/mower_parameters_service.py",
+      "state": "modified",
+      "sha256": "3372ed5689cad40067fff40157d8c800738f2ede9dd9a0bd2201745866fc1d66"
+    },
+    "infra/backend/mower_v3_commands.py": {
+      "path": "infra/backend/mower_v3_commands.py",
+      "state": "modified",
+      "sha256": "29cdd68fdbca00aa132c96ea3dcff919d3c6f8582e63b19bd9691894c979d6c0"
+    },
+    "infra/backend/mower_v3_protocol.py": {
+      "path": "infra/backend/mower_v3_protocol.py",
+      "state": "added",
+      "sha256": "3188183d8e903e2dd644d54653b7a30b16f151098fa0c8cf007894e1d79ccf3c"
+    },
+    "infra/backend/mower_v3_service.py": {
+      "path": "infra/backend/mower_v3_service.py",
+      "state": "modified",
+      "sha256": "bb7babaf557557c7c446cb4cf8a48fc1a9df1e2df7c352119b70940dc875b559"
+    },
+    "infra/backend/settings.py": {
+      "path": "infra/backend/settings.py",
+      "state": "modified",
+      "sha256": "0f48a3c7823b1e1637aab639c7770e6e358f54e12ba07d32559d65865956a767"
+    },
+    "infra/backend/tests/fixtures/hc16_import_probe.py": {
+      "path": "infra/backend/tests/fixtures/hc16_import_probe.py",
+      "state": "added",
+      "sha256": "666e1aca5e5e4ce59388c2d590b73d056c209c080caeb772b73406eaa6298ac3"
+    },
+    "infra/backend/tests/test_mower_module_boundaries.py": {
+      "path": "infra/backend/tests/test_mower_module_boundaries.py",
+      "state": "added",
+      "sha256": "3afaace5680bc6e35b32a2c3a76a506a95ea5fa6013cf072af373e13f429b84a"
+    },
+    "docs/ai/irrigation-domain.md": {
+      "path": "docs/ai/irrigation-domain.md",
+      "state": "modified",
+      "sha256": "2b439ada774435dcbfd141a01f0abd040cf8a9632a91d247237bb3463b1a72ac"
+    },
+    "docs/hc-20-repair.md": {
+      "path": "docs/hc-20-repair.md",
+      "state": "added",
+      "sha256": "926ae35f61ed52ec393f97036d7b2621c53bb939a19beeca0f157cf654b42b6c"
+    },
+    "infra/backend/tests/test_irrigation_admission.py": {
+      "path": "infra/backend/tests/test_irrigation_admission.py",
+      "state": "modified",
+      "sha256": "9051382d8f96ad9af5f4b1280a857aae0050593c0ed2b227cd23c461ba4827d7"
+    },
+    "infra/backend/tests/test_irrigation_admission_postgres.py": {
+      "path": "infra/backend/tests/test_irrigation_admission_postgres.py",
+      "state": "modified",
+      "sha256": "47ccf9595bd2a163faad93dc6b2f47e09f3ad1c9d8c1b0a6d260fe5b34f17a4e"
+    },
+    "infra/backend/tests/test_irrigation_service.py": {
+      "path": "infra/backend/tests/test_irrigation_service.py",
+      "state": "modified",
+      "sha256": "d835689cbfa09c0f6cf6a17f5eaa25f02b560f647b1a7aeeea5fb6ebc2a34ebf"
+    },
+    "docs/hc-24-repair.md": {
+      "path": "docs/hc-24-repair.md",
+      "state": "added",
+      "sha256": "1fb8a1d0c0924a6641ff72919df55ad02072870f4625aea8bff1cfbd17b10a07"
+    },
+    "infra/mdns/mdns_responder.py": {
+      "path": "infra/mdns/mdns_responder.py",
+      "state": "modified",
+      "sha256": "06443edb95348dde7cfebec4dff09a84b2529f12482441decd6852dfa97d3537"
+    },
+    "infra/mdns/tests/test_mdns_responder.py": {
+      "path": "infra/mdns/tests/test_mdns_responder.py",
+      "state": "added",
+      "sha256": "734e014fa2bc5b55a644640945f0ade1c187f416292c6bd97de09bc6108afb71"
+    },
+    "scripts/hc_test_suite.py": {
+      "path": "scripts/hc_test_suite.py",
+      "state": "modified",
+      "sha256": "b5cc910edfacc5fb560f7e4483162832105fcf718638f4195e53f508a79695e4"
+    },
+    "apps/ha-growatt-poller/ha_growatt_poller.py": {
+      "path": "apps/ha-growatt-poller/ha_growatt_poller.py",
+      "state": "modified",
+      "sha256": "a5195aa3dc4fcb7b9af4165b7ccc742dc16a99a9761bc9737ff05c4d7157aaed"
+    },
+    "apps/ha-growatt-poller/tests/test_ha_growatt_poller.py": {
+      "path": "apps/ha-growatt-poller/tests/test_ha_growatt_poller.py",
+      "state": "added",
+      "sha256": "7398739f19d3c2bc42d94d67a688dc3261f1807fa35923099317ec34e03ee225"
+    },
+    "docs/ai/solar-domain.md": {
+      "path": "docs/ai/solar-domain.md",
+      "state": "modified",
+      "sha256": "8598836accc086effd6fcb4ee4f34ee333449b315686e98fef90efe373863aa3"
+    },
+    "docs/hc-26-repair.md": {
+      "path": "docs/hc-26-repair.md",
+      "state": "added",
+      "sha256": "b1629950f1cbe11d7276c93d298a39f026cfa378fe36d5ba20c1691d13389525"
+    }
+  },
+  "prior_evidence_manifests": {
+    "hc15": {
+      "baseline-import.json": "27a2083ef08c356e5b9563b93fe77d4ce71c7f232b1446fe8b3ee101ef974b88",
+      "baseline-import.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "baseline-unit.log": "83fc4cef4e428f0c65d74d88f4fabb0fe24b7f09c6d039f0aeb2bcec4e16b859",
+      "before.json": "d757f91dace41593d8e7babffb787c12fb808944b1fb6c575d8eaa39664a18da",
+      "changed-files.json": "9d130d6741a65275bb180e806d9a2d24a902b14e1f0e291432000b64c8bc6aee",
+      "focused-initial-image-cwd.log": "e926005e998183aed7f8af10fc107143118403918c88a5b24cf2de7628940519",
+      "focused-unit.log": "a508175be26c2195b5aaf933fb94f428cf2936fb38c825d18bd4673f409f7ba9",
+      "original/infra/backend/app.py": "897b8d13630a0cf471449451869f964ef98b14984bc31c3addec8dbfe7cacbb7",
+      "original/infra/backend/climate_service.py": "7d3feea8e4f4b204583b6487bb3aa40377c55dede0922f4384f13e275e907f09",
+      "original/infra/backend/database_service.py": "4cca1f13f1e3198348c4b32a64d35281c6bfa94b74ee165331fc385377a5b117",
+      "original/infra/backend/db_runtime.py": "850b1b107b807c31ae5443d621ededc77f64cab273bc1dd4369e7a84c0636cb1",
+      "original/infra/backend/irrigation_service.py": "c6fa573697a505092cf55b1a6f7d4479057a121b46ddc174214b0c89c8039fd2",
+      "original/infra/backend/repository_service.py": "78b1b0d810aecb8cc916e7e0fc1e196168790b07383684217d22943820ffa016",
+      "original/infra/backend/scheduler_audit.py": "fd04bf55a1a2bd5e05089c2a2182e981ade3e570280b21951ccc98bb64bfea73",
+      "original/infra/backend/scheduler_service.py": "9711a9cc355063f81beb0dc039936fed5e32514d63a4a5fd6e91d65c7a0d0873",
+      "original/infra/backend/tests/test_repository_service.py": "573bb800ec205a339a13f9d8f0af0b1c7ff26139820450211f6428cac8163315",
+      "original/scripts/check_hc_tests.py": "05714e14708ebd6a2144ce31f4b710bb1ee3adc7baf467364fbd8dbf341bf6b7",
+      "original/scripts/stage_hc_test_source.py": "80a6935a7653cc5ed713e52a6631ed1a36c62a7eae5cdb1c2cbf3d87e12db561",
+      "postgres/postgres-hosts": "f4ecfcd141cfca21d6fcced763fb437f3f365a5ebc62f4cac40b11f9a4317aa1",
+      "postgres/test-summary.json": "f6981cfc7be13f61e888b6e2dc0fd7b5c1ba34f4b8bed00c81c2d1f188379b95",
+      "postgres/test_about_inventory_postgres.log": "6e4dfef830462f8a3d03c79195767cafd35db081689d5888d837cb79ce27a3fa",
+      "postgres/test_baseline_postgres.log": "193c20f9084c3ff87aaf5bbb2fea26f0f0cdca53bb7b6b80c14236839afc3bc2",
+      "postgres/test_combustion_safety_state_postgres.log": "e9b8599064930d81664a888934b523311a5d440667f003e55116d623f0d3554b",
+      "postgres/test_database_runtime_postgres.log": "68f07bc7fef9e7dd6a0afadcc26be271cb028d13c4dd772e77862efce2c34d75",
+      "postgres/test_db_privileges_postgres.log": "b5a854a012294aaf8af583c4a4cbafcd3cfb662f640230de77ff5672d68fa1fd",
+      "postgres/test_irrigation_admission_postgres.log": "c984edf1e9fa6538b7a4dcb35e178cbc8d52f08e0cb050f9d229fe58a4876b9a",
+      "postgres/test_irrigation_recovery_postgres.log": "1916b8659c68e2b2a182e63bf845b070e5724feaf5551e4b1d1b23adb848c1d1",
+      "postgres/test_mower_firmware_operations_postgres.log": "77f49fa749df11e64dd0cdf354e943298745097e1c9e39a5618559a9c0a12f9d",
+      "postgres/test_mower_firmware_postgres.log": "5b67819e7b986a811f94c0d15c0d96cabba05bbbc5469749bc33f4db8b725f9c",
+      "postgres/test_mower_firmware_sessions_postgres.log": "96fa9f120137a5ea6b3a29aee05997d89f6baf0973ea1dca22439142848cf9b5",
+      "postgres/test_mower_parameters_postgres.log": "b77f7e2535e0147fa99ae4e3cbd38d9dbb1bc30c00208b2cd8e41084647fcfa8",
+      "postgres/test_process_binding_postgres.log": "9a64ce82ef22c0aee52cfff6a9acb4e263b3c4e22623a508ff211a013d0255a6",
+      "postgres/test_scheduler_audit_postgres.log": "7620e1d0e4b204bdbe611d044b24c40e9b6515d10e85c4bfa3d93cd7849ceeee",
+      "postgres/test_scheduler_feedback_postgres.log": "1492e226f9b63c531b437a1d9b93e3cc64a0e129c84e44793814b07273a3a116",
+      "postgres/test_startup_schema_postgres.log": "5e4c9fa64cbc0702413309e942cef5522d78ad97ced9ffc3b8d98babfa3f3676",
+      "production-unchanged.json": "992b67c31189fa7ab9b1ddabae48492199752112dec39158a206f8eab1d84806",
+      "scope-check.json": "d61727cab84b43b924eee174f580c0625e7de018d17593a29f53dbfacaecbbf0",
+      "source.diff": "0472671d6609c63d0b79c14fd2a296a0ae089ba0352734bd1c46d2073fe538a7",
+      "summary.json": "6660cd69174a2f8d62f0f290739684fca1da6630b183d5796bf50b8188324533",
+      "unit/test-summary.json": "e8cc9fa112a665d2f5ad31cdce95250b292b583e3cd1700fdc08973906afa565",
+      "unit/unit.log": "9bab51976f5f8b29e007ae57d9c77b3b4f4a3af1a37742578620512f3a222457"
+    },
+    "hc16": {
+      "baseline-unit.log": "de82b40bba64222c701ff8bd5b0c0915d02df1770a80d5b754828bc0802b8592",
+      "before.json": "7f0ff7711335a0746f9b3dcbe44b24a477a66e2ad9eca9ddd441ecff076deccf",
+      "changed-files.json": "a4d10a4617b3179ebfc4d1626eed4bef97ea4061c0071e2f2c9a04b62f4d6f85",
+      "check_scope.py": "60bef6d3f57624a37e2571b9bd83ec651ee12f30668859091665536483e878a0",
+      "finalize_evidence.py": "57c4fce477d45a1e84a5556c72ceb06e8b723f10e0035bd3025625904cfc6339",
+      "focused-initial-route-fixture.log": "d43c07e6cf37774174ce5ec848b5d8621dec12c380b0b1f7df8aa02fca300d73",
+      "focused-unit.log": "183caa0efb9582c3c7765cb59d342e87735961dca75c8bd207cf1a09dbac5e52",
+      "frontend/frontend.log": "c4d03c9fbd379170471a11a3807f4c501e2959ff75b1c18737bef54c3d015388",
+      "frontend/test-summary.json": "1ae0dadbfe94eef6f8e762854c42d7d6a2e4cff1c4fd4967a743cc053998a932",
+      "frontend-run.log": "3908d2a2cc9821f7751bac0332e2568f7e152cb41c8c1457053d91298dbf6be0",
+      "original/AUDIT_REPAIR.md": "6a58a7732350c170fdeac14c640359da9d166d2ac0ff4d2013160a2c303d22ce",
+      "original/DEPLOYMENT_PREP.md": "d3295acb80e82bbf3928e5529199f95226766593fb6e2aa5843f22aa9ce840ac",
+      "original/docs/ai/mower-domain.md": "a5a5ed54d97ee0b7bc1d363e499255e164592658d699819b94e197164a0d1f2d",
+      "original/docs/mower-v3-bringup.md": "bd79bd471a91c46cb02981e0ae14448447dab4d9a6a1f22524e1ebdc2aac26c1",
+      "original/docs/mower-v3-foundation.md": "bcb4fdcc4f48d2539df3c02c07591f054b593dd77dddcf0b165afe03d1d3764c",
+      "original/infra/backend/mower_manual_service.py": "bf57b0eeeaf6ddbbfb742d05c17ea10615d3f8a8342012fb068f77d1629c2efd",
+      "original/infra/backend/mower_motor_test.py": "c4215fa0b9dd407841d18e321c7e1328455a68910af06fb1d8c0327cfbdcb1fb",
+      "original/infra/backend/mower_parameters_service.py": "aaa78fb9b94ead3116d33c9d79d1e05a2d1f74b15cd5a550585bbe656138ea4b",
+      "original/infra/backend/mower_v3_commands.py": "b6d2a8fdfc4c77f142043e31c0304431aa407fa85b604b6b79bf3393bf63bda5",
+      "original/infra/backend/mower_v3_service.py": "acb4ea6b2ccfe9fd8519ece367a29797dbe552c6c91cdca4b2edc88c05423471",
+      "original/infra/backend/settings.py": "f16fac2d36f72355ef72d0a11ab8ed94f3c82c244d6106e6d6a39f3ea8ed0777",
+      "postgres/postgres-hosts": "f4ecfcd141cfca21d6fcced763fb437f3f365a5ebc62f4cac40b11f9a4317aa1",
+      "postgres/test-summary.json": "819e7265defa093d6679ea5a71216de2be8a3840c74e8fd9a1a6e59399070525",
+      "postgres/test_about_inventory_postgres.log": "cce14313899712fd55ac4b51b708174ac31caca23299048defd30bcaa4f16271",
+      "postgres/test_baseline_postgres.log": "f861d1b0c6c1c694ae9780822de5cf02f8d15aae9638b339be25682160a7728d",
+      "postgres/test_combustion_safety_state_postgres.log": "ddc34414d2ac29d7b8fe7a3a853265a68800918f9923df53f4840ee8210ff117",
+      "postgres/test_database_runtime_postgres.log": "789c89714894a7cbb26f96e28a38a83699b6953feb5a0fb1199730b53e9b211e",
+      "postgres/test_db_privileges_postgres.log": "e3bf02b3fcb74037344677b8be727ac597bb410c92c3d1111a27ef74700924f8",
+      "postgres/test_irrigation_admission_postgres.log": "defc8b49800aa3277e0937cc64fb0d93ecf01ad052e2d0e68745602e0ee0b2ed",
+      "postgres/test_irrigation_recovery_postgres.log": "50753daef4d339e177b15b92e1adbdb85b141efe349db7ba53afce8553bc328a",
+      "postgres/test_mower_firmware_operations_postgres.log": "4b7242189ae30934c19f674e74d727a550a138f7020a5735d615d0ef191143a0",
+      "postgres/test_mower_firmware_postgres.log": "b1bea3d67fd1cd90a8b043d60952f21de0fbf14a13544a7f0e96066bb5c61e0d",
+      "postgres/test_mower_firmware_sessions_postgres.log": "7e89ec0c3d01a68c2bde0915c6af9d412988b8c526fe07190877376c4b00fc5c",
+      "postgres/test_mower_parameters_postgres.log": "b77f7e2535e0147fa99ae4e3cbd38d9dbb1bc30c00208b2cd8e41084647fcfa8",
+      "postgres/test_process_binding_postgres.log": "6c5b198b604b4a857d917a4d6a2f88aeb8a51f327a3245f6d0d288a9ad86535d",
+      "postgres/test_scheduler_audit_postgres.log": "f255b47d1d90aae489356976e201801cf39eb4d8652fec55daae21a9ad24fc65",
+      "postgres/test_scheduler_feedback_postgres.log": "b2637a0a55e30ecb6a4bd612a51a33d7ef246eaafb5670e4ac11118295573892",
+      "postgres/test_startup_schema_postgres.log": "c215a4bfdd96adf67ba7e9dd4facaebe51d343ca3908a71daa2e835f0f011653",
+      "postgres-final/postgres-hosts": "f4ecfcd141cfca21d6fcced763fb437f3f365a5ebc62f4cac40b11f9a4317aa1",
+      "postgres-final/test-summary.json": "903ccfd06e015b4eb89c0956570f94ecd4235d648439bf32c9b25b4f456814b5",
+      "postgres-final/test_about_inventory_postgres.log": "652fd746aed6aa0ac70eb2bec17ab60a05bb7f13f59be58328878884ab7ae325",
+      "postgres-final/test_baseline_postgres.log": "c1656205fd9152347260b3388214a62a7c38a8497f552bd64c029f1b525224fd",
+      "postgres-final/test_combustion_safety_state_postgres.log": "c69ec040f00ee01631cc508b4516a0af897ddf2667addc4ac4adc7b177a086bb",
+      "postgres-final/test_database_runtime_postgres.log": "a5d57b1e6d6704926f546fc4ffafefc3a1eaebfbe6e386e2792ea7162462bed8",
+      "postgres-final/test_db_privileges_postgres.log": "86ca7a0a8c563f58569e7da6520e992f02fd1d3ecb0f80314ae53ba7c4a9f3a2",
+      "postgres-final/test_irrigation_admission_postgres.log": "1353adfb36053b14ee6828fbf23b5766e9d6415b01afa3dc61ebb53275c87f9d",
+      "postgres-final/test_irrigation_recovery_postgres.log": "fd8bbb6620340a1aab0e1829836e642459242892d84d164c04f4b702d0112c6c",
+      "postgres-final/test_mower_firmware_operations_postgres.log": "e78173dde8c30006ac12814be35bac640c894c9b709bc8f4d9f2b7bb7a6ab39e",
+      "postgres-final/test_mower_firmware_postgres.log": "e3c5bed81ffa083ea4c83de735ae632e4d4462b7092fb5b2cc16a9167833c7ce",
+      "postgres-final/test_mower_firmware_sessions_postgres.log": "8997430c8146c3e9d86f8e964b629c9ef00a6374a31d8d8fccf0a14cca69a31c",
+      "postgres-final/test_mower_parameters_postgres.log": "3611e5879e2e166a19706d0fc7426abca05e3fd4bb37dd33158e4a25f9796092",
+      "postgres-final/test_process_binding_postgres.log": "c19e025aff4fdd758d22a20410e9d14a39dd633e52b8e89501e205adfb3b9027",
+      "postgres-final/test_scheduler_audit_postgres.log": "1a1413b15ba741bd0106edd5d4f042f7d17650fa77331112111288840df20e5d",
+      "postgres-final/test_scheduler_feedback_postgres.log": "a571475845786fbfbfb4d0d6e6fa1ef1c38ff9d072009c94c467154269815a4f",
+      "postgres-final/test_startup_schema_postgres.log": "14e31aab2d03e8d0c9c8b63a2e796a6d4eecf678cf917374ed0049f0d18bfdea",
+      "postgres-final-run.log": "12176f210c13e1a0feed2413ac83713abc19ae18f86c042ea823837373c8740b",
+      "postgres-run.log": "12176f210c13e1a0feed2413ac83713abc19ae18f86c042ea823837373c8740b",
+      "production-unchanged.json": "d675d2b9fd2ca0876eb874d73429908f9b32630e5db7aa900285ac1f09cb2e89",
+      "scope-check.json": "71586217cd13878c575fe5d872331144924505466c3d22e1092838be562b1851",
+      "source.diff": "68fb1863bafa5d6a51fb32841bf57056f8ff99dfcfa66609bd32d38de087c837",
+      "summary.json": "867a7df39f2673c39e4f32c3e404ea0b8584f88cf0b5011a6668d2a598433e8f",
+      "unit/test-summary.json": "0c76841cdc4d0f2d46c80364c7bfd8d64bc51d8749e58386e0b3987cd3b26c50",
+      "unit/unit.log": "a6fd91983a57cb2558b6f50820a221b78f157ca5ef495f69acbdf6f859824fe7",
+      "unit-final/test-summary.json": "2b1047ee4835bb342ccc75cb9c25beada47bf695e0de2bb0803b6447b3c521bd",
+      "unit-final/unit.log": "a5f51f65fe5a4b3208edf9adde2c3715f2491f392df38a07c3031f48f6b844d0",
+      "unit-final-run.log": "0656835a47d6923e4330e332ad3907bf84b9e8f03aefaa0ac7de8aa69eefe2e0",
+      "unit-run.log": "2775a986f0d305e24c62546b4bf580645adf072bd488423ffd586af063be83e6"
+    },
+    "hc20": {
+      "baseline-stage.json": "754a2a4789f375a72cbf697b35e74eafffb294bdd15a0c41074d35675c3feedb",
+      "baseline-stage.log": "fa619f6a0948bd0e32a105ce04da01e990a34c31fbe9451f65e1bfe4916fc42c",
+      "baseline-unit.log": "877bdf9f8a0e22bd04b1c21be6af87fe7e9e3768165fe67c923414e37e5f13c7",
+      "before.json": "3f2b0dcc9c3e58f850e3bbf6ffc723c4d83f5f3df9420978d8d982833e869529",
+      "changed-files.json": "7a20c13a68af32b745e253b72e84a102d41da331cf8b45e9b77c4b54108ff7ca",
+      "check_scope.py": "c72fb5a7d143ca81a009fae16faeaf95de9e4ee889f83315c9d293a99b5ab0dc",
+      "final-stage.json": "af82aeb5e37ec04ff051c9b058ab0cc55d3c1e7b2a253817e9a2219261108fc3",
+      "final-stage.log": "7e52ffe7b33d15866a6c6e854c36808ac133fe16e677a233ee4fa84f39472d40",
+      "finalize_evidence.py": "17b044146197a6a1f4b5b38b117ff65a8ed706d4db3f064651aae73fe85eed5c",
+      "focused-stage.json": "af82aeb5e37ec04ff051c9b058ab0cc55d3c1e7b2a253817e9a2219261108fc3",
+      "focused-stage.log": "64532eef0c6db5f6b386a80e18814ec9f2d69d5c3680235bdd971f61a504cc61",
+      "focused-unit.log": "2d9543f834794563dcace75f10633e0e10ee0cf49bb1c3440210b9b7516e8074",
+      "original/AUDIT_REPAIR.md": "c336efdcc62136802f1590d617b66db939a147db061bf843ba90f801d47a4bc9",
+      "original/DEPLOYMENT_PREP.md": "6cbb1cce8688d20fb6a77233b650b7bdd42a3c9a0e06b16bea2343325438cd9d",
+      "original/docs/ai/irrigation-domain.md": "9c7e5887db08216efa7253c6e964f2449e7e7e4d3057d422a8f5903e1cd3c503",
+      "original/infra/backend/irrigation_service.py": "e78921d90c572bdb30df433c32510d273c94b12ef08a626be3e93683b70cd0fc",
+      "original/infra/backend/tests/test_irrigation_admission.py": "8de74a05a1e33f5b34e219503efb72eaf92fcc08eec08090cba4fafb5c3170a4",
+      "original/infra/backend/tests/test_irrigation_admission_postgres.py": "65d5fa75aa6e530db37b75abc8016a7fb1174c50c20474c82bf730055c4767dc",
+      "original/infra/backend/tests/test_irrigation_service.py": "140730d3322a82da37bccdd028b29a0849acfb39e012ad91afaff032986aab77",
+      "payload-parity.json": "90aa05f40986ae6294fb33faf2758287d04b5ad86e3393aa82fecacacc7040e0",
+      "payload-parity.log": "66a3d157ebf51a08843be40728a3d94e8690c5cbe0c14a42d7136c37c4c75b60",
+      "payload_probe.py": "d2660a9cfbbda47710a257cc1efaa7e3488600e2aa42f61a034c8d03cfcf56b3",
+      "postgres/postgres-hosts": "f4ecfcd141cfca21d6fcced763fb437f3f365a5ebc62f4cac40b11f9a4317aa1",
+      "postgres/test-summary.json": "2225bdb4d37606a443b443ab1f439a02bfb7b08b0ffeb2699c05c24469224c0b",
+      "postgres/test_about_inventory_postgres.log": "0ac5eb3749e0695ea2bd08b98c3204c3563ac1227392c8cc85252c63f0f29e1d",
+      "postgres/test_baseline_postgres.log": "85abc284f743942b8cf70b962fc417117330c9f5995c33046ff53606bed726db",
+      "postgres/test_combustion_safety_state_postgres.log": "ab97097c9dd30a589976edcf107fc673b4cee200ee02e28df8aa6bdc07e4bdff",
+      "postgres/test_database_runtime_postgres.log": "cc30c40023d60268f0ccd4732c223240d7a5dece2ae14f8cc236b57664b6d332",
+      "postgres/test_db_privileges_postgres.log": "4ce391aacc40dd9595beab2daf69ba0a9399a2de3b23482f8f6301dfa762f2f5",
+      "postgres/test_irrigation_admission_postgres.log": "e850e8918744549160965153321c8d85bb3bafe3c7ea285d9d769979c0b410ec",
+      "postgres/test_irrigation_recovery_postgres.log": "748ec9fea2b059ab731528faadca0be99bffe12a9df7acbeb123fdc889c9fa74",
+      "postgres/test_mower_firmware_operations_postgres.log": "637ffdd45831bfca0134e05399f0c91866c36412171b2d1956d9bb6fe73554e1",
+      "postgres/test_mower_firmware_postgres.log": "2a8b2dc87abef2ad3b43ca73bf3913bacd9b2bcf578079e420974da9de806ebb",
+      "postgres/test_mower_firmware_sessions_postgres.log": "7e89ec0c3d01a68c2bde0915c6af9d412988b8c526fe07190877376c4b00fc5c",
+      "postgres/test_mower_parameters_postgres.log": "3611e5879e2e166a19706d0fc7426abca05e3fd4bb37dd33158e4a25f9796092",
+      "postgres/test_process_binding_postgres.log": "4a0fe5a37875562a0a0e419affedc3a5c3056982c20d379321f9fb66eb9a4bf7",
+      "postgres/test_scheduler_audit_postgres.log": "7d4a28dc4f18aa720f70005de6e6ecfd78f77617091183f747b8b6e5a84a207a",
+      "postgres/test_scheduler_feedback_postgres.log": "71edcba352dae5d9d3ab5605a98b4165c2754a8a64d7e6304d09ee513fed2f7a",
+      "postgres/test_startup_schema_postgres.log": "5ef26ea41f07c09d09a286c2a4f9f0db362eb940c24a4f6c4d393e93dc8ca048",
+      "postgres-run.log": "12176f210c13e1a0feed2413ac83713abc19ae18f86c042ea823837373c8740b",
+      "production-unchanged.json": "d06235b7c30b4ddac56c73a3f026377a86bf1a66a1387bd23fc1dd9e33a9ab8d",
+      "scope-check.json": "552d4737f223a4976fc8fff45422eee066efd240b76d65b0831f33559a239d2b",
+      "source.diff": "be191da64b7d57aa9daec1b85701deee961ba7b3fbe48baeaf8efbf8da744ea2",
+      "summary.json": "57a022b6f9b1179766d655da607fd5ddb093f263b995c18ee4f871ec1934aae3",
+      "unit/test-summary.json": "940bb665f5f8cdd46e5684b8a511c06b6246bd9124286ba1635db6fe994cd5fc",
+      "unit/unit.log": "4dff3c59c4b25468c5c2558ed66d463e08d51a5181975bbc54b40f3138954903",
+      "unit-run.log": "0656835a47d6923e4330e332ad3907bf84b9e8f03aefaa0ac7de8aa69eefe2e0"
+    },
+    "hc24": {
+      "baseline-parser.json": "faaf551d2c485b3c48a4d0c5be2839ef94f6d724cdb066cb6a52af9676bc169b",
+      "baseline_probe.py": "49817f2f53e7713c9afa55dae86854bef5b83103affe6f2858da29a9212021bd",
+      "before.json": "0ff4222984704500c98adfd2483366c3d89bef54093957a35edfb9dd09c48f28",
+      "changed-files.json": "3938be3e63847599b54a4dbaf7c1facee7c0b18e735f84ad52a14fb378ada022",
+      "check_scope.py": "75965dc3380e72642760145beeee1f806452fbd9717f5fe40534c2e9b8aaf7b6",
+      "finalize_evidence.py": "8b4bb4ba6c62295f72f244921d8b370dddab7e5f29e2511d8fe97cd09239f085",
+      "mdns/mdns.log": "ba2943b7fa3eb18518f194eb6ae8292fac72d97094bc4337007502d70f1c6b77",
+      "mdns/test-summary.json": "578caca4ab68cc9015ae0e741f0ee67d54f3c2df51be6589591ac838f0704522",
+      "mdns-run.log": "57f474b0435b943c33b3cb2164bbd14e2910b3a10ef55ad9569e5075da3e55ff",
+      "original/AUDIT_REPAIR.md": "faeff5b602e431cddc76fdd19cea2a2e0dd102b8af66c0df7f668d0dfa4eff6b",
+      "original/DEPLOYMENT_PREP.md": "6e4b587c4621a01a05cba364c17a9c52c645b9a83c64e58f54c9c4dbdb85a213",
+      "original/infra/mdns/mdns_responder.py": "a9838e4b43a31c17a5e6bd7d4b8a1f4a8db1db8abd4c113829c4773817839fef",
+      "original/scripts/check_hc_tests.py": "7e0688feed4d4b9d695bddb741746dc0318901bc7275440ee52e255e9245db0e",
+      "original/scripts/hc_test_suite.py": "22fe7dfcf7fa9d1492e5dbb42d823bbfbf02afff46b8682c9ce8b889bd81a72a",
+      "original/scripts/stage_hc_test_source.py": "5caedbcec8e26ce0433c202bf9938960b5fa178e9ed3942a74dd79658d9c1fab",
+      "production-unchanged.json": "694459e57a68ece6c19c26caead02443274d229447382fb5fc500194f229fdb9",
+      "scope-check.json": "1a5ee55f649ea94590980b83be23632581e7cf35c34923f9a9221fa4df46b1ee",
+      "separate-observation.json": "0c6d813ca09f52acf94f4110baa74112b15c6ec3cc952266f040a8b4865274e7",
+      "source.diff": "abdddc00c1af9bbe262c358b0879d2d9442e9f7b877a32bc3b29457ad8bef918",
+      "summary.json": "a9352c8b49f9016432436797dc755450eb05cbac5d3e37c8cd2de23dd0128d76",
+      "unit/test-summary.json": "65cadba4cd262b911aa7eb1cb7fbb2887a1383efe04dff48ebf8ce28b3ab76d7",
+      "unit/unit.log": "79bd66ba018ebe4a8927fcf07579ec7d3fdde39798bbf62db24e96e44db1d16d",
+      "unit-run.log": "0656835a47d6923e4330e332ad3907bf84b9e8f03aefaa0ac7de8aa69eefe2e0"
+    },
+    "hc26": {
+      "before.json": "4418c99244322114f4d5ebdcac1e66a9d22b3d2c988e37eb45e930568ff1c592",
+      "changed-files.json": "8ae0db857dee7bcd523b25ed89c93a4a28a4f72df3c7d07b3b05e057ebe49802",
+      "check_scope.py": "63595717628ab36e5facee82f6a1a6057a7bcaaf952979ccd3b913c62b6e7099",
+      "finalize_evidence.py": "eb06656f3f0c4918704a95a41474a0529237b21034192ca6c6a05c71529daae0",
+      "growatt/growatt.log": "1022e245ae16f55e89283f95c3db0c7e3a2541cc49f8d78170e347c5fbc56b3d",
+      "growatt/test-summary.json": "91980654e431b9d05d00177db57616ffa049e4fc47c5e981f50060843a786bf5",
+      "growatt-final/growatt.log": "bf90d707e1c8dc938dc9b24dd1284965debb13c4dc3b8bb2b9a8020334de474b",
+      "growatt-final/test-summary.json": "6f117af8241b28aa867a549a94df6da0ad16330623d1af6682b4702e46c98f11",
+      "growatt-final-run.log": "8bb9e19eb441a08c115b2ace8851d2f2f263ba161330a9005be9a5e3fd92b111",
+      "growatt-run.log": "0feb8a1dd2442aea4ace9b34fc64392f08f0b27caff1b0d72887b3dd213d4813",
+      "ingest/ingest.log": "95ea22b46149fb7c8e0a4169b25b50bb1eb3c87e8a4b0599d728caa56b4fa8c7",
+      "ingest/test-summary.json": "208f2fa1a1a4f39589fefc6432fdf5c84b1e003e3e6e9ada1b48dc9cde23f5bd",
+      "ingest-run.log": "3cd43fdafc6dd19dfc0b00898a348539f8636bfefa244cb81be7d414c196d134",
+      "ingest-test-ids.json": "996309ab174d9997c27e3098675794c45fcb0e63d272b029164e3596d6b69c58",
+      "live-candidate-smoke.json": "9ee184e73472e3b9f481803a4c915a4626d838e89164af970303e98d605c28a5",
+      "live-measurement.json": "bb2ea31450ea70b4dffdcca4e3c90a62ff84b8a4cff1c4e39711d71381a94a4a",
+      "mdns/mdns.log": "d50a76a0dab55be1b6580ed16adab8cf1521ea8ae7793ebbf0fb6f2e66e79b47",
+      "mdns/test-summary.json": "48d312f85ecf0684843bf332fc7d46617567443af3ba7842e35c1ed32e713698",
+      "mdns-run.log": "57f474b0435b943c33b3cb2164bbd14e2910b3a10ef55ad9569e5075da3e55ff",
+      "measure_live.py": "1728220674fe41a339fdfab477d2fc8182b1192ba4235f1a7bfa4c79cde843a6",
+      "original/AUDIT_REPAIR.md": "f190b3e5e80c1f5bf54d190b447595b995562db835f8e8d8e78b97e973ff0142",
+      "original/DEPLOYMENT_PREP.md": "5088cba38c106b9916d4a2bb1bfeff53d8f6dc8c803d114ffc46af24e0c57d07",
+      "original/apps/ha-growatt-poller/ha_growatt_poller.py": "f762a6db410b825ba41a0d679596c8fbe6220a32a95fb69f994d6c7ae79a04f9",
+      "original/docs/ai/solar-domain.md": "f1bcbb3e81295b00eb225340ca988aec62b019f70d7fd2629dd05a8943c64d22",
+      "original/scripts/check_hc_tests.py": "f32eae912ca36c5f10e47cd66944bdde4e66a289314c96a129300696522549d1",
+      "original/scripts/hc_test_suite.py": "16deb3bb14293f63f37908ffdbf674214e59b6047c3d0b83e824c34c59bc2846",
+      "payload-compatibility.json": "c6a012aabe652898b0b9a4bea326656e6fd1b057f6d4c1aea5e07d234dac1f1c",
+      "payload_compat_probe.py": "5cd147a3e3b0aa4a46e23d215f41d45a347b507dd94dd326963fb41cd8104814",
+      "production-unchanged.json": "6ba82db47d1dff49657db0f170aa51febde7f606c4b0269d5d028863f525ba7b",
+      "scope-check.json": "6c381eaeb61c79bc501e989c20438b887762c18d31c51e112bede23cac95e9e5",
+      "smoke_live.py": "60032e91580f47a85134a5925fafae130db34a84924ffefc322d3ec2d7f8828a",
+      "source.diff": "1ed30023c8f8ab384403e1307306f48c39897c5cfec55889be02e8869a1ff5a8",
+      "summary.json": "873a5e64bb54b714bef7ba386f43c04c10d7173b507bf43c000bcee9ca1fb266",
+      "unit/test-summary.json": "66d3ca368f2b41fc8918ad3f3da8dfc9e0f4f238cccd18fd0c25f75ad9222006",
+      "unit/unit.log": "b82cb73d16942d0296b21f72d758f776d028e3d630b888bdfef85b08fda897b2",
+      "unit-run.log": "0656835a47d6923e4330e332ad3907bf84b9e8f03aefaa0ac7de8aa69eefe2e0",
+      "usage.json": "aecc46c15f616382cd9a429e37c1503b991b40994143726fc7d9e6e59140d484"
+    }
+  },
+  "ai_enabled": false,
+  "hc41_changes_authorized": false
+}

@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "scope": "real r18 archive and external Git plus explicit JSON Compose recovery correction; not deployed",
+  "started_at": "2026-11-02T16:15:08.392963+00:00",
+  "remote_write_commands": 0,
+  "production_restore": false,
+  "ai_enabled": false,
+  "phase": "completed",
+  "fresh": {
+    "mode": "fresh",
+    "snapshot_id": "16cce464df928667d89eb16065c72eebd6c9e02a25867a0aff2037f7660488cb",
+    "git_commit": "fac5a2628d6f3c621ea4fa561dda630ab6778f48",
+    "external_git_commit": "09c74d093a4276e8d5cb90b4fe454055b09010fb",
+    "candidate_fixes_applied": true,
+    "started_at": "2026-11-02T16:15:08.409616+00:00",
+    "ok": true,
+    "returncode": 0,
+    "finished_at": "2026-11-02T16:27:31.324425+00:00"
+  },
+  "selected_dump_sha256": "4fd8e5f23550148e9d15e0731020843e8db6332329b55ed8d5467cbf46ffb77c",
+  "repeat": {
+    "mode": "repeat",
+    "snapshot_id": "16cce464df928667d89eb16065c72eebd6c9e02a25867a0aff2037f7660488cb",
+    "git_commit": "fac5a2628d6f3c621ea4fa561dda630ab6778f48",
+    "external_git_commit": "09c74d093a4276e8d5cb90b4fe454055b09010fb",
+    "candidate_fixes_applied": true,
+    "started_at": "2026-11-02T16:27:54.314745+00:00",
+    "ok": true,
+    "returncode": 0,
+    "finished_at": "2026-11-02T16:38:11.774720+00:00"
+  },
+  "reboot_verified": true,
+  "new_boot_id": true,
+  "repeated_unit_bytes_identical": true,
+  "unavailable_repository_preserves_live_state": true,
+  "offline_homeassistant_verified": true,
+  "root_ipc_verified": true,
+  "five_timers_verified": true,
+  "finished_at": "2026-11-02T16:39:17.828302+00:00"
+}

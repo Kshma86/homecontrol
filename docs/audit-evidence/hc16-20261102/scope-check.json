@@ -1,0 +1,136 @@
+{
+  "ok": true,
+  "scope": "HC-16 only; HC-15 pending fingerprints preserved",
+  "before_rover_cycles": [
+    [
+      "mower_manual_service",
+      "mower_motor_test",
+      "mower_parameters_service",
+      "mower_v3_commands",
+      "mower_v3_service"
+    ]
+  ],
+  "after_rover_cycles": [],
+  "current_rover_imports": {
+    "mower_manual_service": [
+      "mower_v3_protocol"
+    ],
+    "mower_motor_test": [
+      "mower_parameters_service",
+      "mower_v3_protocol",
+      "rover_parameters"
+    ],
+    "mower_parameters_service": [
+      "mower_v3_protocol",
+      "rover_parameters"
+    ],
+    "mower_v3_commands": [
+      "mower_v3_protocol"
+    ],
+    "mower_v3_protocol": [
+      "rover_parameters"
+    ],
+    "mower_v3_service": [
+      "mower_manual_service",
+      "mower_v3_commands",
+      "mower_v3_protocol"
+    ]
+  },
+  "moved_definition_ast_parity": {
+    "motor_identity": true,
+    "validate_parameters_status": true,
+    "validate_motor_state": true,
+    "parameters_fresh": true,
+    "request_id": true,
+    "RoverReadError": true,
+    "UnknownMutation": true,
+    "unique_object": true,
+    "reject_constant": true,
+    "integer": true,
+    "hex_id": true,
+    "require": true,
+    "validate_identity": true,
+    "validate_state": true
+  },
+  "existing_service_body_ast_parity": {
+    "mower_manual_service": true,
+    "mower_motor_test": true,
+    "mower_parameters_service": true,
+    "mower_v3_commands": true,
+    "mower_v3_service": true
+  },
+  "contract_constants_ast_unchanged": true,
+  "settings_only_two_unused_fields_removed": true,
+  "hc15_fingerprints": [
+    {
+      "path": "infra/backend/app.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/db_runtime.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/repository_service.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/climate_service.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/irrigation_service.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/tests/test_repository_service.py",
+      "preserved": true
+    },
+    {
+      "path": "scripts/stage_hc_test_source.py",
+      "preserved": true
+    },
+    {
+      "path": "scripts/check_hc_tests.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/tests/test_db_runtime.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/tests/test_domain_schedule_reads.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/tests/test_app_database_wiring.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/tests/test_database_runtime_postgres.py",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/tests/fixtures/hc15_queries.json",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/tests/fixtures/hc15_routes.json",
+      "preserved": true
+    },
+    {
+      "path": "infra/backend/tests/fixtures/hc15_import_probe.py",
+      "preserved": true
+    }
+  ],
+  "unchanged_auth_codec_frontend": [
+    "infra/backend/mower_operator_auth.py",
+    "infra/backend/rover_parameters.py",
+    "infra/frontend/src/features/mower/useMowerOperator.js"
+  ],
+  "audit_original_unchanged": true,
+  "new_device_commands": false,
+  "timing_changes": false,
+  "db_migrations": false,
+  "production_deployed": false
+}

@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "root_reserve_bytes": 7516192768,
+  "data_reserve_bytes": 3221225472,
+  "overlay_stop_bytes": 41875931136,
+  "peak_root_overlay_bytes": 33342496768,
+  "peak_data_overlay_bytes": 16372264960,
+  "minimum_root_free_bytes": 19685355520,
+  "minimum_data_free_bytes": 7674462208,
+  "lab_stopped_for_capacity": false
+}

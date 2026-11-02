@@ -1,0 +1,42 @@
+[
+  {
+    "path": "AUDIT_REPAIR.md",
+    "state": "modified",
+    "sha256": "4350ec303c41a2d06917a3899016751f9c378996004957844a1303527f0078e9"
+  },
+  {
+    "path": "DEPLOYMENT_PREP.md",
+    "state": "modified",
+    "sha256": "b0276f004b2ca01640f3315e2bf8e3a40e92b51cfcc74d8a771c1ced8fed6966"
+  },
+  {
+    "path": "apps/ha-growatt-poller/ha_growatt_poller.py",
+    "state": "modified",
+    "sha256": "a5195aa3dc4fcb7b9af4165b7ccc742dc16a99a9761bc9737ff05c4d7157aaed"
+  },
+  {
+    "path": "apps/ha-growatt-poller/tests/test_ha_growatt_poller.py",
+    "state": "added",
+    "sha256": "7398739f19d3c2bc42d94d67a688dc3261f1807fa35923099317ec34e03ee225"
+  },
+  {
+    "path": "docs/ai/solar-domain.md",
+    "state": "modified",
+    "sha256": "8598836accc086effd6fcb4ee4f34ee333449b315686e98fef90efe373863aa3"
+  },
+  {
+    "path": "docs/hc-26-repair.md",
+    "state": "added",
+    "sha256": "b1629950f1cbe11d7276c93d298a39f026cfa378fe36d5ba20c1691d13389525"
+  },
+  {
+    "path": "scripts/check_hc_tests.py",
+    "state": "modified",
+    "sha256": "7e1a873bab1654a0a18eceaa9f25011c9008a41f213b99430a63fa4ca64ed3f9"
+  },
+  {
+    "path": "scripts/hc_test_suite.py",
+    "state": "modified",
+    "sha256": "b5cc910edfacc5fb560f7e4483162832105fcf718638f4195e53f508a79695e4"
+  }
+]

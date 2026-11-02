@@ -1,6 +1,6 @@
 services:
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429
     container_name: homecontrol-ai-ollama
     restart: unless-stopped
     environment:
@@ -17,7 +17,7 @@ services:
         max-file: "3"
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui@sha256:03443b8de6b617da9d900edd09b4bf1cb0ddbfdcba6afb42c548336a0b821ded
     container_name: homecontrol-ai-open-webui
     profiles:
       - ui
@@ -38,7 +38,7 @@ services:
         max-file: "3"
 
   gitea:
-    image: gitea/gitea:latest
+    image: gitea/gitea@sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d
     container_name: homecontrol-ai-gitea
     profiles:
       - git

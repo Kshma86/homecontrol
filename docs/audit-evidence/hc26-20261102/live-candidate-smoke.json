@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "get_count": 1,
+  "elapsed_seconds": 0.003717,
+  "configured_metrics": 27,
+  "published_metric_count": 26,
+  "per_metric_age_fields": 26,
+  "valid_age_values": 26,
+  "original_last_updated_fields": 26,
+  "credentials_exported": false,
+  "raw_states_saved": false,
+  "mqtt_publish_commands": 0,
+  "ha_mutation_commands": 0
+}

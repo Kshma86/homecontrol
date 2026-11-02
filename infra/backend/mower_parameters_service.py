@@ -4,8 +4,7 @@ import json
 import re
 
 import rover_parameters as rcp1
-from mower_v3_commands import request_id
-from mower_v3_service import integer
+from mower_v3_protocol import request_id, integer
 
 LIMIT = 16384
 MAX_REVISION = 0xFFFFFFFF

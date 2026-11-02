@@ -1,0 +1,9 @@
+{
+  "container": "homecontrol-ha-growatt-poller",
+  "running": true,
+  "image": "sha256:c4cb6f7b58c3c62343e0fd0e4f119e4e2b9406dee4402b6b6fa9472e7209322c",
+  "id": "5823b9dd6a0038b5d9c28613c727a28275188bb3c3e055e51eb90f0e04352230",
+  "profiles": "homecontrol-ha-growatt-poller",
+  "compose_profile": "ha-growatt",
+  "enabled_and_running": true
+}

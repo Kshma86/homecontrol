@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "reason": "Host root filesystem exhausted by disposable guest overlay; guarded lab VM stopped and its overlay deleted immediately.",
+  "production_health_after_cleanup": "15 expected components running, 10 healthchecks healthy, same container IDs/images/runtime hashes, no failed systemd units",
+  "root_free_bytes_after_cleanup": 53029249024,
+  "candidate_restore_completed": false,
+  "repeat_restore_executed": false,
+  "reboot_executed": false,
+  "hc23_closure_blocked": true,
+  "lab_only": true
+}

@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "snapshot_id": "16cce464df928667d89eb16065c72eebd6c9e02a25867a0aff2037f7660488cb",
+  "compressed_archive_bytes": 2808153463,
+  "regular_files": 6374,
+  "expanded_regular_file_bytes": 2871998885,
+  "groups": {
+    "other_files": 214965366,
+    "runtime_images": 2657033519
+  },
+  "image_archives": [
+    {
+      "release": "hc-security-20261102-r18",
+      "bytes": 2657033519
+    }
+  ],
+  "data_extracted": false,
+  "remote_write_commands": 0,
+  "private_inventory_uploaded": false
+}

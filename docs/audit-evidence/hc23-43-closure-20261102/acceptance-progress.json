@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "scope": "real r18 archive and external Git plus explicit JSON Compose recovery correction; not deployed",
+  "started_at": "2026-11-02T15:58:02.303493+00:00",
+  "remote_write_commands": 0,
+  "production_restore": false,
+  "ai_enabled": false,
+  "phase": "fresh_restore",
+  "error_type": "CalledProcessError",
+  "finished_at": "2026-11-02T16:08:08.786521+00:00"
+}

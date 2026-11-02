@@ -5,8 +5,9 @@ import threading
 import time
 from collections import deque
 
-from mower_v3_commands import request_id
-from mower_v3_service import MANUAL_PROTOCOL, STATES, RoverReadError, integer, require, unique_object, reject_constant
+from mower_v3_protocol import (
+    MANUAL_PROTOCOL, STATES, RoverReadError, integer, require, unique_object, reject_constant, request_id,
+)
 
 
 def decode_frame(raw):

@@ -6,103 +6,10 @@ from pathlib import Path
 
 import rover_parameters as codec
 from mower_parameters_service import DraftError, validate_draft
-from mower_v3_commands import request_id
-from mower_v3_service import RoverReadError, hex_id, integer, require
-
-
-def motor_identity(identity):
-    return (identity.get("mode") == "MOTOR_TEST" and identity.get("contract") == "3.1.0"
-            and identity.get("compatible") is True and identity.get("manual_protocol") == "homecontrol.mower.manual.v3")
-
-
-def validate_parameters_status(payload):
-    require(type(payload) is dict and type(payload.get("v")) is int and payload["v"] == 3)
-    for key in ("available", "source_valid", "can_apply", "busy", "applied", "commissioned", "motion_permitted"):
-        require(type(payload.get(key)) is bool)
-    require(payload["commissioned"] is False and payload["motion_permitted"] is False)
-    require(payload.get("storage") in ("EMPTY", "ACTIVE", "PENDING", "FAULT"))
-    require(type(payload.get("parameters_version")) is int and payload["parameters_version"] in (1, 2))
-    for key in ("control_epoch", "revision"):
-        require(integer(payload.get(key)))
-    require(payload.get("source_age_ms") is None or integer(payload["source_age_ms"]))
-    for key in ("esp_boot", "stm_boot"):
-        require(type(payload.get(key)) is str and (payload[key] == "" or hex_id(payload[key], 16)))
-    require(payload.get("request_id") is None or request_id(payload["request_id"]))
-    require(payload.get("parameters_crc") is None or hex_id(payload["parameters_crc"], 8))
-    require(type(payload.get("code")) is str and len(payload["code"]) <= 64)
-    parameters = payload.get("parameters")
-    if parameters is not None:
-        try:
-            codec.validate(parameters)
-            require(parameters["parameters_version"] == payload["parameters_version"]
-                    and f"{codec.checksum(parameters):08X}" == payload["parameters_crc"])
-        except (ValueError, TypeError):
-            require(False)
-    if payload.get("necessary_parameters") is not None:
-        try:
-            codec.validate(payload["necessary_parameters"])
-            require(parameters is not None and codec.necessary(parameters) == payload["necessary_parameters"])
-        except (ValueError, TypeError):
-            require(False)
-    if "stored_parameters_valid" in payload or "stored_parameters" in payload:
-        require(type(payload.get("stored_parameters_valid")) is bool)
-        stored = payload.get("stored_parameters")
-        require((stored is not None) == payload["stored_parameters_valid"])
-        if stored is not None:
-            try:
-                codec.validate(stored)
-                require(stored["parameters_version"] == payload["parameters_version"]
-                        and f"{codec.checksum(stored):08X}" == payload["parameters_crc"])
-            except (ValueError, TypeError):
-                require(False)
-    keys = ("v", "parameters_version", "esp_boot", "stm_boot", "control_epoch", "revision", "request_id",
-            "parameters_crc", "storage", "busy", "available", "source_valid", "source_age_ms", "can_apply",
-            "applied", "code", "parameters", "commissioned", "motion_permitted", "necessary_parameters", "stored_parameters_valid", "stored_parameters")
-    return {key: payload.get(key) for key in keys}
-
-
-def validate_motor_state(payload, identity):
-    # Native MOTOR_TEST uses hex masks and independently timestamped SAFE evidence.
-    # Keep the ordinary deployed schema unchanged.
-    from mower_v3_service import validate_state
-    require(type(payload) is dict)
-    normalized = dict(payload, source_valid=False)
-    for key in ("fault_mask", "safety_installed_mask", "safety_active_mask"):
-        value = payload.get(key)
-        require(value is None or hex_id(value, 8))
-        normalized[key] = int(value, 16) if value is not None else None
-    require(type(payload.get("source_valid")) is bool)
-    require(type(payload.get("safety_source_valid")) is bool and integer(payload.get("safety_source_seq")))
-    require(payload.get("safety_source_age_ms") is None or integer(payload["safety_source_age_ms"]))
-    result = validate_state(normalized, identity)
-    if payload["source_valid"]:
-        require(integer(payload["source_seq"], 1) and integer(payload["source_age_ms"])
-                and integer(payload["state_seq"], 1) and integer(payload["control_epoch"], 1)
-                and integer(payload["event_seq"]) and result["fault_mask"] is not None
-                and payload["state"] in {"DISARMED", "IDLE", "MANUAL", "FAULT"}
-                and payload["armed"] == (payload["state"] in {"IDLE", "MANUAL"})
-                and payload["phase"] == "NONE" and payload["store"] == "EMPTY"
-                and payload["mission_id"] is None and payload["revision"] is None and payload["crc32"] is None
-                and payload["segment_index"] == payload["segment_count"] == 0
-                and payload["ready_for_start"] is False and payload["ready_for_resume"] is False)
-        if payload["state"] == "MANUAL":
-            require(integer(payload["manual_lease_id"], 1) and integer(payload["manual_input_seq"]))
-        else:
-            require(payload["manual_lease_id"] is None and payload["manual_input_seq"] is None)
-    safe = payload["safety_source_valid"] and payload["safety_source_age_ms"] is not None and payload["safety_source_age_ms"] <= 1500
-    if safe:
-        require(integer(payload["safety_source_seq"], 1) and all(result[key] is not None for key in ("safety_installed_mask", "safety_active_mask")))
-    else:
-        result["safety_installed_mask"] = result["safety_active_mask"] = None
-    return result | {"source_valid": payload["source_valid"], "safety_source_valid": bool(safe),
-                     "safety_source_seq": payload["safety_source_seq"], "safety_source_age_ms": payload["safety_source_age_ms"]}
-
-
-def parameters_fresh(parameters, identity, state):
-    return (parameters["available"] and parameters["source_valid"] and parameters["source_age_ms"] is not None
-            and parameters["source_age_ms"] <= 1500
-            and (parameters["esp_boot"], parameters["stm_boot"], parameters["control_epoch"]) ==
-                (identity["esp_boot"], identity["stm_boot"], state["control_epoch"]))
+from mower_v3_protocol import (
+    request_id, RoverReadError, hex_id, integer, require, motor_identity,
+    validate_parameters_status, validate_motor_state, parameters_fresh,
+)
 
 
 class MotorTestService:

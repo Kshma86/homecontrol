@@ -29,14 +29,30 @@ def recovery_aliases(index, archive, images):
     if not compose.isfile() or compose.size > 1024 * 1024:
         raise ValueError('Invalid archived Home Assistant Compose')
     text = archive.extractfile(compose).read().decode()
-    references = re.findall(r'^\s*image:\s*["\']?([^\s"\']+)["\']?\s*$', text, re.M)
+    if text.lstrip().startswith('{'):
+        def unique_object(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError('Duplicate key in archived Home Assistant Compose')
+                value[key] = item
+            return value
+        model = json.loads(text, object_pairs_hook=unique_object)
+        services = model.get('services')
+        if not isinstance(services, dict) or set(services) != {'homeassistant'}:
+            raise ValueError('Home Assistant recovery requires one explicit service')
+        service = services['homeassistant']
+        reference = service.get('image') if isinstance(service, dict) else None
+        references = [reference] if isinstance(reference, str) and reference else []
+    else:
+        references = re.findall(r'^\s*image:\s*["\']?([^\s"\']+)["\']?\s*$', text, re.M)
     if len(references) != 1:
         raise ValueError('Home Assistant recovery requires one explicit image')
     if re.fullmatch(r'sha256:[0-9a-f]{64}', references[0]):
         if references[0] not in images:
             raise ValueError('Pinned Home Assistant image is absent from the offline cache')
         return {}
-    if not re.search(r'^\s*image:\s*[\"\']?' + re.escape(HA_IMAGE) + r'[\"\']?\s*$', text, re.M):
+    if references[0] != HA_IMAGE:
         raise ValueError('Unsupported Home Assistant recovery image')
     metadata = index.get('docker_images.txt')
     if metadata is None or not metadata.isfile() or metadata.size > 4 * 1024 * 1024:

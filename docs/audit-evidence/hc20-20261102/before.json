@@ -1,0 +1,793 @@
+{
+  "audit_sections": [
+    "HC-20",
+    "D.1",
+    "F0",
+    "F8",
+    "G.5"
+  ],
+  "audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2",
+  "active_release": "hc-security-20261102-r18",
+  "production_modified": false,
+  "source_sha256": {
+    "infra/backend/irrigation_service.py": "e78921d90c572bdb30df433c32510d273c94b12ef08a626be3e93683b70cd0fc",
+    "infra/backend/tests/test_irrigation_service.py": "140730d3322a82da37bccdd028b29a0849acfb39e012ad91afaff032986aab77",
+    "infra/backend/tests/test_irrigation_admission.py": "8de74a05a1e33f5b34e219503efb72eaf92fcc08eec08090cba4fafb5c3170a4",
+    "infra/backend/tests/test_irrigation_admission_postgres.py": "65d5fa75aa6e530db37b75abc8016a7fb1174c50c20474c82bf730055c4767dc",
+    "docs/ai/irrigation-domain.md": "9c7e5887db08216efa7253c6e964f2449e7e7e4d3057d422a8f5903e1cd3c503",
+    "AUDIT_REPAIR.md": "c336efdcc62136802f1590d617b66db939a147db061bf843ba90f801d47a4bc9",
+    "DEPLOYMENT_PREP.md": "6cbb1cce8688d20fb6a77233b650b7bdd42a3c9a0e06b16bea2343325438cd9d"
+  },
+  "backend_python_sha256": {
+    "infra/backend/startup_schema_manifest.py": "057663515b013c1653c0cadf43490fe3717132b33c280f894c6574a18f1a49ec",
+    "infra/backend/combustion_state_store.py": "1d3ba6451c33366a9dfc6930c8e88ef52219d6f1854060595a2a850f821b6894",
+    "infra/backend/process_binding_service.py": "678d33d5a2cc3c82296fe058bac08093eb93da1f9c8250ac9ce76f3689bb3c9f",
+    "infra/backend/db_runtime.py": "8baaffaf53a39ae5299f731737fd6521894294ed2eb110fc839a7954099828df",
+    "infra/backend/mower_manual_service.py": "c8259ccbd42b835443dd3c008b92f40ec6590b95eb0ecc2076424912d7631104",
+    "infra/backend/irrigation_summary_queries.py": "11e97f0db99bef76766ac3f9cf3529eddbf8ef221e57c915fb0e7305ca4349c1",
+    "infra/backend/power_wall_service.py": "37932faaa661eb9938983cef9fe5b3f8938367119446c19ea6336e9c2624efeb",
+    "infra/backend/backup_export.py": "f8302a81335f62e06b72d69756ed82dfbf483729c76e8599dfd4c0b87bcf3fcc",
+    "infra/backend/season_profile_service.py": "ea672d5231871c0df0e4787385db388711267c776e6dac9b2b4e4457fafadb52",
+    "infra/backend/mower_parameters_routes.py": "b8d469ba696162aac7f1f79041d922de250d2e3f17c3e702b62d9326ca583b2b",
+    "infra/backend/x10_schedule_delivery.py": "2e2696a871832933702fd72e046c90692db873ad81d2d5553ad5b3eaf09e3f1b",
+    "infra/backend/restore_runtime_schema.py": "c5238a13f2c976a28f69a3e052659a987b4389a022729ad208b41333cfad6d05",
+    "infra/backend/backup_export_manifest.py": "08172ea8cab55933d81abd1ed171a4c7614e32f88b9da6c3dc8102f28191563f",
+    "infra/backend/db_privilege_manifest.py": "53e4959c62777aa073fcf4a97a20c90281e2257353e548b1398c6a3e9461baf7",
+    "infra/backend/admin_service.py": "2009e574a01a46df3228bc4721cf07bb93355dbd4ff32edf454af4236682ee58",
+    "infra/backend/startup_service.py": "9414d91fc93a2e21fe5ed4d8cbd9f901e47b47fa18d229b9b7b96b8b1ed3a106",
+    "infra/backend/worker_runtime.py": "962a493378b5a63c85f76fb689a71db661d0e49fa6a4d0a8750024ea66d7e831",
+    "infra/backend/rover_qspi_image.py": "7c5bd26541f42f1f37c40f8a5240ea8c5da40dc9a13181a25b9d6778bc9b7f4a",
+    "infra/backend/irrigation_recovery.py": "295d1ca61b3d744d40907aa590a1a89495a19575bdb719e55f03875f8bf41ff3",
+    "infra/backend/irrigation_admission.py": "6488d517008d3a55be85b4e2d7e1107a19fd76f670310a84d62e933d49d6278f",
+    "infra/backend/ai_domain_replies.py": "694eab49d838cf8883ff2279f03b48ef8eb96eb543ed6d91e16ae070cb3be881",
+    "infra/backend/scheduler_feedback.py": "d7f5c9b7a67b0e194286ce8bf2f7621b779b34f4499aa600cdf27c190ec9abd4",
+    "infra/backend/ai_node_service.py": "61e572f930b0c9e23691ef8a670a127f5c9a9c085e4c28919231b4c6c3b5eb7b",
+    "infra/backend/runtime_schema_contract.py": "00e14ffa21d13f55a2d660af1f2cb4b7097bdf087b84dda9496655282ef61704",
+    "infra/backend/mqtt_monitor_service.py": "cf7bce1657e5d64680dd42b241846b88376e6c1e6c0b94045fc3b53a0ba2a812",
+    "infra/backend/rover_image.py": "1edf4b43e5ece54c6082cdc527d85fc2bd47f4d102e07fcf332fa9a8e02467ae",
+    "infra/backend/command_service.py": "901ec5a4c79dbe0f15715d22e7e71ab71dcf604e164a8fbd9589ac660e3eb3a3",
+    "infra/backend/mower_v3_service.py": "bb7babaf557557c7c446cb4cf8a48fc1a9df1e2df7c352119b70940dc875b559",
+    "infra/backend/sql_lab_database.py": "d9e88d668c4e334ccdae889bc06fe618a474b862cd47c9182d89a4816bd80ec0",
+    "infra/backend/x10_schedule_utils.py": "c216f5488db3988bd3e5e86a4fc1e2af1708e72d57bcf9cd0ef4465e4be1589d",
+    "infra/backend/mower_parameters_service.py": "3372ed5689cad40067fff40157d8c800738f2ede9dd9a0bd2201745866fc1d66",
+    "infra/backend/ai_chat_audit_service.py": "987dbf599a37c4ac2a4ffb4fd812811aefe67d2a0a38cbcaeb14ede363c90547",
+    "infra/backend/system_status_service.py": "6fa059e661eec3265b156b2c85039fdf95488d32571cd04815acf94bba4178b3",
+    "infra/backend/backup_service.py": "975e7f10dc53d87866729d9f791320dbf4431d51d9073d3c3c30c1ab3286d540",
+    "infra/backend/mower_firmware_sessions_store.py": "f03497bbd9aab4e8c1cedede52a497ca8d31b4533fecfe715c2f942b66bf8897",
+    "infra/backend/rover_profile.py": "33a3f688fbeb6bdad84506030a92b545fee5a3b279f9b5ffaf868c485abdb6d0",
+    "infra/backend/backup_restore.py": "9494b1e8fff7514f13dff636941dcae54ab4c5842e6ff183a053a62f23d54374",
+    "infra/backend/mower_firmware_updates.py": "7905422445e04d89bbffb05c8ac109e5cf2ca6490ec6d4f5c761ed5a73e81eb9",
+    "infra/backend/ai_power_coordination.py": "142475538d8a115fd86c732b1413de127dc11ce0c195f68bea057aa94519886f",
+    "infra/backend/ai_images.py": "928d32c78f7a805978919160e022e6566f3fa462ee6ef8b3649c10b399479331",
+    "infra/backend/mower_motor_test.py": "9cb3a36fe3f9ba74cfd0c38e6059c5c9b4144146de7b61217af7b0cf70ef2fbe",
+    "infra/backend/baseline_contract.py": "5132afefeb1e518656d4c65eb3e08a9832933cae6c1ce5ca4b818cea7cb26a9f",
+    "infra/backend/health_routes.py": "49f83566e7a3639b07da83f3649934e7bdaae5d9259dfc3eb568aa1bdc7a4953",
+    "infra/backend/mower_operator_auth.py": "73933f397c2bff1822836435b0c58832ea9ebf0d822c27d05e3b994a6cab96bc",
+    "infra/backend/mower_firmware_staging.py": "95b67196b157e257997d4c48e805ec6e90f9e1a2b53418eac4f7fae74e38d590",
+    "infra/backend/climate_service.py": "6fc106769c2c13e6d5a145a700c0d93f477fcb23c8993ad6c17073cc8b5cc10e",
+    "infra/backend/schema_service.py": "1b092bcc7a8fa8c2e1a3508a61a98f108073325a7dc488f1733eee0f0fa400e6",
+    "infra/backend/mower_v3_routes.py": "018066b1e7fcd0bfef6ca14db7d7b4dcb355ec04c687bbc12295c1847bc8dc6f",
+    "infra/backend/scheduler_service.py": "9711a9cc355063f81beb0dc039936fed5e32514d63a4a5fd6e91d65c7a0d0873",
+    "infra/backend/migrate_hc07.py": "6e33bbb7ee5911e6ebc0e3a473a5630c8bd636aa5878ec346f6bca2e97f1e7df",
+    "infra/backend/robot_service.py": "d0ac78611ca982269ba973d89d5610fd07ee8920eade16fdc1bc3b42824eac33",
+    "infra/backend/mower_v3_protocol.py": "3188183d8e903e2dd644d54653b7a30b16f151098fa0c8cf007894e1d79ccf3c",
+    "infra/backend/scheduler_audit.py": "fd04bf55a1a2bd5e05089c2a2182e981ade3e570280b21951ccc98bb64bfea73",
+    "infra/backend/settings.py": "0f48a3c7823b1e1637aab639c7770e6e358f54e12ba07d32559d65865956a767",
+    "infra/backend/climate_window_guard.py": "dc11184bfedbbc336bee0d555516195fe0b0085b466074f314f2ad6c16a34c16",
+    "infra/backend/rover_ram_audit.py": "74518b0778b53ff74846deff0edd04185e4d534dc75eeae537dd673373c8d455",
+    "infra/backend/backup_protocol.py": "040fe54c210bef3428af485d59f28c363ef2d28c99eaf630e7506b1bda3cad96",
+    "infra/backend/mower_v3_commands.py": "29cdd68fdbca00aa132c96ea3dcff919d3c6f8582e63b19bd9691894c979d6c0",
+    "infra/backend/database_service.py": "4cca1f13f1e3198348c4b32a64d35281c6bfa94b74ee165331fc385377a5b117",
+    "infra/backend/backend_healthcheck.py": "8b15f67c352652eef32919adf79cd4d98e4617a866ca3b00bd3cb99d13971b5a",
+    "infra/backend/router_backup.py": "bb0280894ebff8d15c26366bc56bf88939e4b9fa13410cd0d4302d9a01191ef1",
+    "infra/backend/mower_firmware_service.py": "8489d2fb5df75f15a3b4beeb34f961ee05ce57864dcdbc656b349d66b6241e45",
+    "infra/backend/mower_firmware_operations_store.py": "338d2c8d3e3e2a2d98a7715241df64f2ce4d719d6faaf94e26be872d215d395f",
+    "infra/backend/sql_lab_service.py": "51f844e706b891f7d4cf08351c8f9bcbe9849288cd3b011f2f8d2ff5d153a12e",
+    "infra/backend/context_service.py": "6dd634563c1edbdd86a837f7f850e9be5da07d102f1ea0481f6f9e77081bd0cf",
+    "infra/backend/mower_bringup_read.py": "93c90d47ab32c1a03e889becf5d290ac59f3c46eb731e8b74d80e288ee7309c2",
+    "infra/backend/rover_parameters.py": "3b1cd252c37c9838b32e0b7b66194cb384b103dbd457846d793a830047667035",
+    "infra/backend/mower_parameters_store.py": "994ddf8356fe3f37b685c7c443bcd065ea5ca3ee2f8441399525844a6ccb4ba3",
+    "infra/backend/runtime_utils.py": "92966e0e86918197dbd71313053e01b744fc691860d23ffe6d496960ccfb8ee6",
+    "infra/backend/mower_service_read.py": "906d5f5831bad60580e5e4757b5054661b87456e233c66c2793b0ba3d25d2b0f",
+    "infra/backend/startup_runner.py": "5984a6ef5805aa540481275b3d9a6c0aed4b1efa5ad000ac79cdc2144f9564d7",
+    "infra/backend/migrate_hc39.py": "0e11cd91a02353a0f40fe63ad181798f428453dc2d2b1b99e4e345312582729d",
+    "infra/backend/irrigation_utils.py": "cc37a14d6726c1efc546ac6692c523419e93361251f3d627b8e45c6b6cb40f09",
+    "infra/backend/mqtt_read_probe.py": "458410609b11133d91b11f4a4518594f4942c06245edec0e5476df04eae33755",
+    "infra/backend/host_operations_client.py": "f00ac280a4d674fe31f4396b740080bfe24f150273b1e4a4e972469364229169",
+    "infra/backend/mower_firmware_store.py": "955fa306bba068fdc8dd097996cfcb1f96281ce8f3e839655038e0330bf71851",
+    "infra/backend/mower_motor_test_routes.py": "136a706808e4011ac35c4a20cf9925ef5f77b60a0d35a372d0000dae1f4a618b",
+    "infra/backend/deployment_policy.py": "b8f4c1156c430599464fd68237a383863eeb0c32e0977c095138b2dae6b04adc",
+    "infra/backend/ai_proxy_service.py": "159d67d75f78a0114f25e4df1f23e22a8b34a4a81d5737e31f47641dc6891bd6",
+    "infra/backend/wsgi.py": "d41acd18d5d484a06d3b468d28a08114c0bc860a6cbd12251236eaec3b21e24e",
+    "infra/backend/mqtt_credentials.py": "7f9ac677e786b6e223b970c3e59997c9bc76368139dfa5ee04ca8e4529e179c2",
+    "infra/backend/energy_device_service.py": "5e095288b3901059867d8b67277a74b3bdea112e1fe4d0601b996062475e603a",
+    "infra/backend/irrigation_service.py": "e78921d90c572bdb30df433c32510d273c94b12ef08a626be3e93683b70cd0fc",
+    "infra/backend/combustion_safety_service.py": "7334974829abd6c9497b6bda41190c25967751e2490b6e6824ba0fe28183a2c6",
+    "infra/backend/scoped_ai_power_coordination.py": "47b6e41dac08031ce13c8654ffd005972a6e5a5506c4eb4c898771d45a292759",
+    "infra/backend/mower_service.py": "7a4cb37b581502b72bfd29c24fa5d9dc883ef7d9ffd01c63ad4a49aa9c38efe1",
+    "infra/backend/app.py": "00e57fc96b7e7b6518474b3ac3199fabb03747888c73243a8a86436987f01978",
+    "infra/backend/climate_fan_coordination.py": "cb3dfd00c83056269d0c8f097c4ed06b98a5bc86098d40c7dee0033e5ede5f33",
+    "infra/backend/api_route_modules.py": "993c28d9ce92bb7e87a18b64cf90dc23e80dc3ef8a674d3bf9f8bda07ee55730",
+    "infra/backend/startup_schema_contract.py": "684d6d5d51194d63b2a35f5b67ae29115caed23e8c07a8a0b12978ecb670d604",
+    "infra/backend/context_payload_service.py": "f73b8fbd04cd6ad7eb2a8e32201730fde83f8b18e40f250da45bc66c5f1b5b1e",
+    "infra/backend/migrate_hc38.py": "59329b3d6ae81e0ed47ae3cb19d7d7b053a964c4d7ee896afdb95a52b93aa0d2",
+    "infra/backend/gunicorn_conf.py": "55479b29841b76fd436f0cb2274262335319cdd109951f1ed178ad2e61a353a6",
+    "infra/backend/page_usage_service.py": "fc1141b37aa28dd23d8a6113881a759756184f391ace1e014951fa8628deb818",
+    "infra/backend/topic_contract.py": "faa6dbcb6f8c8ec0376a2e07273e9525444296e2064a09694e208b6da34b7c71",
+    "infra/backend/ai_context_plan.py": "e0d9525ce27b587bd3159a001cb36049e8c54539538fbe5b249159cbce7625d5",
+    "infra/backend/mower_firmware_routes.py": "2a9899103498dfdc109c91254d8d1c1ce571c6f2dfb1228be77ac5e9c2bd761c",
+    "infra/backend/read_model_cache.py": "1b124844e90b62956fbece30bd70b71ec9e1a41b9093245a329dd84e9528bb10",
+    "infra/backend/tests/test_db_privileges_postgres.py": "9efeb5e20e19103e8334ea44d8ba0ccafa7c8e3958328b75978d55ece82e8a5b",
+    "infra/backend/tests/check_read_models_postgres.py": "b543e9fd194d1f70d905820714f5bb0034366e96f8ebe14fac71799091a86467",
+    "infra/backend/tests/test_baseline_postgres.py": "1fc92dbe525ff1c404934fe6e5d7fbbc77c82338dac3b7803ab03dc5693af195",
+    "infra/backend/tests/test_mower_firmware_sessions_postgres.py": "15e4cecb3977dcaceae351fce238047f812945e95b83e0afadab7c582393b271",
+    "infra/backend/tests/test_combustion_safety_state_postgres.py": "249944993497d98d4fac6a066c1e696d94cb84fa5bf62331fa8285a2facc6273",
+    "infra/backend/tests/test_host_operations.py": "718db7f95dc71ce8f43435334607ccf3979774309ae582642d78ff7ae5961800",
+    "infra/backend/tests/test_ai_proxy_service.py": "a6bea2c5a779591d8ef804601f351193a33f31f3f2973b380c93582c4045c410",
+    "infra/backend/tests/test_mower_firmware_staging.py": "aa1f55418e6efd48317de637f7a92b1c9ad115a1cc7fd1565662c71497779cfe",
+    "infra/backend/tests/test_db_runtime.py": "599c620b72e20696ad1d2dc19b5cae46c90e9c46df52b7f2c3ad858e5d33f8e0",
+    "infra/backend/tests/test_mower_parameters.py": "998ed3cab9131fd58c5a6bfe3d4141350b3fa7ca961302e9a72882055e78f0a6",
+    "infra/backend/tests/test_mower_firmware_operations.py": "794c980f74787c6bdac02072ab490e66b2b1e7406829d557d853981b1925d1c0",
+    "infra/backend/tests/test_mower_module_boundaries.py": "3afaace5680bc6e35b32a2c3a76a506a95ea5fa6013cf072af373e13f429b84a",
+    "infra/backend/tests/test_read_runtime_repair.py": "6bc6b775c4106fa3b31c21aa7241179dce428be7c2115cc133933c6393fd7f7e",
+    "infra/backend/tests/test_mower_simplify11.py": "59ee7b033e1cb4e411539b6bc2307bc606207eb8c2423a178665a09c477f0116",
+    "infra/backend/tests/test_mower_service_read.py": "aa8c54584a4a1817ef9e6bb7fc8e8d93387ae888d3198b74c0fa8595e0723441",
+    "infra/backend/tests/test_health_routes.py": "ddcb23c38a4faefa046862c486487e47ea31765241a2ec8a3ddeebffffa8a8bc",
+    "infra/backend/tests/test_irrigation_stop_priority.py": "5553b571260ccfdf6f1ab023b80c24943acce8b189d4883674f8e3331122550a",
+    "infra/backend/tests/test_mqtt_credentials.py": "c4156d0348b4f653f3f6cfee46977a74f6b5f282daed7ef9678c97928d9e5384",
+    "infra/backend/tests/test_mower_v3_commands.py": "93996f9d40c8fec3456214fb06e444662417ed279bbf62e2b774990b952f5ae1",
+    "infra/backend/tests/test_scheduler_feedback_postgres.py": "807b7c017ebb50297be934b324837aacf651c0e284373194a558fdcf07ee1f05",
+    "infra/backend/tests/test_about_inventory_postgres.py": "bc9d486143c94811a1228b5bdffb63d06c4e4122a341bfc451d86f528b59d99e",
+    "infra/backend/tests/test_process_binding_postgres.py": "31900f0f61c504b933cf24399ef16f2b21d47698f4b585e53b4ac49047455f91",
+    "infra/backend/tests/test_deployment_policy.py": "c257d3009ad8c008166a192039ab0391be0c9da8d3c59da7ddfba9b83a815231",
+    "infra/backend/tests/test_combustion_safety_service.py": "1ed2d989297c14952623a981429ac4a92f315d54fc567e7e13f92b4abefc26a2",
+    "infra/backend/tests/test_backup_restore_contract.py": "21db8071a26c376812fe67c2088e2cbf8cd5b4f2eccca4da3c9ef3fcd9643c9b",
+    "infra/backend/tests/test_mower_parameters_routes.py": "7c4321a03f16d03f3da3d105d7d360f2b316ee5aa38621d9a52412ed1532750a",
+    "infra/backend/tests/test_ai_node_power.py": "416e18e95b6e492c1f52c4595601ce265d9aabd20f7aca29ad04460e206f157d",
+    "infra/backend/tests/test_combustion_opening_events.py": "bdb254d296d3959b888b7e59ca56cdddbd139001367109209d122f7d8e0bb209",
+    "infra/backend/tests/test_process_binding_service.py": "085741dcbdb4a59636781dac02fda4013ca57734c957b4fc51d15def7be1eed1",
+    "infra/backend/tests/test_mower_v3_routes.py": "fef915e86a8260d706029742160ccf1a99ba81d390014d295518b525cb9f4ced",
+    "infra/backend/tests/test_irrigation_service.py": "140730d3322a82da37bccdd028b29a0849acfb39e012ad91afaff032986aab77",
+    "infra/backend/tests/test_dependency_audit.py": "ddde64cd0d98e2a5c6b19f0cfbe966920763fde257f75a24f5890331434c0bc3",
+    "infra/backend/tests/test_admin_bootstrap.py": "de00f13c87ef363c87e59f4364fd1f57c6352c2fb9aabc6fa36f66be89d211e7",
+    "infra/backend/tests/test_mower_firmware_operations_postgres.py": "2a0a01dfeb5b568a757e353b3123227c4a9a33790bbb17a91562b754a5715753",
+    "infra/backend/tests/test_backup_units.py": "2c75097cf3d8db9fa0f5b468f6c35aa92ad36569b181b6598395e71bc1d64819",
+    "infra/backend/tests/test_robot_service.py": "5b85cea497ad30c7d847314a901b86f247952f12e1d228dd508eba6d18e73e03",
+    "infra/backend/tests/test_mower_firmware_postgres.py": "824ed03bd615f140d0b25620d300433fde4824cec2e4252d74611a0f18a61544",
+    "infra/backend/tests/__init__.py": "b8fe52101dc39fa04120cba063bb08024f7899908674918ddf78fbff8b8d8ca0",
+    "infra/backend/tests/test_mqtt_monitor_service.py": "b2cdbad48a6fc1343e7a36cb9dc8912634843836237c92f5038496b7279a1d6c",
+    "infra/backend/tests/test_access_release.py": "e695bea73b895da894ce1e81a26c57b8a55dacea4cc748a652d6dad5e0ca636c",
+    "infra/backend/tests/test_mower_firmware.py": "685ae3dfee33a2f080d088522c1ec677f10fd3adcf1f43d084f3d5fb43516b21",
+    "infra/backend/tests/test_backup_restore_http.py": "3274ddb555a3f450693b70943c31d9306aa8d9025814a620714500246e08a8af",
+    "infra/backend/tests/test_irrigation_recovery_postgres.py": "f3acb4c83e14bf35777e947473e18409859b086bb1607589031e07caa8f19df9",
+    "infra/backend/tests/test_mower_v3_service.py": "02e9a695d396f9f4a365765c34499c0762a91a79d020c2ad4cf75df6c63df42d",
+    "infra/backend/tests/test_mower_manual_service.py": "2ade0f5415da8678bf11c6622361764682dc10f65e61f904cbc63b440440106f",
+    "infra/backend/tests/test_combustion_safety_delivery.py": "1d411c4f2c3a5e6b37cb7e73ad0994a3470d1394a8de09ec89753cbd58a845a3",
+    "infra/backend/tests/test_read_model_cache.py": "1474e5293756412819378317ac70944df53eb5c4963fbc0613eade52bf26b5f4",
+    "infra/backend/tests/test_ai_chat_upload_routes.py": "d5e5e80751138e3ec5fe07e81752e142ec73cf9aa40704e141cd42450de69dfb",
+    "infra/backend/tests/test_scheduler_service.py": "9c04d24be9abdd8ed9fa4d4de240e07539e4d2e3fbd450b17ade97f5aa081bf5",
+    "infra/backend/tests/test_api_route_modules.py": "5fa82b1e56efbfbdc17e0a2d99cf7c538fea6e5799c8d211d572e1153a32e3dd",
+    "infra/backend/tests/test_mower_parameter_storage.py": "f0742f1107849c427faae9403f3b2f8881f301472ec0431395f719aa99245a11",
+    "infra/backend/tests/test_mower_operator_auth.py": "62ad6e50cfb5f3116f8e7811007cc4c94cc1a16b31cdae8dcbf680187aa4a19d",
+    "infra/backend/tests/mower_firmware_fixture.py": "b73e99aa9483b89f3e2b34dd8f84d40870f170498822f36a0bfa3739fb825ef9",
+    "infra/backend/tests/test_context_service_contract.py": "7dc38af1c4f71b46f5210b87c5973a904222f8060fbfb260cee30446acac9cf7",
+    "infra/backend/tests/test_app_database_wiring.py": "faff538cbd0cfe442267cb425c22e509e6365bfe639ca780183d19a514790208",
+    "infra/backend/tests/test_mower_motor_test.py": "aa23addaa3e28b7500169f0544ce5a80252ce468a874402282a51e38be36dced",
+    "infra/backend/tests/test_schema_service.py": "c1a4610402b85dadaffadef765aa09b7097de47e8c9191cf8c75ca8277dc5d1d",
+    "infra/backend/tests/test_database_runtime_postgres.py": "531e12c56163437fd9e60215103dae17eb64b3e3ff14e79de5c56142f290ea9d",
+    "infra/backend/tests/test_mower_parameters_postgres.py": "62cc4862c56cce89d3e95a5bfaeabc3fc7043e810803e646fbf242e3192f21d7",
+    "infra/backend/tests/test_command_service.py": "f5b2c28c972bab5ec647497d8c0456e8137346289d0dcdf90c6d1e7fee42c31e",
+    "infra/backend/tests/test_mower_bringup_read.py": "484523aa379072b67eeaecb925a2b5d5ac2c6b64c55f4774c8fff8f4c459fa4c",
+    "infra/backend/tests/test_ai_images.py": "75b44a6cec025b094b3d27e808d054c8dc028d16cb1d958e39b5416a1c4f6c37",
+    "infra/backend/tests/test_mower_firmware_updates.py": "b9e84cac918b3b044db969e13209ef94b879d553055043d3ac366e4c0f47b27c",
+    "infra/backend/tests/test_mower_motor_test_routes.py": "29854bae965f6b05497a66fa612c71a491a5946785ebc15a43d3824b71c5010d",
+    "infra/backend/tests/test_domain_schedule_reads.py": "4640ff51c67a9a4e1dcc71020f87934a288f2c850d3cecb64faac3c571540b0e",
+    "infra/backend/tests/test_climate_window_guard.py": "411cc0f5ed9a90c944c0d11c2cec0c98f6b9f2d98f6e67bb7f71b5b009d91f95",
+    "infra/backend/tests/test_scheduler_feedback.py": "1efec0c58f98c7d8ed7b1cbcf6618ce57fa7ebe395ac1c708bb4cfa9706a2ac2",
+    "infra/backend/tests/test_mower_firmware_routes.py": "94d590dcce0f44572933f1771579f369bfb0ac5bfafb15424b4e74d444307cb7",
+    "infra/backend/tests/test_backup_runner.py": "26020b7f2ace555def0918134d4007896d2130f2db6e1deac37d148e58edd993",
+    "infra/backend/tests/test_irrigation_admission_postgres.py": "65d5fa75aa6e530db37b75abc8016a7fb1174c50c20474c82bf730055c4767dc",
+    "infra/backend/tests/test_mower_v3_controls_routes.py": "40b1a7e29a778d9882aa50727b2922afe05808c2b3d4fefe715ef2d016263848",
+    "infra/backend/tests/test_startup_schema_postgres.py": "4611c212b9d6f1c5f6fd2260893503ce3dcecfd70b2e8dbf487352707fd06091",
+    "infra/backend/tests/test_scheduler_audit_postgres.py": "4c1e9ba75264770fe5855eb7cf675051fa086a8db71135e729dfc178f4d2d20c",
+    "infra/backend/tests/test_page_usage_service.py": "3eb17859c983b20d890ab1d7adf063724a41212c05ff52023ec9541d777645fa",
+    "infra/backend/tests/test_scheduler_bridge_samples.py": "da6e902b587108dbb2c79f10c9ef2679e095fdcefd123f2cd7284a129394771d",
+    "infra/backend/tests/test_combustion_safety_state.py": "06629fc04aadb1e6b98ba35359cdf7a1a04cd96a850a08ffa1cb09a3cf024766",
+    "infra/backend/tests/test_irrigation_recovery.py": "594009caf1e551d717a283fac865d557b163a6464adb94da84508c5dc600f6fa",
+    "infra/backend/tests/test_power_wall_service.py": "f4587ca990502c2bee50dcdbd7952149fae6ac13c0ac9ce8193da69fdb06b155",
+    "infra/backend/tests/test_irrigation_admission.py": "8de74a05a1e33f5b34e219503efb72eaf92fcc08eec08090cba4fafb5c3170a4",
+    "infra/backend/tests/test_mower_bringup_check.py": "57751e98edd0dbddb353c662bcac67289476e38bd1e91eedb1e2b90b90fc66a9",
+    "infra/backend/tests/test_mower_manual_websocket.py": "1dbdcb7afcf04e04dc86df46a4305aa2fb8dd0933dae4f61dcf789c3ecc98295",
+    "infra/backend/tests/test_mower_service.py": "040bc9b9a5737c40cd46addcb707238552ad724aa7ee8a1b50607f1c03f53f45",
+    "infra/backend/tests/test_backup_service_payloads.py": "a411a42d2f85b66b786027a9e017379a4ffc0dc9202447ea9fcf6682989d45cc",
+    "infra/backend/tests/test_startup_service.py": "02f71ae1dc41c8c16de49f22e9aca630fe0a15487c211f42aeb3b0a5b10c5445",
+    "infra/backend/tests/fixtures/hc16_import_probe.py": "666e1aca5e5e4ce59388c2d590b73d056c209c080caeb772b73406eaa6298ac3",
+    "infra/backend/tests/fixtures/restore_full_host_probe.py": "95eb70e962bfeefd584b27d92f7d46da9cd3cf18517e825069fc927ecb24efd2",
+    "infra/backend/tests/fixtures/hc15_import_probe.py": "6c2d558bcdecb244f250206a0a4ed9b2557932e3853d5f3423a48e0073f1e28f"
+  },
+  "sql_sha256": {
+    "infra/db/003_hc_v2_core.sql": "e195caa984f714c71c5cc522268e704368c93cf880ff3b3401c175c6f1b2d977",
+    "infra/db/039_irrigation_schedule_multiple_windows.sql": "856cef7f70f77f89d17271ddeb060212d6f50a4dfe308a8b4d051c7f50b77bd1",
+    "infra/db/029_irrigation_pilot_soil_moisture.sql": "31b8618f03ddc7616755229e98322283c6d9ccfa243166f83d60c1cdabc8d1b6",
+    "infra/db/041_runtime_cpu_optimization.sql": "2b64c8b94aa592820dcaeb0e1b3af91b76de35306ef6c923f0feafea55497cab",
+    "infra/db/052_mower_parameter_drafts.sql": "7daf59a3631eaf64e77854651d09c2e8e55fd0f582a94ba871ee2ef5215fd8ca",
+    "infra/db/037_power_w_raw_tuya_headroom.sql": "d15f616537c42f90b8907688e0717a556459e5f5b3404ac25bef2b57c3e6610d",
+    "infra/db/035_temperature_sensor_policy_and_elo_szenzor.sql": "2e8f376d8da5f62c9429cd7588f744c3588b14ac44b2e00bf42de113c0f9fdf8",
+    "infra/db/058_combustion_safety_runtime.sql": "a3da6022b57f5b5c3d4d666fa86d83ef59c6d850266865610514e7ba7e0ca9e2",
+    "infra/db/030_process_sensor_binding.sql": "8c9075c89d056e07ae702c1675ee538b3a6d5c53f8a45fc8dfba3a074c33940d",
+    "infra/db/012_power_wall_always_on.sql": "05040fd840d4cc798e0f593b7699c18c44d4472a9b2284784ec6e91dffda0cd5",
+    "infra/db/062_hc33_ingest_sample_identity.sql": "5c3e54df6dd64f0c71352e60df8bf605fa9e2c240356b187b8c868deb980f56f",
+    "infra/db/004_v2_irrigation_plan_shadow_backfill.sql": "e035eb25d58c2b16bf62decece4db9d3d73e92d9a9ff70d8fbc4e57488d938c6",
+    "infra/db/051_mqtt_flood_detection.sql": "be131845fed40f9818368efb66c24cbadb610bb3cdf654e519fdd0c8e737a890",
+    "infra/db/034_ai_chat_audit.sql": "26001ffc5548445e7c06d9162e149f5822193e14c7d467b14f66ec49256217e4",
+    "infra/db/046_combustion_smoke_sensor.sql": "2ba1866499286bb72c88142f59fe9c7475ae8b4ef6b7516980d5616e4136822d",
+    "infra/db/014_climate_tuya_power_meter.sql": "800b2c5427fac1b8c54b0dbbbf38351f5676248c167f86055359012601def085",
+    "infra/db/061_hc39_runtime_schema.sql": "de18c28193b50b54c45c13f427ede0d401e3ad04b0bdfe0466c327b688513549",
+    "infra/db/042_postgres_query_optimization.sql": "7b161b9a9bdaef0b2017071f1f88e6b7d3b89432e923785dcc7bbec2de251d56",
+    "infra/db/021_power_wall_display_names.sql": "e85978dee7b28d470b019107331b044e0b4f39f78d4847cb64528357cb742778",
+    "infra/db/005_v2_irrigation_execution_shadow_backfill.sql": "dd151e00f6ba7b47a1818196a36bd0d6af8076901d5a36d8f1ec540915d474c6",
+    "infra/db/053_mower_firmware_staging.sql": "f52857e28f67fa405c9b20bce23ac5ebab8bab234e814226c7a8ae8ab1126795",
+    "infra/db/011_power_wall_zigbee_switch.sql": "7023e72e9a5ffa5aece74ba45289d482fc85317bedd321f0af02a0b12da40594",
+    "infra/db/017_power_wall_scheduler.sql": "346da38e60ba888af29ba294a7ebf7256e5bb5e29cfcf5813a60414560461e0d",
+    "infra/db/040_yard_sensor_replacement.sql": "44f34c3d4c1bc480c2f03b78f6ac35cdb92b40c1c4e1e9470aca2d576451349a",
+    "infra/db/044_combustion_safety_brightness.sql": "5f6b270ec459825cf446798dad6d22e8474341f0f3b1c842302fda01dc83dc15",
+    "infra/db/060_hc07_legacy_data.sql": "9fd919bd91482f4560e3672cfd5774082a27b1c208f4f5507203c51ed16d08ce",
+    "infra/db/056_climate_fan_delay.sql": "72523529f3bfb1385525ac83480779330b83045d53889bb64a071077366d37ac",
+    "infra/db/020_notes.sql": "67b4a06b9a96f177b576f8bc8ed5ead2ae9c8d4cd1df2361c279ce375a4c5aa4",
+    "infra/db/019_ha_growatt_cloud.sql": "fd1f2895bc96a7c99a89c10663a537a3a52bfe0d2e4c465798810c2329ee9a5d",
+    "infra/db/015_climate_meter_energy_only.sql": "09fc5e6a13515e9194983ae3358e4f3db680a56c714cec8b9c097f1ee8d4b93a",
+    "infra/db/025_ai_chat_audit.sql": "26001ffc5548445e7c06d9162e149f5822193e14c7d467b14f66ec49256217e4",
+    "infra/db/018_growatt_solar_inverter.sql": "1b5204271d3b30feb7797d55ec8964c1c694a26abe7eb09b01bacbc143871eb1",
+    "infra/db/006_v2_x10_plan_execution_shadow_backfill.sql": "bed41fcbbf9eb107d901ab36e5f55654962c858ac51005e8c39908ec5a690284",
+    "infra/db/038_opening_sensor_climate_relevant.sql": "66ee52036bb37175d6ac597a051469053c0607f7b07ccb4e1a130ed9764dd050",
+    "infra/db/009_observe_moisture_sensor_02.sql": "e6ecd10ecd31aa7339c063714288d27bb0cf0cc9f9a530336e14a0924be0c566",
+    "infra/db/013_zigbee_power_wall_plugs.sql": "9edfd6bc69c22f64d16bcd4149d9daa26c2f1a803a5d1ee95544ed37c264734e",
+    "infra/db/031_more_process_sensor_bindings.sql": "0003b0d6047e2966d244daa902031efdbc91b0385663dae407651fb001c0800e",
+    "infra/db/057_climate_window_guard.sql": "5aadb3e5d107220908b2cdf1a4e36ba74d8c1487f45f9ac2e43c80eaca510c95",
+    "infra/db/026_gree_climate_parameter_history.sql": "47298a656407bba5f281e48634edeb76a835ee8d04384ebed6e026652f9967d5",
+    "infra/db/016_climate_meter_current_power.sql": "7239e510df2d1026c3205a6b8516fe9921c040a2c2e2119152c9550210719865",
+    "infra/db/008_v2_x10_executor_mode.sql": "a1cc30fc85adaf7e07dd0449498dceba3060a8daff24cfba44337cc01dfc6298",
+    "infra/db/032_ai_node_power_binding.sql": "a25afd61768dda82556b161881475ca57b11c94ac4c85289c772def9ac7a96d0",
+    "infra/db/028_observe_moisture_sensor_03.sql": "24525767778756918bc335997ba0d48b7eefd918bcf6e35bf6ebcc06ee4f8873",
+    "infra/db/045_combustion_safety_colors.sql": "779377c25e66d307b93880da3677d64707cf13fd4f36defd23ca3ec2d96b3851",
+    "infra/db/001_irrigation_admin.sql": "35e4a95185a21e7f11bd0bdae86baaf3b379202b273275b5771ccc68f00822c4",
+    "infra/db/022_zigbee_window_contacts.sql": "a1b4662c0f8bff8c6573c4dc5c0eb8ef5b6f0c590f7806df9978d7b0f539c080",
+    "infra/db/054_mower_firmware_sessions.sql": "f5a8f335a8a4304990cc00aa614d04091c43323f012ca44c6cc03196ca617890",
+    "infra/db/055_mower_firmware_operations.sql": "73ca2da04d5138463310622d71d037dfa0e4981dc1efecba76b49f686f7a6a5e",
+    "infra/db/033_marten_motion_sensor.sql": "34632f4fd2219030f81bb38ea75a33217c73112180717a6baac0791d7f137c62",
+    "infra/db/043_combustion_safety.sql": "10f71f9aa5b913fc61d9935276fb948a06a61a38537257c3ccef200cb20d8484",
+    "infra/db/024_opening_sensor_room_order.sql": "9f805b167cb2e90b9a4ba4f43a4cf418d5f522730239226727a63cd8c8bcbb4d",
+    "infra/db/047_domain_season_profiles.sql": "f77a0aba06b78292d5aa314888f39e8f632a9cae2127ea3232ff18a1b7ccc352",
+    "infra/db/049_irrigation_season_capabilities.sql": "a6fc388c3a94f0e652b5d24d7f40cc7f5a65948337bf9655ea541505e7108b0f",
+    "infra/db/027_opening_sensor_rain_alert.sql": "0ac039718b3bebd4489fab1a9324fc374136b8d2089b7fa671b169be12473642",
+    "infra/db/023_opening_sensor_policy.sql": "41616f359aed2c927db2a53122f596f8610baebe2b4dd513389031d37763418d",
+    "infra/db/048_climate_schedule_season_profile.sql": "9995d3c334abad8cebbeb414dce9301b96b88010090463d18da2c87128ad3e49",
+    "infra/db/036_outdoor_pressure_sensor.sql": "8f533438bf5e871d69f81a8f1f80f08eac181e6d5eb58492418a7b580d911887",
+    "infra/db/002_xiaomi_x10.sql": "dec33be5083c25e242801feca00e0b003d1d6593ac5f339fb5b0eb2fb0cf4b2e",
+    "infra/db/050_mower_notes_scope.sql": "65e0d14d8e70b05303dc63113685964df7d06a3d6c218488250c1dc7ab8be69f",
+    "infra/db/007_v2_scheduler_modes_and_executor.sql": "bf4fe3c91486eaf739dc1f5d20c3828005a6aa80465634a19333c858b13298d9",
+    "infra/db/010_tuya_poller.sql": "8eb157e8f8f7a7995a620b1bceac93ec08ee1cc9d7048248733286df2a92a03f",
+    "infra/db/059_hc07_startup_schema.sql": "7a84bb6e53f800779f0a6cc3ce13c18c87f3c1d352f2cd85c2a2a192635d495f"
+  },
+  "prior_pending_repairs": {
+    "hc15": [
+      {
+        "path": "infra/backend/app.py",
+        "state": "modified",
+        "sha256": "00e57fc96b7e7b6518474b3ac3199fabb03747888c73243a8a86436987f01978"
+      },
+      {
+        "path": "infra/backend/db_runtime.py",
+        "state": "modified",
+        "sha256": "8baaffaf53a39ae5299f731737fd6521894294ed2eb110fc839a7954099828df"
+      },
+      {
+        "path": "infra/backend/repository_service.py",
+        "state": "deleted",
+        "sha256": null
+      },
+      {
+        "path": "infra/backend/climate_service.py",
+        "state": "modified",
+        "sha256": "6fc106769c2c13e6d5a145a700c0d93f477fcb23c8993ad6c17073cc8b5cc10e"
+      },
+      {
+        "path": "infra/backend/irrigation_service.py",
+        "state": "modified",
+        "sha256": "e78921d90c572bdb30df433c32510d273c94b12ef08a626be3e93683b70cd0fc"
+      },
+      {
+        "path": "infra/backend/tests/test_repository_service.py",
+        "state": "deleted",
+        "sha256": null
+      },
+      {
+        "path": "scripts/stage_hc_test_source.py",
+        "state": "modified",
+        "sha256": "5caedbcec8e26ce0433c202bf9938960b5fa178e9ed3942a74dd79658d9c1fab"
+      },
+      {
+        "path": "scripts/check_hc_tests.py",
+        "state": "modified",
+        "sha256": "7e0688feed4d4b9d695bddb741746dc0318901bc7275440ee52e255e9245db0e"
+      },
+      {
+        "path": "infra/backend/tests/test_db_runtime.py",
+        "state": "added",
+        "sha256": "599c620b72e20696ad1d2dc19b5cae46c90e9c46df52b7f2c3ad858e5d33f8e0"
+      },
+      {
+        "path": "infra/backend/tests/test_domain_schedule_reads.py",
+        "state": "added",
+        "sha256": "4640ff51c67a9a4e1dcc71020f87934a288f2c850d3cecb64faac3c571540b0e"
+      },
+      {
+        "path": "infra/backend/tests/test_app_database_wiring.py",
+        "state": "added",
+        "sha256": "faff538cbd0cfe442267cb425c22e509e6365bfe639ca780183d19a514790208"
+      },
+      {
+        "path": "infra/backend/tests/test_database_runtime_postgres.py",
+        "state": "added",
+        "sha256": "531e12c56163437fd9e60215103dae17eb64b3e3ff14e79de5c56142f290ea9d"
+      },
+      {
+        "path": "infra/backend/tests/fixtures/hc15_queries.json",
+        "state": "added",
+        "sha256": "23684ced7022bd517056b3b41d018f24edd33c59adefce4844eebc7572a1b3a4"
+      },
+      {
+        "path": "infra/backend/tests/fixtures/hc15_routes.json",
+        "state": "added",
+        "sha256": "6771057d332736805cbf2c5ce1d1da853a06f434b944f8f4778559edf06ce621"
+      },
+      {
+        "path": "infra/backend/tests/fixtures/hc15_import_probe.py",
+        "state": "added",
+        "sha256": "6c2d558bcdecb244f250206a0a4ed9b2557932e3853d5f3423a48e0073f1e28f"
+      }
+    ],
+    "hc16": [
+      {
+        "path": "AUDIT_REPAIR.md",
+        "state": "modified",
+        "sha256": "c336efdcc62136802f1590d617b66db939a147db061bf843ba90f801d47a4bc9"
+      },
+      {
+        "path": "DEPLOYMENT_PREP.md",
+        "state": "modified",
+        "sha256": "6cbb1cce8688d20fb6a77233b650b7bdd42a3c9a0e06b16bea2343325438cd9d"
+      },
+      {
+        "path": "docs/ai/mower-domain.md",
+        "state": "modified",
+        "sha256": "e8ebf7c84b8eb3e2b7ecfc28659df87f9803c7a18e0f5e9bb53421d12c6c925f"
+      },
+      {
+        "path": "docs/hc-16-repair.md",
+        "state": "added",
+        "sha256": "81e7e76005b1bb96b03f025334db2446c3f47fd1d68185263a601372c4f0738d"
+      },
+      {
+        "path": "docs/mower-v3-bringup.md",
+        "state": "modified",
+        "sha256": "cc7b49b5995637459a67ad418479b445e4a6cc0b42c9379175d79d446e96c3cd"
+      },
+      {
+        "path": "docs/mower-v3-foundation.md",
+        "state": "modified",
+        "sha256": "23add488af63a6f8a35715d17b284ccf231d99a20f36b403087c3e4646330a27"
+      },
+      {
+        "path": "infra/backend/mower_manual_service.py",
+        "state": "modified",
+        "sha256": "c8259ccbd42b835443dd3c008b92f40ec6590b95eb0ecc2076424912d7631104"
+      },
+      {
+        "path": "infra/backend/mower_motor_test.py",
+        "state": "modified",
+        "sha256": "9cb3a36fe3f9ba74cfd0c38e6059c5c9b4144146de7b61217af7b0cf70ef2fbe"
+      },
+      {
+        "path": "infra/backend/mower_parameters_service.py",
+        "state": "modified",
+        "sha256": "3372ed5689cad40067fff40157d8c800738f2ede9dd9a0bd2201745866fc1d66"
+      },
+      {
+        "path": "infra/backend/mower_v3_commands.py",
+        "state": "modified",
+        "sha256": "29cdd68fdbca00aa132c96ea3dcff919d3c6f8582e63b19bd9691894c979d6c0"
+      },
+      {
+        "path": "infra/backend/mower_v3_protocol.py",
+        "state": "added",
+        "sha256": "3188183d8e903e2dd644d54653b7a30b16f151098fa0c8cf007894e1d79ccf3c"
+      },
+      {
+        "path": "infra/backend/mower_v3_service.py",
+        "state": "modified",
+        "sha256": "bb7babaf557557c7c446cb4cf8a48fc1a9df1e2df7c352119b70940dc875b559"
+      },
+      {
+        "path": "infra/backend/settings.py",
+        "state": "modified",
+        "sha256": "0f48a3c7823b1e1637aab639c7770e6e358f54e12ba07d32559d65865956a767"
+      },
+      {
+        "path": "infra/backend/tests/fixtures/hc16_import_probe.py",
+        "state": "added",
+        "sha256": "666e1aca5e5e4ce59388c2d590b73d056c209c080caeb772b73406eaa6298ac3"
+      },
+      {
+        "path": "infra/backend/tests/test_mower_module_boundaries.py",
+        "state": "added",
+        "sha256": "3afaace5680bc6e35b32a2c3a76a506a95ea5fa6013cf072af373e13f429b84a"
+      }
+    ]
+  },
+  "irrigation_methods": {
+    "__init__": {
+      "lineno": 33,
+      "end_lineno": 164
+    },
+    "filter_isolated_tank_level_spikes": {
+      "lineno": 167,
+      "end_lineno": 216
+    },
+    "invalidate_snapshot_cache": {
+      "lineno": 218,
+      "end_lineno": 219
+    },
+    "invalidate_pilot_cache": {
+      "lineno": 221,
+      "end_lineno": 222
+    },
+    "invalidate_weather_summary_cache": {
+      "lineno": 224,
+      "end_lineno": 225
+    },
+    "invalidate_pilot_inputs": {
+      "lineno": 227,
+      "end_lineno": 230
+    },
+    "ensure_summary_schema": {
+      "lineno": 232,
+      "end_lineno": 239
+    },
+    "refresh_daily_summaries": {
+      "lineno": 241,
+      "end_lineno": 349
+    },
+    "fetch_v2_session": {
+      "lineno": 351,
+      "end_lineno": 363
+    },
+    "running_session": {
+      "lineno": 365,
+      "end_lineno": 374
+    },
+    "manual_valve_scheduler_guard": {
+      "lineno": 376,
+      "end_lineno": 396
+    },
+    "fetch_schedules": {
+      "lineno": 398,
+      "end_lineno": 444
+    },
+    "fetch_schedule": {
+      "lineno": 446,
+      "end_lineno": 499
+    },
+    "validate_schedule_time": {
+      "lineno": 501,
+      "end_lineno": 502
+    },
+    "stop_payload": {
+      "lineno": 504,
+      "end_lineno": 505
+    },
+    "_text_upper": {
+      "lineno": 507,
+      "end_lineno": 508
+    },
+    "live_valve_state": {
+      "lineno": 510,
+      "end_lineno": 641
+    },
+    "stop_reaction_seen": {
+      "lineno": 643,
+      "end_lineno": 648
+    },
+    "open_reaction_seen": {
+      "lineno": 650,
+      "end_lineno": 654
+    },
+    "_valve_stop_request": {
+      "lineno": 657,
+      "end_lineno": 667
+    },
+    "_open_cancelled": {
+      "lineno": 669,
+      "end_lineno": 671
+    },
+    "_open_request_generation": {
+      "lineno": 673,
+      "end_lineno": 675
+    },
+    "_cancel_open_requests": {
+      "lineno": 677,
+      "end_lineno": 679
+    },
+    "_cancelled_open": {
+      "lineno": 682,
+      "end_lineno": 683
+    },
+    "publish_open_with_confirmation": {
+      "lineno": 685,
+      "end_lineno": 765
+    },
+    "publish_stop_with_confirmation": {
+      "lineno": 767,
+      "end_lineno": 769
+    },
+    "_publish_stop_with_confirmation": {
+      "lineno": 771,
+      "end_lineno": 830
+    },
+    "stop_manual_session": {
+      "lineno": 832,
+      "end_lineno": 891
+    },
+    "stop_overdue_sessions": {
+      "lineno": 893,
+      "end_lineno": 905
+    },
+    "fail_sessions_without_physical_watering": {
+      "lineno": 907,
+      "end_lineno": 958
+    },
+    "_reserve_start": {
+      "lineno": 960,
+      "end_lineno": 966
+    },
+    "start_manual": {
+      "lineno": 968,
+      "end_lineno": 1048
+    },
+    "command": {
+      "lineno": 1050,
+      "end_lineno": 1096
+    },
+    "nano_config": {
+      "lineno": 1098,
+      "end_lineno": 1105
+    },
+    "fetch_solar_pump_config": {
+      "lineno": 1107,
+      "end_lineno": 1109
+    },
+    "update_solar_pump_config": {
+      "lineno": 1111,
+      "end_lineno": 1142
+    },
+    "_live_topic_payload": {
+      "lineno": 1144,
+      "end_lineno": 1147
+    },
+    "pump_current_live_snapshot": {
+      "lineno": 1149,
+      "end_lineno": 1173
+    },
+    "solar_pump_live_snapshot": {
+      "lineno": 1175,
+      "end_lineno": 1242
+    },
+    "solar_pump_completed_minutes_today": {
+      "lineno": 1244,
+      "end_lineno": 1255
+    },
+    "active_solar_pump_run": {
+      "lineno": 1257,
+      "end_lineno": 1266
+    },
+    "solar_pump_config_payload": {
+      "lineno": 1268,
+      "end_lineno": 1280
+    },
+    "solar_pump_run_payload": {
+      "lineno": 1282,
+      "end_lineno": 1292
+    },
+    "latest_solar_pump_runs": {
+      "lineno": 1294,
+      "end_lineno": 1316
+    },
+    "evaluate_solar_pump_scheduler": {
+      "lineno": 1318,
+      "end_lineno": 1402
+    },
+    "start_solar_pump_batch": {
+      "lineno": 1404,
+      "end_lineno": 1429
+    },
+    "stop_solar_pump_batch": {
+      "lineno": 1431,
+      "end_lineno": 1448
+    },
+    "solar_pump_scheduler_tick": {
+      "lineno": 1450,
+      "end_lineno": 1473
+    },
+    "update_schedule": {
+      "lineno": 1475,
+      "end_lineno": 1571
+    },
+    "create_schedule": {
+      "lineno": 1573,
+      "end_lineno": 1606
+    },
+    "delete_schedule": {
+      "lineno": 1608,
+      "end_lineno": 1647
+    },
+    "stop_manual": {
+      "lineno": 1649,
+      "end_lineno": 1667
+    },
+    "fetch_pilot_config": {
+      "lineno": 1669,
+      "end_lineno": 1671
+    },
+    "fetch_pilot_base_schedule": {
+      "lineno": 1673,
+      "end_lineno": 1711
+    },
+    "latest_weather_observation": {
+      "lineno": 1713,
+      "end_lineno": 1722
+    },
+    "openweather_ready": {
+      "lineno": 1724,
+      "end_lineno": 1725
+    },
+    "openweather_url": {
+      "lineno": 1727,
+      "end_lineno": 1738
+    },
+    "fetch_openweather_json": {
+      "lineno": 1740,
+      "end_lineno": 1742
+    },
+    "insert_weather_observation": {
+      "lineno": 1744,
+      "end_lineno": 1799
+    },
+    "store_openweather_onecall_snapshot": {
+      "lineno": 1801,
+      "end_lineno": 1824
+    },
+    "store_openweather_forecast_snapshot": {
+      "lineno": 1826,
+      "end_lineno": 1861
+    },
+    "store_openweather_snapshot": {
+      "lineno": 1863,
+      "end_lineno": 1872
+    },
+    "weather_summary": {
+      "lineno": 1874,
+      "end_lineno": 1928
+    },
+    "latest_outdoor_sensor_snapshot": {
+      "lineno": 1930,
+      "end_lineno": 1973
+    },
+    "latest_rain_sensor_snapshot": {
+      "lineno": 1975,
+      "end_lineno": 2013
+    },
+    "latest_soil_moisture_snapshot": {
+      "lineno": 2015,
+      "end_lineno": 2059
+    },
+    "build_weather_snapshot": {
+      "lineno": 2061,
+      "end_lineno": 2093
+    },
+    "evaluate_pilot": {
+      "lineno": 2095,
+      "end_lineno": 2306
+    },
+    "log_pilot_decision": {
+      "lineno": 2308,
+      "end_lineno": 2339
+    },
+    "cached_weather_summary": {
+      "lineno": 2341,
+      "end_lineno": 2343
+    },
+    "cached_pilot_recommendation": {
+      "lineno": 2345,
+      "end_lineno": 2347
+    },
+    "pilot_payload": {
+      "lineno": 2349,
+      "end_lineno": 2383
+    },
+    "update_pilot_config": {
+      "lineno": 2385,
+      "end_lineno": 2446
+    },
+    "create_pilot_decision": {
+      "lineno": 2448,
+      "end_lineno": 2454
+    },
+    "fetch_weather": {
+      "lineno": 2456,
+      "end_lineno": 2464
+    },
+    "snapshot": {
+      "lineno": 2466,
+      "end_lineno": 2468
+    },
+    "build_snapshot": {
+      "lineno": 2470,
+      "end_lineno": 2578
+    },
+    "statistics_payload": {
+      "lineno": 2580,
+      "end_lineno": 2601
+    },
+    "_build_statistics_payload": {
+      "lineno": 2603,
+      "end_lineno": 2930
+    },
+    "start_scheduled_session": {
+      "lineno": 2933,
+      "end_lineno": 3050
+    },
+    "run_due_schedules": {
+      "lineno": 3052,
+      "end_lineno": 3071
+    },
+    "stop_due_schedules": {
+      "lineno": 3073,
+      "end_lineno": 3119
+    },
+    "mark_v2_execution": {
+      "lineno": 3121,
+      "end_lineno": 3152
+    },
+    "v2_stop_policy": {
+      "lineno": 3154,
+      "end_lineno": 3176
+    },
+    "start_v2_scheduled_session": {
+      "lineno": 3178,
+      "end_lineno": 3340
+    },
+    "run_v2_due_schedules": {
+      "lineno": 3342,
+      "end_lineno": 3361
+    },
+    "stop_v2_due_schedules": {
+      "lineno": 3363,
+      "end_lineno": 3427
+    },
+    "scheduler_tick": {
+      "lineno": 3429,
+      "end_lineno": 3434
+    },
+    "scheduler_stop_tick": {
+      "lineno": 3436,
+      "end_lineno": 3440
+    }
+  },
+  "baseline_reference": "hc16-20261102: 810 unit + 197 PostgreSQL + 114 frontend; all pending fingerprints match before HC-20",
+  "backup_reference": {
+    "release": "hc-security-20261102-r18",
+    "run_id": "86b8ed71e4104b3a8eb909ae86e8ea91",
+    "archive_restore": "verified",
+    "database": "verified"
+  }
+}

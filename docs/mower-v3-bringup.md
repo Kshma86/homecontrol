@@ -22,10 +22,13 @@ HC nem állít be CAN-módot, nem helyettesíti a fizikai tiltást, nem indít A
    `stm_remote_update=false` vagy 501-es telepítést.
 2. A backend privát konfigurációjába kerüljön a pontos `MOWER_V3_REMOTE_URL`
    origin és a provisionált `ROVER_API_TOKEN`. Nincs legacy URL/token fallback.
-3. A külön HC kezelői kapuhoz `MOWER_OPERATOR_PASSWORD_HASH` és
-   `MOWER_OPERATOR_SESSION_SECRET` kell. Titkot ne másolj chatbe, böngészőtárba
-   vagy parancssori argumentumba. Részletek: `mower-v3-foundation.md`.
-4. Konfigurációváltás után backend-újraindítás és új kezelői bejelentkezés kell.
+3. A jelenlegi app egyetlen HC-superusert használ, külön rover-kezelői login
+   nélkül. A `MOWER_OPERATOR_PASSWORD_HASH` és `MOWER_OPERATOR_SESSION_SECRET`
+   már nem settings-mező; az origin-ellenőrzés és a privát natív Bearer megmarad.
+   [Aktuális szerződés](rover-single-user-control-20261013.md),
+   [HC-16 módosítás és tesztek](hc-16-repair.md).
+4. Konfigurációváltás után backend-újraindítás kell. A korábbi kézi tulajdonlás
+   nem folytatódik: új, explicit natív claim szükséges, automatikus replay nélkül.
    Maradjon egy backend worker; távoli hozzáféréshez védett hálózat/TLS szükséges.
 
 A repó gyökeréből futtatható, jelszó nélküli, csak olvasó ellenőrzés:
@@ -50,7 +53,7 @@ küldetésfeltöltés és live paraméterapply nincs bekötve; az editor HC-draf
 1. A valódi RFU2 `.bin` és hozzá tartozó valódi `.elf` kapjon független szerveroldali
    kiadásjóváhagyást (`mower-firmware-preflight.md`). Kiválasztás/hash önmagában
    nem kiadói jóváhagyás; nincs előre jóváhagyott teszt-FW.
-2. Explicit előellenőrzés, kezelői login és mentés a HC-ba. HC_STAGED nem natív frissítés.
+2. Explicit előellenőrzés és mentés a HC-ba az aktuális HC-kezelővel. HC_STAGED nem natív frissítés.
 3. Válaszd a mentett feladatot: **Session létrehozása — runtime törléssel**.
    Ez eldobja a rover futó küldetését/checkpointját/headingjét/kézi lease-ét.
 4. Várd meg a kötött, friss loader READY-t: **RFU2-kép feltöltése — egyszer**.

@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "production_containers_unchanged": 16,
+  "protected_host_files_unchanged": 37,
+  "audit_safety_mqtt_unchanged": true,
+  "active_release": "hc-ingest-20261028-r9",
+  "backend_frontend_still_r8": true,
+  "prepared_previous_images_environments_match_live": true,
+  "fixed_endpoint_inventory_matches_live": true,
+  "frontend_dependency_lock_unchanged": true,
+  "r10_not_deployed": true,
+  "production_binding_policy_changes": false,
+  "prepared_esp_confirmed": true,
+  "prepared_esp_ip": "192.168.1.179"
+}

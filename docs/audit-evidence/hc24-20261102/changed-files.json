@@ -1,0 +1,42 @@
+[
+  {
+    "path": "AUDIT_REPAIR.md",
+    "state": "modified",
+    "sha256": "f190b3e5e80c1f5bf54d190b447595b995562db835f8e8d8e78b97e973ff0142"
+  },
+  {
+    "path": "DEPLOYMENT_PREP.md",
+    "state": "modified",
+    "sha256": "5088cba38c106b9916d4a2bb1bfeff53d8f6dc8c803d114ffc46af24e0c57d07"
+  },
+  {
+    "path": "docs/hc-24-repair.md",
+    "state": "added",
+    "sha256": "1fb8a1d0c0924a6641ff72919df55ad02072870f4625aea8bff1cfbd17b10a07"
+  },
+  {
+    "path": "infra/mdns/mdns_responder.py",
+    "state": "modified",
+    "sha256": "06443edb95348dde7cfebec4dff09a84b2529f12482441decd6852dfa97d3537"
+  },
+  {
+    "path": "infra/mdns/tests/test_mdns_responder.py",
+    "state": "added",
+    "sha256": "734e014fa2bc5b55a644640945f0ade1c187f416292c6bd97de09bc6108afb71"
+  },
+  {
+    "path": "scripts/check_hc_tests.py",
+    "state": "modified",
+    "sha256": "f32eae912ca36c5f10e47cd66944bdde4e66a289314c96a129300696522549d1"
+  },
+  {
+    "path": "scripts/hc_test_suite.py",
+    "state": "modified",
+    "sha256": "16deb3bb14293f63f37908ffdbf674214e59b6047c3d0b83e824c34c59bc2846"
+  },
+  {
+    "path": "scripts/stage_hc_test_source.py",
+    "state": "modified",
+    "sha256": "abc4e1d153bd9205f4c461eeba7364b1ddc94c7f2f79c4891cc9308c52da44ad"
+  }
+]

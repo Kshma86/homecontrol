@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
-FOLDERS = ('infra/backend', 'apps/bridge_runtime', 'apps/tuya-poller',
+FOLDERS = ('infra/backend', 'infra/mdns', 'apps/bridge_runtime', 'apps/tuya-poller',
            'apps/gree-climate', 'apps/xiaomi-x10', 'apps/hc_ingest',
            'apps/ha-growatt-poller', 'apps/ai-server')
 
@@ -23,10 +23,18 @@ def stage(output, profile='deployed'):
     for folder in FOLDERS:
         target = output/folder
         target.mkdir(parents=True, exist_ok=True)
+        # A source overlay must also honor deletions. Otherwise a removed
+        # repository module/test silently survives from the deployed baseline.
+        for path in target.glob('*.py'):
+            if not (ROOT/folder/path.name).is_file():
+                path.unlink()
         for path in (ROOT/folder).glob('*.py'):
             shutil.copyfile(path, target/path.name)
         tests = ROOT/folder/'tests'
         if tests.exists():
+            for path in (target/'tests').glob('*.py'):
+                if not (tests/path.name).is_file():
+                    path.unlink()
             shutil.copytree(tests, target/'tests', dirs_exist_ok=True,
                             ignore=shutil.ignore_patterns('__pycache__'))
     for path in (ROOT/'scripts').glob('*.py'):

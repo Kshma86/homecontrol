@@ -1,0 +1,156 @@
+{
+  "ok": true,
+  "finding": "HC-20",
+  "removed_methods": [
+    "run_due_schedules",
+    "start_scheduled_session",
+    "stop_due_schedules"
+  ],
+  "removed_definition_lines": 185,
+  "method_count_before": 89,
+  "method_count_after": 86,
+  "entire_service_ast_unchanged_except_three_deletions": true,
+  "remaining_method_ast_unchanged": 86,
+  "original_references": [
+    {
+      "path": "infra/backend/irrigation_service.py",
+      "line": 2933,
+      "text": "def start_scheduled_session(self, schedule_id: int):"
+    },
+    {
+      "path": "infra/backend/irrigation_service.py",
+      "line": 3052,
+      "text": "def run_due_schedules(self):"
+    },
+    {
+      "path": "infra/backend/irrigation_service.py",
+      "line": 3071,
+      "text": "self.start_scheduled_session(int(row[\"id\"]))"
+    },
+    {
+      "path": "infra/backend/irrigation_service.py",
+      "line": 3073,
+      "text": "def stop_due_schedules(self):"
+    },
+    {
+      "path": "infra/backend/tests/test_irrigation_service.py",
+      "line": 240,
+      "text": "service.run_due_schedules = lambda: calls.append(\"run_legacy\")"
+    },
+    {
+      "path": "infra/backend/tests/test_irrigation_service.py",
+      "line": 241,
+      "text": "service.stop_due_schedules = lambda: calls.append(\"stop_legacy\")"
+    },
+    {
+      "path": "infra/backend/tests/test_irrigation_service.py",
+      "line": 254,
+      "text": "service.run_due_schedules = lambda: calls.append(\"run_legacy\")"
+    },
+    {
+      "path": "infra/backend/tests/test_irrigation_service.py",
+      "line": 255,
+      "text": "service.stop_due_schedules = lambda: calls.append(\"stop_legacy\")"
+    },
+    {
+      "path": "infra/backend/tests/test_irrigation_admission.py",
+      "line": 26,
+      "text": "for method in ('start_v2_scheduled_session', 'start_scheduled_session'):"
+    },
+    {
+      "path": "infra/backend/tests/test_irrigation_admission.py",
+      "line": 35,
+      "text": "for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7), ('start_scheduled_session', 7)):"
+    },
+    {
+      "path": "infra/backend/tests/test_irrigation_admission.py",
+      "line": 45,
+      "text": "for method, arg in (('start_manual', {}), ('start_v2_scheduled_session', 7), ('start_scheduled_session', 7)):"
+    },
+    {
+      "path": "infra/backend/tests/test_irrigation_admission_postgres.py",
+      "line": 135,
+      "text": "self.parallel(lambda: self.service.start_scheduled_session(schedule), lambda: second.start_v2_scheduled_session(schedule))"
+    },
+    {
+      "path": "docs/ai/irrigation-domain.md",
+      "line": 529,
+      "text": "1. `run_due_schedules()` checks the manual valve guard."
+    },
+    {
+      "path": "docs/ai/irrigation-domain.md",
+      "line": 531,
+      "text": "3. `start_scheduled_session()` rejects if another session is `running` or"
+    }
+  ],
+  "active_source_files_scanned": 491,
+  "remaining_runtime_or_test_references": [],
+  "domain_documentation_has_no_removed_method_references": true,
+  "changed_backend_files": [
+    "infra/backend/irrigation_service.py",
+    "infra/backend/tests/test_irrigation_admission.py",
+    "infra/backend/tests/test_irrigation_admission_postgres.py",
+    "infra/backend/tests/test_irrigation_service.py"
+  ],
+  "sql_migrations_unchanged": 62,
+  "app_routes_startup_scheduler_admission_recovery_ingest_unchanged": true,
+  "prior_pending_repairs": {
+    "hc15": {
+      "preserved": [
+        "infra/backend/app.py",
+        "infra/backend/db_runtime.py",
+        "infra/backend/repository_service.py",
+        "infra/backend/climate_service.py",
+        "infra/backend/tests/test_repository_service.py",
+        "scripts/stage_hc_test_source.py",
+        "scripts/check_hc_tests.py",
+        "infra/backend/tests/test_db_runtime.py",
+        "infra/backend/tests/test_domain_schedule_reads.py",
+        "infra/backend/tests/test_app_database_wiring.py",
+        "infra/backend/tests/test_database_runtime_postgres.py",
+        "infra/backend/tests/fixtures/hc15_queries.json",
+        "infra/backend/tests/fixtures/hc15_routes.json",
+        "infra/backend/tests/fixtures/hc15_import_probe.py"
+      ],
+      "intentional_overlap": [
+        {
+          "path": "infra/backend/irrigation_service.py",
+          "reason": "Only the three HC-20 dead methods removed; all other AST identical"
+        }
+      ]
+    },
+    "hc16": {
+      "preserved": [
+        "docs/ai/mower-domain.md",
+        "docs/hc-16-repair.md",
+        "docs/mower-v3-bringup.md",
+        "docs/mower-v3-foundation.md",
+        "infra/backend/mower_manual_service.py",
+        "infra/backend/mower_motor_test.py",
+        "infra/backend/mower_parameters_service.py",
+        "infra/backend/mower_v3_commands.py",
+        "infra/backend/mower_v3_protocol.py",
+        "infra/backend/mower_v3_service.py",
+        "infra/backend/settings.py",
+        "infra/backend/tests/fixtures/hc16_import_probe.py",
+        "infra/backend/tests/test_mower_module_boundaries.py"
+      ],
+      "intentional_overlap": [
+        {
+          "path": "AUDIT_REPAIR.md",
+          "reason": "HC-20 registry/release notes only"
+        },
+        {
+          "path": "DEPLOYMENT_PREP.md",
+          "reason": "HC-20 registry/release notes only"
+        }
+      ]
+    }
+  },
+  "original_audit_unchanged": true,
+  "public_apis_preserved": true,
+  "historical_sessions_preserved": true,
+  "new_device_commands": false,
+  "scheduling_semantic_changes": false,
+  "production_deployed": false
+}

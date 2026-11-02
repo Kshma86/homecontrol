@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "services": {
+    "gitea": {
+      "image": "gitea/gitea@sha256:8967bf9deaf3c5c4adae13519436dc1b20c646ac83fe37ae810c933a1045227d",
+      "profiles": [
+        "git"
+      ]
+    },
+    "ollama": {
+      "image": "ollama/ollama@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429",
+      "profiles": []
+    },
+    "open-webui": {
+      "image": "ghcr.io/open-webui/open-webui@sha256:03443b8de6b617da9d900edd09b4bf1cb0ddbfdcba6afb42c548336a0b821ded",
+      "profiles": [
+        "ui"
+      ]
+    }
+  },
+  "ai_enabled": false,
+  "containers_started": 0,
+  "environment_values_exported": false
+}

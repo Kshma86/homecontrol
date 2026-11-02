@@ -1,0 +1,17 @@
+{
+  "components/image_upload/__init__.py": [
+    {
+      "line": 12,
+      "text": "from PIL import Image, ImageOps, UnidentifiedImageError"
+    },
+    {
+      "line": 104,
+      "text": "image = Image.open(uploaded_file.file)"
+    },
+    {
+      "line": 253,
+      "text": "image = ImageOps.exif_transpose(Image.open(original_path))"
+    }
+  ],
+  "helpers/config_entry_oauth2_flow.py": []
+}
