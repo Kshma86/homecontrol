@@ -37,11 +37,18 @@ def complete(core):
   core.rollback(manifest);raise
  finish(core,live=live)
 
+def schedule_checks(core):
+ sys.path.insert(0,str(KIT/'source/scripts/audit_release'))
+ from schedules import schedule_plan,check_schedules
+ return check_schedules(core,schedule_plan(core),release_units=False)
+
 def main(action='activate'):
  if os.geteuid()!=0:raise PermissionError('Local sudo is required; never use Docker to bypass host secret permissions')
  core=router.core
  if action=='activate':
   manifest=core.verify();core.guard_runtime(manifest);platform_checks(manifest,previous=True)
+  # Exercise the exact final schedule check before stopping any service.
+  schedule_checks(core)
   original=core.Cutover.verify
   def verify(context):
    original(context);platform_checks(manifest)

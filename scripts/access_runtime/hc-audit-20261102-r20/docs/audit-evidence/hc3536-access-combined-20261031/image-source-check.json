@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "python_images_match_frozen_sources": 6,
+  "hc3536_shared_coordinator_in_actual_backend_image": true,
+  "hc44_scoped_ai_coordination_preserved": true,
+  "actual_frontend_http_index_and_hc_admin_asset_match_build": true,
+  "production_used": false,
+  "network_none": true,
+  "dependency_updates": false
+}

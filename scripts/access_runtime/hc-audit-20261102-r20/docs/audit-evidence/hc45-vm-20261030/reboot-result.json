@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "real_guest_reboot": true,
+  "boot_id_changed": true,
+  "root_services_active": true,
+  "both_nft_tables_present": true,
+  "completed_restart_persisted": true,
+  "interrupted_job_not_replayed": true
+}

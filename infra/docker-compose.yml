@@ -173,7 +173,7 @@
         },
         {
           "type": "bind",
-          "source": "/srv/docker/homecontrol/infra/ssh/hc-audit-20261102-r19/mqtt/credentials/backend.password",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-audit-20261102-r20/mqtt/credentials/backend.password",
           "target": "/run/secrets/hc-mqtt.password",
           "read_only": true
         }
@@ -181,7 +181,7 @@
       "pull_policy": "never",
       "env_file": [
         {
-          "path": "/srv/docker/homecontrol/infra/ssh/hc-audit-20261102-r19/compose-env/backend.env",
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-audit-20261102-r20/compose-env/backend.env",
           "format": "raw"
         }
       ],

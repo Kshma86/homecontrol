@@ -24,16 +24,13 @@ def capture(core,m,final=False):
  policy=core.request('/api/deployment/status')
  if policy.get('ai_enabled') is not False or policy.get('router_backup_enabled') is not True:raise ValueError('AI/router policy changed')
  if final:
-  installed=json.loads((BASE/'backups/f6-installed.json').read_text())
-  for n,h in installed['units'].items():
-   if sha(Path('/etc/systemd/system')/n)!=h:raise ValueError('Backup unit changed: '+n)
-  timers={n:core.active(n) for n,on in installed['enabled'].items() if on and n.endswith('.timer')}
-  if len(timers)!=5 or not all(timers.values()):raise ValueError('Scheduled backup timers are not active')
- else:timers={}
+  from schedules import schedule_plan,check_schedules
+  schedules=check_schedules(core,schedule_plan(core));timers=schedules['timers']
+ else:timers={};schedules={}
  return {'ok':True,'release':NAME,'checked_at':datetime.now(timezone.utc).isoformat(),
  'runtime_source_count':len(m['source_sha256']),'runtime_drift':drift,'containers':rows,
  'changed_services':m['changed_services'],'unchanged_container_count':len(rows)-len(changed),
- 'ai_enabled':False,'router_backup_enabled':True,'active_timers':timers,'hc41':'in_progress','hc43':'in_progress_until_vendor_patch'}
+ 'ai_enabled':False,'router_backup_enabled':True,'active_timers':timers,'scheduled_units':schedules,'hc41':'in_progress','hc43':'in_progress_until_vendor_patch'}
 
 def finish(core,live=None):
  m=core.load();live=capture(core,m,final=True) if live is None else live
@@ -81,4 +78,6 @@ Friss HC/Git/router mentés és PG-restore, runtime-hashek, health és öt timer
   p.write_text(head+sep+note+body)
  (BASE/'backups/deployments'/NAME).mkdir(parents=True,exist_ok=True)
  (BASE/'backups/deployments'/NAME/'DEPLOYMENT.md').write_text(summary)
- print(json.dumps({'ok':True,'release':NAME,'audit_checked':46,'audit_in_progress':['HC-41','HC-43'],'state':'deployed_and_audit_handover_complete'}))
+ result={'ok':True,'release':NAME,'audit_checked':46,'audit_in_progress':['HC-41','HC-43'],'state':'deployed_and_audit_handover_complete'}
+ core.platform().write_json(KIT/'deployment-status.json',result,0o644)
+ print(json.dumps(result))

@@ -1,0 +1,8 @@
+{
+  "findings": [
+    "HC-35",
+    "HC-36"
+  ],
+  "backend_image": "sha256:f973391c190c35d6be7ea493723d07fc3f4e08d60709ed42de4256c58a07df23",
+  "frontend_image": "sha256:6b289cd3aed25ffca09f6efd0ef4b734ded85adc1fe8f74a33ae80ee6ea90c35"
+}

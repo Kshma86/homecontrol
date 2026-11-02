@@ -1,5 +1,26 @@
 # HC audit – javítási nyilvántartás
 
+**REPAIR-070 – r20 mentési időkorlát, ellenőrzött folytatás előkészítve (2026-11-02).**
+Aktív r18; az r20 az átállítás előtti mentésnél megállt, konténerváltás nem történt.
+A helyi archívum elkészült, a 900 s külső timeout után a futás státusza beragadt.
+Az eredeti r20 aktiválót nem ismételjük; külön, állapothoz kötött folytató készült,
+23 sikeres izolált teszttel és valódi systemd folyamatfa-leállítási próbával.
+A root-only újraellenőrzés és az éles átadás még hátravan.
+[Részletek, ellenőrzések és helyi folytatóparancs](docs/audit-r20-continuation-20261102.md).
+46 Ellenőrzött; HC-41 és HC-43 Folyamatban, az AI tiltva marad.
+Az alábbi korábbi kiadási állapotok történetiek.
+
+
+**REPAIR-069 – r19 automatikusan visszagörgetve, r20 előkészítve (2026-11-02).**
+Aktív továbbra is r18. Az r19 friss Git/router/PG-restore próbája sikeres volt,
+majd a történeti F6-nyugtából hibásan számolt időzítők miatt a záróellenőrzés
+visszaállította az előző kiadást. Az r20 az aktuális generált ütemezést és a
+valódi systemd-állapotot ellenőrzi. Az éles átadás még nem lezárt.
+46 Ellenőrzött; HC-41 és HC-43 Folyamatban, változatlanul.
+[Javítás, ellenőrzések és helyi r20 parancs](docs/audit-r19-retry-20261102.md).
+Az alábbi r19 előkészítési feljegyzések történetiek.
+
+
 Létrehozva: **2026-10-22**, Europe/Budapest.
 
 Forrás: [HC_REFACTOR_AUDIT.md](HC_REFACTOR_AUDIT.md), a 2026-10-19–22-i audit, az N.5 összesítésével és az N. fejezet pontosításaival együtt.

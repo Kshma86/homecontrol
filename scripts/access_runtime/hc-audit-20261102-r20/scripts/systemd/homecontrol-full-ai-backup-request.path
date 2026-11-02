@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch HomeControl full AI backup web requests
+
+[Path]
+PathChanged=/srv/docker/homecontrol/backups/full-ai-backup.request
+Unit=homecontrol-full-ai-backup-request.service
+
+[Install]
+WantedBy=multi-user.target
