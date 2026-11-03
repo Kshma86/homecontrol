@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "release": "hc-audit-20261103-r22",
+  "sealed_at": "2026-11-03T09:53:13.463545+00:00",
+  "state": "sealed_ready_for_local_sudo_not_deployed",
+  "fresh_tests": {
+    "audit": 80,
+    "installer": 16,
+    "router-activation": 12,
+    "lock-recovery": 24,
+    "router-contracts-workers-real-ftp": 33
+  },
+  "fresh_test_total": 165,
+  "prior_1308_regression_evidence_retained_not_rerun": true,
+  "real_idle_pool_bug_reproduced": true,
+  "fixed_local_ftp_readback_and_lock_delete": true,
+  "full_r22_vm_restore_performed": false,
+  "hc41_closed": false,
+  "hc43_closed": false,
+  "required_root_gates": [
+    "verify exact original failed run and private control-write timeout",
+    "both shared host locks; proven dead local repository lock recovery only; never force",
+    "full normal repository check; fresh r18 HC/Git/router backup and isolated PG restore",
+    "three-component cutover and automatic r18 rollback",
+    "fresh r22 HC/Git/router backup and isolated PG restore",
+    "all runtime hashes; unchanged components; five timers; final audit handover"
+  ],
+  "evidence_sha256": {
+    "application-delta.json": "01e84f67517691d0bd8b8f8c2dfcb703b268f0abd839b6cd78e5a9eda9e19dab",
+    "audit-initial-fixture-failure.log": "7fcab32e57932364592b92d161f4a694c1ab674fa723a63c6b8dc21d62e11edd",
+    "audit-tests.log": "ac284e95171985b539ae7ed1a8c8444908c9568fc9200cfbe87238bba292d9a3",
+    "baked-code-and-packages.json": "333c5d452f2c80084816f792a8a196bb05cf88fd22eb940f85da4347872d3368",
+    "build-backend.log": "b70a387d240e145782982b75b9945c69e822561ca86834f4cd83ba8b5b634a78",
+    "candidate-image-lock.json": "75b49425d9419cf12c7230d8830c6310d84c0e606c325d544d53ca911f30f684",
+    "fresh-test-summary.json": "ae6d993dc634f863cb90413dea4299c027bffc094d2d962de6eaa84464d89093",
+    "ftp-idle-pool-lab.json": "f9989d61cbdb857d310f4fb40bbfb08aa00bbb68c620fad50e6986e64702ac70",
+    "ftp-idle-pool-lab.log": "ee93e3db25455c7ab1ca9328664d821794ff27e6cd782b7ba598ffac0a92b7d1",
+    "image-build.json": "5a1b5dc7a8c5377bf79589d1908fde31f52350f878eade29e9fa6f7d64625f7c",
+    "installer-tests.log": "e61b17556188bb696d63b5b06f66e8d87add7576cbe6f7a11081119db3cf0bd0",
+    "lock-recovery-tests.log": "7d27a42b8fb2447de922bd28badc0c577afe62bd1c0417c6b0c7daca81cb2bdb",
+    "offline-load.json": "f419d67027f26be7502acf36ce122cf7455b16c741ac933b2a312704d18a36e1",
+    "offline-load.log": "6bcc4e2e1bb94c0af691a9abe4bc2416f72800323326258edd36c614cb54ed53",
+    "prior-r21-acceptance.json": "26451686890932e5a606944d6a47c294b3eef40b20309565eb911c15bfd8f288",
+    "prior-r21-release.json": "d31eb653cafbaf8f3514e6e96690b013a3fd2410a5a70c28fece012593489f20",
+    "process-lab.json": "b9db8e91b60036c1c82e700c72e6b3a91a2f3496396f9a03cdc4bb84fe2554cc",
+    "readonly-live-baseline.json": "3ca27f1d20b4ea64088d1003a95c7d9dbf7b3c07066108cecf106340b9eb6204",
+    "router-activation-tests.log": "a68e7a23dc1b75d6533c57d1fe4ddf16890b83d8ecfaa0c08a8ec54aba8a177b",
+    "router-regression-observed.json": "fde48a654f7dfff872c0e079dd3f3e1fdb376544be0a1984a3f713718d6e9957",
+    "source-review.json": "04278cea559b5163c34d18cdfead2da190f5cb86622d883914aad0436e078554"
+  }
+}

@@ -1,5 +1,40 @@
 # HomeControl – aktuális éles kiadás
 
+**REPAIR-079 – FTP-idle hiba reprodukálva, új r22 lezárva (2026-11-03).**
+A felhasználó kifejezetten engedélyezte az r22 élesítését. A jóváhagyás utáni
+indításnál a natív sudo helyi jelszót kér; a root Python-indító még nem futott.
+Az első automatikus elutasítás és az új sudo-eredmény külön megőrzött, megkerülés nélkül.
+A 30 s TCP-határidőn túli, poolban megmaradó FTP-kapcsolat helyi valódi próbában
+ugyanazzal a write timeouttal és HTTP 500-zal hibázik. A 10 s pool-leürítés mellett
+a feltöltés, visszaolvasás és locktakarítás sikeres. Az új r22 külön csomag,
+805 forráshash, új backend transport-image, 19 image-es ellenőrzött offline készlet.
+165 friss célzott teszt sikeres; a korábbi 1308 regresszió megőrzött, nem újrafuttatott.
+Aktív továbbra is r18. Az új root indító ellenőrzi a konkrét hibát és az esetleges
+elavult helyi lockot, majd minden eredeti friss mentési/restore-/átállítási kaput futtat.
+[Javítás, bizonyítékok és egyetlen helyi indítóparancs](docs/audit-r22-ftp-idle-20261103.md).
+46 Ellenőrzött; HC-41/43 Folyamatban; az éles átadás még függő. A korábbi indítók történetiek.
+
+**REPAIR-078 – r21 transporthiba, pontosított naplóösszesítő (2026-11-03).**
+A root összesítés transport/backend-write hibát és az átállítás hiányát igazolta.
+Az első összesítő az 500-as számmintát tévesen FTP-válaszként címkézte; a stdout
+csonkoltsága miatt a nulla forráshiba sem teljes leltár. Az eredeti eredmény és kód
+megőrzött; a javított összesítő HTTP/FTP-réteget és konkrét kapcsolati hibatípust
+különböztet meg. 20 teszt sikeres; 799 r21 forráshash változatlan. Aktív r18.
+A privát napló pontosabb kiértékelése helyi sudo-val még szükséges; nincs új mentés,
+transportátállítás vagy újraélesítés. A korábbi folytatók nem ismételhetők.
+[Bizonyítékok, korlátok és aktuális parancs](docs/audit-r21-transport-diagnosis-20261103.md).
+46 Ellenőrzött; HC-41/43 Folyamatban; az éles átadás függő.
+
+**REPAIR-077 – az r21 előmentése router-snapshot hibával megállt (2026-11-03).**
+A tárhelykapu és a repository-előellenőrzés sikeres. A friss r18 helyi archívum,
+secrets-bundle és külső Git-mentés elkészült, a router restic backup exit 1 hibázott.
+Aktív r18; a 16 konténerbaseline, 10 healthy check és öt aktív timer újraellenőrzött.
+Átállított r21 runtime nincs, az elfogadási supervisor már nem fut.
+A konkrét hibát privát napló rögzíti; 12 teszttel ellenőrzött, csak olvasó összesítő
+készült. A helyi sudo-hitelesítés szükséges, a folytatót nem ismételjük.
+[Hibaállapot és egyetlen naplóösszesítő parancs](docs/audit-r21-baseline-failure-20261103.md).
+46 Ellenőrzött; HC-41/43 Folyamatban; az éles átadás függő. Az alábbi állapotok történetiek.
+
 **REPAIR-076 – mentési tárhely élesítve és utóellenőrizve (2026-11-03).**
 A helyi root átállás eredménye `ok: true`, `phase: complete`. A mentések a `/var`
 partíción érhetők el, kb. 157 GiB szabad hellyel; a `/srv`-n kb. 48 GiB szabad.

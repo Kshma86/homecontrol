@@ -1,0 +1,10 @@
+{
+  "attempted_at": "2026-11-03T09:57:55.375601+00:00",
+  "release": "hc-audit-20261103-r22",
+  "root_execution_started": false,
+  "production_changed": false,
+  "result": "automatic_approval_review_rejected",
+  "reason": "new r22 production cutover side effects were not considered clearly authorized by prior preparation/test authorization",
+  "approval_requested_for_specific_r22_deployment": true,
+  "workaround_used": false
+}

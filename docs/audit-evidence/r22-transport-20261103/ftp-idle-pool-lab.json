@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "network": "loopback_only",
+  "router_contacted": false,
+  "timeout_seconds": 30,
+  "idle_gap_seconds": 35,
+  "results": {
+    "original": {
+      "idle": "1m",
+      "initial_upload_status": 200,
+      "after_35s_idle_status": 500,
+      "after_idle_content_verified": false,
+      "lock_delete_status": 404,
+      "tcp_write_timeout": true
+    },
+    "fixed": {
+      "idle": "10s",
+      "initial_upload_status": 200,
+      "after_35s_idle_status": 200,
+      "after_idle_content_verified": true,
+      "lock_delete_status": 200,
+      "http_readback_verified": true,
+      "tcp_write_timeout": false
+    }
+  }
+}

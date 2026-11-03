@@ -1,5 +1,10 @@
 # Mentési tárhely – sikeres éles átállás, 2026-11-03
 
+**REPAIR-077 frissítés:** az alábbi r21 folytatót a felhasználó már futtatta.
+A tárhelyellenőrzés sikeres, a teljes előmentés router-snapshot hibával megállt.
+Az indítóparancs történeti, nem ismételhető.
+[Aktuális hibaállapot és naplóösszesítés](audit-r21-baseline-failure-20261103.md).
+
 REPAIR-076. Aktív alkalmazáskiadás: `hc-security-20261102-r18`.
 Az r21 élesítése és a javítási kör átadása még függő.
 

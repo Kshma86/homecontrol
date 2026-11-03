@@ -104,7 +104,7 @@ class RouterRepository:
             self.env['RCLONE_CACHE_DIR'] = str(Path(cache) / 'rclone')
         self.command = ['restic', '-o', 'rclone.args=serve restic --stdio --log-level ERROR '
                         '--contimeout 10s --timeout 30s --retries 1 --low-level-retries 1 '
-                        '--checkers 1 --transfers 1', '-o', 'rclone.connections=2']
+                        '--checkers 1 --transfers 1 --ftp-idle-timeout 10s', '-o', 'rclone.connections=2']
 
     def call(self, args, *, timeout=10800):
         # Capture diagnostics privately: raw server errors/config paths never enter web output.

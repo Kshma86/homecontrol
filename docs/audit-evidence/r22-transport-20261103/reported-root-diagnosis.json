@@ -1,0 +1,27 @@
+{
+  "provenance": "user-provided root summary; raw log not read by agent",
+  "checked_at": "2026-11-03T09:34:25.278263+00:00",
+  "run_id": "37e3acdd8a374fc4a2a48422ab830ed5",
+  "phase": "baseline_full_backup",
+  "new_transition_exists": false,
+  "new_runtime_exists": false,
+  "transport_conditions": [
+    "tcp_write_timeout",
+    "io_timeout"
+  ],
+  "failure_stages": [
+    "ftp_create_parent",
+    "restic_bridge_upload",
+    "restic_bridge_delete",
+    "save_pack",
+    "save_snapshot"
+  ],
+  "http_status_codes": [
+    "500"
+  ],
+  "ftp_reply_codes": [],
+  "control_port": 21,
+  "stderr_truncated": false,
+  "stdout_truncated": true,
+  "source_error_inventory_complete": false
+}

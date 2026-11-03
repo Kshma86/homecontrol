@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "profiles": {
+    "audit": 80,
+    "installer": 16,
+    "router-activation": 12,
+    "lock-recovery": 24,
+    "router-contracts-workers-real-ftp": 33
+  },
+  "total": 165,
+  "ftp_idle_reproduction_is_separate_lab": true,
+  "skipped": 0,
+  "deployed": false
+}

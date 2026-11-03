@@ -1,5 +1,9 @@
 # r21 – tárhely helyreállítva, a sikeres lock-feloldás megőrizve
 
+**REPAIR-077:** a második folytató rootként már elindult, majd a teljes r18 előmentés
+router-snapshot hibájánál megállt. Az alábbi folytatóparancsot ne ismételd.
+[Aktuális hibaállapot és naplóösszesítés](audit-r21-baseline-failure-20261103.md).
+
 **REPAIR-076 frissítés:** a mentési tárhely sikeresen a `/var` partícióra költözött.
 A `/srv` és a mentési fájlrendszer kapacitáskapuja is teljesül. Aktív továbbra is r18;
 az alábbi lezárt folytató változatlan. A tárhelyellenőrzéssel összekötött aktuális

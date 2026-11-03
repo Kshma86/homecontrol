@@ -1,0 +1,18 @@
+{
+  "attempted_at": "2026-11-03T10:02:18.903269+00:00",
+  "release": "hc-audit-20261103-r22",
+  "explicit_user_approval_received": true,
+  "approved_scope": [
+    "backend restart",
+    "mDNS restart",
+    "Growatt-poller restart",
+    "host backup runtime switch",
+    "mandatory pre/post backup and restore gates"
+  ],
+  "automatic_approval_review_rejected": false,
+  "command_result": "sudo: a password is required",
+  "exit_code": 1,
+  "root_execution_started": false,
+  "production_changed": false,
+  "next_step": "same approved sealed entrypoint in local password-authenticated sudo terminal"
+}

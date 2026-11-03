@@ -1,0 +1,37 @@
+{
+  "provenance": "user-provided terminal result; raw private logs not read by agent",
+  "checked_at": "2026-11-03T09:28:16.737213+00:00",
+  "read_only": true,
+  "remote_commands": 0,
+  "deployment_performed": false,
+  "active_release": "hc-security-20261102-r18",
+  "run_id": "37e3acdd8a374fc4a2a48422ab830ed5",
+  "phase": "baseline_full_backup",
+  "continuation_error_type": "RuntimeError",
+  "continuation_error_classes": [],
+  "private_log_count": 1,
+  "operations": [
+    {
+      "tool": "restic",
+      "operation": "backup",
+      "exit_code": 1,
+      "error_classes": [
+        "transport",
+        "backend_write"
+      ],
+      "ftp_reply_codes": [
+        "500"
+      ],
+      "source_error_count": 0,
+      "source_errors": [],
+      "snapshot_summaries": 0,
+      "stdout_truncated": true,
+      "stderr_truncated": false,
+      "raw_detail_withheld": true
+    }
+  ],
+  "new_transition_exists": false,
+  "new_runtime_exists": false,
+  "raw_detail_withheld": true,
+  "interpretation_limit": "ftp_reply_codes in v1 only finds numeric tokens; the protocol is not proven; source-error count is only for retained output"
+}
