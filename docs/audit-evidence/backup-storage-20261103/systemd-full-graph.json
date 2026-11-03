@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "exit_code": 0,
+  "generated_mount_units": 5,
+  "generated_service_dropins": 8,
+  "existing_service_fragments_and_dropins_included": true,
+  "services_started": false,
+  "full_host_reboot_performed": false
+}

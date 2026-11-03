@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "real_docker_test": true,
+  "network": "none",
+  "container_id_preserved": true,
+  "old_bind_visible_until_restart": true,
+  "new_bind_visible_after_restart": true,
+  "production_containers_changed": false,
+  "image": "sha256:0e5c69b450c66e21c4b9408ec6e80698830d8c56b5a32fff4a6c4898b7ead3af"
+}

@@ -1,0 +1,31 @@
+{
+  "read_only_repository": true,
+  "remote_write_commands": 0,
+  "deployment_performed": false,
+  "retention_unlock_or_repair_performed": false,
+  "diagnostics_completed": true,
+  "active_release": "hc-security-20261102-r18",
+  "private_log_directory": "/srv/docker/homecontrol/backups/releases/hc-audit-20261102-r21/private/precheck-diagnosis-20261102T215537Z-fda8dfa4",
+  "original_failure": {
+    "error_type": "RuntimeError",
+    "restic_exit_code": 1,
+    "error_classes": [],
+    "raw_detail_withheld": true
+  },
+  "phase": "completed",
+  "locks_before": {
+    "exit_code": 0,
+    "error_classes": [],
+    "missing_pack_count": 0,
+    "timed_out": false,
+    "lock_count": 1
+  },
+  "check": {
+    "exit_code": 0,
+    "error_classes": [],
+    "missing_pack_count": 0,
+    "timed_out": false
+  },
+  "repository_full_data_verified": true,
+  "finished_at": "2026-11-02T22:01:13.550224+00:00"
+}

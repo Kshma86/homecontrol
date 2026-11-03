@@ -1,5 +1,78 @@
 # HomeControl – aktuális éles kiadás
 
+**REPAIR-076 – mentési tárhely élesítve és utóellenőrizve (2026-11-03).**
+A helyi root átállás eredménye `ok: true`, `phase: complete`. A mentések a `/var`
+partíción érhetők el, kb. 157 GiB szabad hellyel; a `/srv`-n kb. 48 GiB szabad.
+16 konténerbaseline, 10 healthy check, öt aktív timer, öt aktív/engedélyezett mount,
+736 r18 runtime- és 799 r21 forráshash ellenőrzött. Aktív továbbra is r18.
+Az r21 második folytatója rootként még nem indult; a helyi sudo-hitelesítés függő.
+46 Ellenőrzött; HC-41/43 Folyamatban; a javítási kör éles átadása még nincs lezárva.
+[Utóellenőrzés és következő végrehajtóparancs](docs/backup-storage-live-20261103.md).
+Az alábbi korábbi állapotok történetiek; valódi host-rebootot továbbra sem állítunk.
+
+**REPAIR-075 – nagyobb helyi mentési tárhely előkészítve (2026-11-03).**
+A nagy mentési adatállomány a kb. 198 GiB szabad hellyel rendelkező `/var` partícióra
+kerülhet, változatlan `/srv/docker/homecontrol/backups` eléréssel. Nincs új kvóta;
+30 GiB rendszer/Docker tartalék és két nagy archívum helyét ellenőrizzük.
+A lezárt release-ek és közös lock-inode-ok a `/srv`-n maradnak. Minden mentés megmarad;
+a forrásról csak teljesen ellenőrzött fizikai másolatok takaríthatók meg.
+23 sikeres teszt, valódi elkülönített mount/rollback és Docker bind-újranyitás,
+valamint a teljes systemd-függőségi gráf ellenőrzése támasztja alá a csomagot.
+**Csak előkészítve:** root átállítás és host-reboot nem történt; aktív r18.
+Az r21 élesítés külön függő feladat. Először a tárhelycsomag eredményét kell ellenőrizni.
+46 Ellenőrzött; HC-41/43 Folyamatban; az audit éles átadása nincs lezárva.
+[Indítás, ellenőrzés, visszaállás és bizonyítékok](docs/backup-storage-var-20261103.md).
+Az alábbi korábbi állapotok és indítóparancsok történetiek.
+
+**REPAIR-074 – r21 tárhelykapu, kapacitás helyreállítva (2026-11-03).**
+A korábbi natív lock-feloldás sikeres, maradó lock nincs. Az éjszakai új helyi mentés
+után a látható szabad hely 6,5 GiB volt a kötelező 7,2 GiB helyett. Két azonos,
+inaktív r11/r12 image-archívum teljes SHA-256-ellenőrzés utáni összekapcsolásával
+1,3 GiB felszabadult; most 7,8 GiB szabad. Mentési archívumot nem töröltünk,
+a kapacitásküszöböt nem csökkentettük. 10 új folytatóteszt sikeres.
+A külön folytató rootként pontosan az előző tárhelyhibát követeli meg, a sikeres
+unlockot nem ismétli, majd az eredeti teljes r21 élesítési kapukat futtatja.
+Aktív r18, 736 runtime-hash és az öt timer ellenőrzött; a root végrehajtás még függő.
+46 Ellenőrzött, HC-41/43 Folyamatban. A javítási kör éles átadása még nincs lezárva.
+[Módosítás, bizonyítékok és aktuális folytatóparancs](docs/audit-r21-capacity-20261103.md).
+Az alábbi korábbi indítási és diagnosztikai parancsok történetiek.
+
+
+**REPAIR-073 – r21 zároláskezelés és ellenőrzött élesítési folytatás kész (2026-11-02).**
+A root diagnosztika teljes adatellenőrzése sikeres; egy repository-lock maradt.
+A tünetet valódi helyi restic repositoryban reprodukáltuk. A külön folytató csak
+azonos géphez tartozó, bizonyítottan nem létező tulajdonosfolyamat lockját oldhatja fel,
+kizárólag natív unlockkal, force nélkül. Utána az eredeti r21 összes mentési,
+restore-, átállítási és záróellenőrzési kapuját végrehajtja; az előellenőrzést is naplózza.
+24 teszt sikeres, köztük valós restic élő/megszakított folyamat- és lockpróba.
+Aktív r18; a helyi root-futtatás még hátravan. Az r21 799 forráshashe változatlan.
+46 Ellenőrzött; HC-41/43 Folyamatban; a javítási kör éles átadása még függő.
+[Folytatóparancs, módosítás és ellenőrzési eredmény](docs/audit-r21-continuation-20261102.md).
+Az alábbi régi aktiválási/diagnosztikai parancsok történetiek; az új folytatót használjuk.
+
+
+**REPAIR-072 – r21 megállt a repository-előellenőrzésnél (2026-11-02).**
+Aktív r18, a konténerek és 736 runtime-hash változatlan; alkalmazásátállítás nem indult.
+A cache-előkészítés és külön router-probe sikeres, a szabad hely 9,2 GiB.
+A teljes éles repository-ellenőrzés RuntimeError hibája még nincs diagnosztizálva.
+Az aktiváló előellenőrzése nem használta az új worker-naplózót; a pontos kivétel root-private.
+Külön, kilenc teszttel ellenőrzött, csak olvasó diagnosztika készült, helyi sudo-futtatás szükséges.
+Az r21 aktiválóját nem ismételjük. A javítási kör éles átadása függő; HC-41/43 folyamatban.
+[Részletek és diagnosztikai parancs](docs/audit-r21-precheck-failure-20261102.md).
+Az alábbi korábbi előkészítési és élesítési állapotok történetiek.
+
+
+**REPAIR-071 – r20 visszaállítva, r21 mentési kapuval előkészítve (2026-11-02).**
+Aktív r18. Az r20 folytatás átállítás utáni restic-hibája automatikus rollbacket váltott ki.
+A későbbi teljes repository-ellenőrzés és diagnosztikai snapshot sikerült; az eredeti hiba oka ismeretlen.
+Az r21 az alkalmazások leállítása előtt teljes HC/Git/router és PG-restore próbát követel,
+megőrzi a privát hibakimenetet, és azonos inaktív image-cache fájlokkal készít helyet.
+105 friss teszt sikeres; az éles root-kapuk még hátravannak. A javítási kör átadása nem lezárt.
+46 Ellenőrzött; HC-41 és HC-43 Folyamatban, az AI tiltva marad.
+[Részletek, bizonyítékok és helyi indítóparancs](docs/audit-r21-preflight-20261102.md).
+Az alábbi korábbi állapotok történetiek; a régi r20 aktiválót és folytatót nem ismételjük.
+
+
 **REPAIR-070 – r20 mentési időkorlát, ellenőrzött folytatás előkészítve (2026-11-02).**
 Aktív r18; az r20 az átállítás előtti mentésnél megállt, konténerváltás nem történt.
 A helyi archívum elkészült, a 900 s külső timeout után a futás státusza beragadt.

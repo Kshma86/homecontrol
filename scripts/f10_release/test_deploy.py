@@ -2,7 +2,7 @@
 import importlib.util,json,sys,tempfile,unittest,subprocess,tarfile,shutil
 from pathlib import Path
 from unittest.mock import patch
-spec=importlib.util.spec_from_file_location('r11',Path(__file__).with_name('deploy.py'))
+spec=importlib.util.spec_from_file_location('r13',Path(__file__).with_name('deploy.py'))
 r=importlib.util.module_from_spec(spec);spec.loader.exec_module(r)
 class Fault(Exception):pass
 class Fixture:
@@ -44,7 +44,7 @@ class CutoverTests(unittest.TestCase):
     call.assert_not_called()
  def test_scope_and_persistent_volumes(self):
   k=r.KIT;m=json.loads((k/'release.json').read_text());before=json.loads((r.BASE/'infra/docker-compose.yml').read_text());after=json.loads((k/'source/runtime.compose.json').read_text())
-  expected={'backend','hc_ingest','homecontrol-tuya-poller','homecontrol-gree-climate','homecontrol-xiaomi-x10','homecontrol-ha-growatt-poller','ai-server','frontend'}
+  expected={'homecontrol-ha-growatt-poller', 'backend', 'mdns'}
   self.assertEqual(set(m['changed_services']),expected)
   for name,old in before['services'].items():
    new=after['services'][name]
@@ -92,7 +92,7 @@ class CutoverTests(unittest.TestCase):
    (runtime/'compose-env/backend.env').write_text('FIXTURE=yes\n');(runtime/'images/archive').write_text('omit')
    with patch.object(r,'BASE',base),patch.object(r,'KIT',kit),patch.object(r,'PRIVATE',base/'infra/ssh'/r.NAME),patch.object(r,'platform',return_value=common):
     r.encrypted_bundle(runtime)
-   decoded=root/'decoded.tar.gz';decoded.write_bytes(subprocess.check_output(['age','-d','-i',str(identity),str(private/'homecontrol-secrets-r11.tar.gz.age')]))
+   decoded=root/'decoded.tar.gz';decoded.write_bytes(subprocess.check_output(['age','-d','-i',str(identity),str(private/'homecontrol-secrets-r13.tar.gz.age')]))
    checked=root/'checked';extract(decoded,checked)
    files={str(f.relative_to(checked)) for f in checked.rglob('*') if f.is_file()}
    self.assertIn('srv/docker/homecontrol/infra/ssh/test-key',files)
@@ -182,13 +182,16 @@ class CutoverTests(unittest.TestCase):
    for name in ('ai-backup.lock','homecontrol-backup.lock'):(base/'backups'/name).touch()
    before={base/'infra/docker-compose.yml':b'{"fixture":"old"}\n',base/'infra/access-release.json':json.dumps({'release':r.OLD}).encode(),base/'secrets/manifest.txt':b'# fixture\n',base/'secrets/homecontrol-secrets-latest.tar.gz.age':b'old-encrypted-fixture'}
    for file,data in before.items():file.write_bytes(data)
-   (kit/'private/homecontrol-secrets-r11.tar.gz.age').write_bytes(b'new-encrypted-fixture')
+   (kit/'private/homecontrol-secrets-r13.tar.gz.age').write_bytes(b'new-encrypted-fixture')
+   (stage/'images').mkdir();(stage/'images/access-images.tar.gz').write_bytes(b'immutable-image-fixture');(stage/'images/access-images.tar.gz').chmod(0o600)
+   image_sha=r.digest(stage/'images/access-images.tar.gz')
    def map_path(value):return units if str(value)=='/etc/systemd/system' else Path(value)
    real_units=common.units
    with patch.object(r,'BASE',base),patch.object(r,'KIT',kit),patch.object(r,'RUNTIME',runtime),patch.object(r,'PRIVATE',private),patch.object(r,'STATE',state),patch.object(r,'UNIT_ROOT',units),patch.object(install,'BASE',base),patch.object(install,'RUNTIME',runtime),patch.object(install,'PRIVATE',private),patch.object(install,'Path',side_effect=map_path),patch.object(install,'units',side_effect=lambda src:real_units(src,runtime=runtime)),patch.object(install.os,'chown') as chown,patch.object(install,'call') as unit_call:
     common.snapshot(r.target_files(),state)
     common.write_json(state/'transition.json',{'release':r.NAME,'active_timers':{'fixture.timer':True}})
-    r.install_files({'offline_image_archive_sha256':'fixture-sha'})
+    r.install_files({'offline_image_archive_sha256':image_sha})
+    self.assertEqual((private/'images/access-images.tar.gz').stat().st_ino,(stage/'images/access-images.tar.gz').stat().st_ino)
     self.assertEqual(json.loads((base/'infra/access-release.json').read_text())['release'],r.NAME)
     self.assertEqual((base/'infra/docker-compose.yml').read_bytes(),(source/'runtime.compose.json').read_bytes())
     self.assertEqual((private/'mqtt/credentials/backend.password').stat().st_mode&0o777,0o400)

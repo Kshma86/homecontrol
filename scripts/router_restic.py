@@ -9,10 +9,12 @@ from pathlib import Path
 import re
 import sys
 import tempfile
+import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'infra/backend'))
 from backup_protocol import RUN_ID, read_json, target
 from router_backup import DEFAULTS, RouterRepository
+from router_operation_log import OperationLog
 
 
 class RetentionFailed(RuntimeError):
@@ -67,8 +69,9 @@ def main():
                 parser.error('Invalid emergency credential path')
             settings[key] = str(args.secrets_root / original.relative_to('/'))
     with lock(args.root, args.worker), tempfile.TemporaryDirectory(prefix='hc-router-restic-') as work:
-        repo = RouterRepository(settings, cache=Path(work) / 'cache')
         run_id = os.environ.get('HC_BACKUP_RUN_ID', '')
+        diagnostics = OperationLog(args.root, run_id if args.worker else uuid.uuid4().hex)
+        repo = RouterRepository(settings, run=diagnostics, cache=Path(work) / 'cache')
         def state(name, value, detail=''):
             if args.worker:
                 target(args.root, run_id, name, value, detail)
@@ -89,7 +92,13 @@ def main():
                 snapshot_id = repo.backup(args.source, excludes=args.exclude)
                 state('restic', 'succeeded', 'Snapshot ' + snapshot_id)
             except Exception:
-                state('restic', 'failed', 'Router snapshot failed; local archive retained')
+                detail = 'Router snapshot failed; local archive retained'
+                if diagnostics.last_failure:
+                    failure = diagnostics.last_failure
+                    detail += '; {} {} exit {}'.format(failure['tool'], failure['operation'], failure['exit_code'])
+                if diagnostics.record_failed:
+                    detail += '; private diagnostic write failed'
+                state('restic', 'failed', detail)
                 raise
             state('restic_retention', 'running')
             try:

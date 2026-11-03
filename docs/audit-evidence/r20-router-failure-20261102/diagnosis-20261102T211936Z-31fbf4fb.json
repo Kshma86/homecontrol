@@ -1,0 +1,23 @@
+{
+  "diagnostics_completed": true,
+  "deployment_performed": false,
+  "retention_or_deletion_performed": false,
+  "diagnostic_snapshot_write_attempted": true,
+  "original_run_id": "41f46eaa18d647e2bacb2be85adb839e",
+  "private_log_directory": "/srv/docker/homecontrol/backups/releases/hc-audit-20261102-r20/private/snapshot-diagnosis-20261102T211936Z-31fbf4fb",
+  "archive_verified": {
+    "sha256": "3a8e1372a39a229971a8adfaee195a6e792fd387428d8d24efa67eb881881595",
+    "size_bytes": 2162709837,
+    "verified_files": 8082
+  },
+  "existing_snapshots_for_failed_archive": [],
+  "repository_check_exit_code": 0,
+  "repository_check_error_classes": [],
+  "snapshot_probe_exit_code": 0,
+  "snapshot_probe_error_classes": [],
+  "source_errors": [],
+  "snapshot_summary_ids": [
+    "e9113e45"
+  ],
+  "finished_at": "2026-11-02T21:25:39.061353+00:00"
+}

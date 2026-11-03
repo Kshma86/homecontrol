@@ -1,0 +1,26 @@
+{
+  "source": "user-supplied root activation transcript and read-only local inspection",
+  "active_release": "hc-security-20261102-r18",
+  "failure_stage": "full_repository_precheck_before_core_deploy",
+  "error_type": "RuntimeError",
+  "original_error_detail": "root-private; not read without local sudo",
+  "deployment_started": false,
+  "candidate_runtime_exists": false,
+  "transition_exists": false,
+  "source_hashes_verified": 799,
+  "sealed_source_modified": false,
+  "cache_preparation": {
+    "ok": true,
+    "applied": true,
+    "files": 4,
+    "previous_unique_inodes": 4,
+    "replacements": 3,
+    "archive_sha256": "4fe95892c500ca226720922be7f0aa8589cf252be94f07b9e3293123a48a8b09",
+    "data_and_metadata_preserved": true,
+    "reference": "/srv/docker/homecontrol/backups/releases/hc-audit-20261102-r19/private/runtime/images/access-images.tar.gz"
+  },
+  "free_space_bytes": 9810022400,
+  "diagnostic_tests": 9,
+  "diagnostic_started": false,
+  "diagnostic_blocker": "sudo requires local password"
+}

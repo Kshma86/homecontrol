@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "real_restic_version": "restic 0.12.1 compiled with go1.18.1 on linux/amd64",
+  "local_disposable_repository": true,
+  "router_contacted": false,
+  "live_lock_retained_by_native_unlock": true,
+  "normal_check_with_lock_exit_code": 1,
+  "read_only_check_with_lock_exit_code": 0,
+  "dead_process_left_lock": true,
+  "native_unlock_without_force_exit_code": 0,
+  "remaining_locks": 0,
+  "full_check_after_unlock_exit_code": 0,
+  "production_changed": false
+}

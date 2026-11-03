@@ -245,7 +245,7 @@ class RouterWorkers(unittest.TestCase):
         atomic_json(self.project / 'infra/backend/deployment_policy.json', POLICY)
         names = ('backup_runner_impl.py', 'backup_archive_worker.sh', 'backup_weekly_worker.sh',
                  'backup_check_worker.sh', 'backup_config_sync_worker.sh', 'backup_offsite_worker.sh',
-                 'backup_job_state.py', 'deployment_policy_cli.py', 'router_restic.py',
+                 'backup_job_state.py', 'deployment_policy_cli.py', 'router_restic.py', 'router_operation_log.py',
                  'backup_maintenance_worker.sh')
         for name in names:
             shutil.copyfile(BASE / 'scripts' / name, self.project / 'scripts' / name)
@@ -284,7 +284,9 @@ if name=='rclone' and args==['version']:
  print('rclone v1.75.2'); raise SystemExit(0)
 if name=='restic':
  if 'backup' in args:
-  if os.environ.get('HC_TEST_FAIL_RESTIC'): raise SystemExit(1)
+  if os.environ.get('HC_TEST_FAIL_RESTIC'):
+   print('synthetic private source diagnostic',file=sys.stderr)
+   raise SystemExit(int(os.environ.get('HC_TEST_FAIL_RESTIC_CODE','1')))
   print(json.dumps({'message_type':'summary','snapshot_id':'a'*64}))
  elif 'forget' in args and os.environ.get('HC_TEST_FAIL_RETENTION'): raise SystemExit(1)
  else: print('[]')
@@ -335,6 +337,22 @@ else: print('{}')
         self.assertEqual(result.returncode, 1)
         self.assertEqual(state['targets']['restic']['state'], 'succeeded')
         self.assertEqual(state['targets']['restic_retention']['state'], 'failed')
+
+    def test_incomplete_snapshot_stays_failed_and_preserves_private_diagnostics(self):
+        result, state = self.run_job(HC_TEST_FAIL_RESTIC='1', HC_TEST_FAIL_RESTIC_CODE='3')
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(state['targets']['local_archive']['state'], 'succeeded')
+        self.assertEqual(state['targets']['restic']['state'], 'failed')
+        self.assertIn('restic backup exit 3', state['targets']['restic']['detail'])
+        self.assertNotIn('synthetic private source diagnostic', json.dumps(state))
+        files = list((self.backups / 'router-diagnostics').glob('*.json'))
+        self.assertEqual(len(files), 1)
+        private = json.loads(files[0].read_text())
+        self.assertEqual(private['exit_code'], 3)
+        self.assertIn('synthetic private source diagnostic', private['stderr'])
+        self.assertEqual(files[0].stat().st_mode & 0o777, 0o600)
+        commands = [json.loads(line) for line in self.trace.read_text().splitlines()]
+        self.assertFalse(any(row[0] == 'restic' and 'forget' in row for row in commands))
 
     def test_daily_retention_failure_is_reported_even_for_optional_remote(self):
         self.settings['restic_required'] = False

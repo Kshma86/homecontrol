@@ -1,0 +1,9 @@
+{
+  "release": "hc-backup-storage-20261103",
+  "state": "prepared_not_applied",
+  "ok": true,
+  "verified_files": 32,
+  "acceptance_sha256": "0597ac13da56ca2e815d9fbfe60b27921a650a8043bc526b5245cef89f6434c7",
+  "tests_passed": 23,
+  "production_modified": false
+}

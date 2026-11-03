@@ -14,9 +14,9 @@ class AuditActivationTest(unittest.TestCase):
   events=[];core=a.router.core
   def transaction(action):
    events.append(action);core.Cutover.verify(object());return 'done'
-  with patch.object(a.os,'geteuid',return_value=0),patch.object(core,'verify',return_value={'fixture':True}),patch.object(core,'guard_runtime',side_effect=lambda m:events.append('guard')),patch.object(core.Cutover,'verify',side_effect=lambda c:events.append('application_verify')),patch.object(a,'platform_checks',side_effect=lambda m,previous=False:events.append('before' if previous else 'after')),patch.object(a,'schedule_checks',side_effect=lambda core:events.append('schedules')),patch.object(a.router,'main',side_effect=transaction),patch.object(a,'complete',side_effect=lambda core:events.append('complete')):
+  with patch.object(a.os,'geteuid',return_value=0),patch.object(core,'verify',return_value={'fixture':True}),patch.object(core,'guard_runtime',side_effect=lambda m:events.append('guard')),patch.object(core.Cutover,'verify',side_effect=lambda c:events.append('application_verify')),patch.object(a,'platform_checks',side_effect=lambda m,previous=False:events.append('before' if previous else 'after')),patch.object(a,'schedule_checks',side_effect=lambda core:events.append('schedules')),patch.object(a,'backup_checks',side_effect=lambda core,m:events.append('backup_preflight')),patch.object(a.router,'main',side_effect=transaction),patch.object(a,'complete',side_effect=lambda core:events.append('complete')):
    self.assertEqual(a.main(),'done')
-  self.assertEqual(events,['guard','before','schedules','activate','application_verify','after','complete'])
+  self.assertEqual(events,['guard','before','schedules','backup_preflight','activate','application_verify','after','complete'])
  def test_platform_verification_failure_reaches_existing_transaction_rollback(self):
   core=a.router.core;events=[]
   class Context:
@@ -29,13 +29,18 @@ class AuditActivationTest(unittest.TestCase):
    rollback=lambda self:events.append('rollback')
   def checks(m,previous=False):
    if not previous:raise RuntimeError('fixture HA failure')
-  with patch.object(a.os,'geteuid',return_value=0),patch.object(core,'verify',return_value={}),patch.object(core,'guard_runtime'),patch.object(core.Cutover,'verify',return_value=None),patch.object(a,'platform_checks',side_effect=checks),patch.object(a,'schedule_checks'),patch.object(a.router,'main',side_effect=lambda action:core.switch(Context())):
+  with patch.object(a.os,'geteuid',return_value=0),patch.object(core,'verify',return_value={}),patch.object(core,'guard_runtime'),patch.object(core.Cutover,'verify',return_value=None),patch.object(a,'platform_checks',side_effect=checks),patch.object(a,'schedule_checks'),patch.object(a,'backup_checks'),patch.object(a.router,'main',side_effect=lambda action:core.switch(Context())):
    with self.assertRaises(RuntimeError):a.main()
   self.assertEqual(events,['rollback'])
  def test_schedule_mismatch_is_rejected_before_any_cutover(self):
   core=a.router.core
   with patch.object(a.os,'geteuid',return_value=0),patch.object(core,'verify',return_value={}),patch.object(core,'guard_runtime'),patch.object(a,'platform_checks'),patch.object(a,'schedule_checks',side_effect=ValueError('timer drift')),patch.object(a.router,'main') as run:
    with self.assertRaisesRegex(ValueError,'timer drift'):a.main()
+  run.assert_not_called()
+ def test_backup_preflight_failure_prevents_any_cutover(self):
+  core=a.router.core
+  with patch.object(a.os,'geteuid',return_value=0),patch.object(core,'verify',return_value={}),patch.object(core,'guard_runtime'),patch.object(a,'platform_checks'),patch.object(a,'schedule_checks'),patch.object(a,'backup_checks',side_effect=ValueError('backup preflight failed')),patch.object(a.router,'main') as run:
+   with self.assertRaisesRegex(ValueError,'backup preflight failed'):a.main()
   run.assert_not_called()
  def test_replaced_unchanged_component_is_rejected_without_any_stop(self):
   core=a.router.core;manifest={'changed_services':['backend'],'baseline':{'homecontrol-backend':{},'homeassistant':{'id':'old','image':'expected'}}}
