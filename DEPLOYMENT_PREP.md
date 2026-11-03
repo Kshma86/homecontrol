@@ -1,5 +1,26 @@
 # HomeControl – aktuális éles kiadás
 
+**REPAIR-095 – r23 broker-tulajdonosi folytató ellenőrzött, éles indítás előtt (2026-11-03).**
+A sudo-diagnosztika igazolta az izolált konfigurációpróba UID-hibáját. A második
+folytató kizárólag e próba brokerparancsait futtatja UID 1883-ként, capability
+hozzáadása nélkül. A korábbi staging, cache és nyugták átnevezéssel, ellenőrzött
+journal mellett megmaradnak; minden teljes elő-/utómentési és restore-kapu újrafut.
+26 célzott / összesen 60 container-update teszt és az új image-ek teljes izolált
+broker/config/auth/persistence/log próbája sikeres. Az éles r22 változatlan és
+ellenőrzött; a két korábbi lezárt csomag és az image-ek változatlanok.
+[Második folytató és bizonyítékok](docs/container-update-r23-owner-continuation-20261103.md).
+
+
+**REPAIR-094 – r23 előmentés/PG-restore után privát runtime-előkészítési hiba (2026-11-03).**
+Az átállítás nem kezdődött el; az éles r22 16 konténere, 805 runtime-forrása,
+25 unitfájlja, öt timere és öt backup-mountja ellenőrzött. Az izolált MQTT-próba
+root/konfigurációtulajdonos jogosultsági hibája szintetikus adattal reprodukálva;
+a tényleges privát hiba egyeztetésére csak olvasó célzott diagnosztika készült,
+hat sikeres redakciós teszttel. Indítást nem ismételtünk; minden nyugta és staging
+megőrizve, az eredeti két lezárt csomag változatlan.
+[Állapot, reprodukció és diagnosztika](docs/container-update-r23-private-probe-failure-20261103.md).
+
+
 **REPAIR-093 – az r23 pontos korai Zigbee-hibájához ellenőrzött folytató kész (2026-11-03).**
 A sudo-diagnosztika megerősítette a nagy eszközlista 64 KiB-os olvasási korlátját;
 a futás mentés, timer-szüneteltetés és átállítás előtt állt meg. A folytató az

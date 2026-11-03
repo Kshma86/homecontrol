@@ -75,6 +75,14 @@ def classify(value):
 def summarize(text):
     conditions=set();types=set();frames=[];last_command='none'
     for line in text.splitlines():
+        if 'Error: Unable to open config file' in line:conditions.add('mosquitto_config_unreadable')
+        if 'Error: Unable to open pwfile' in line or 'Error: Unable to open password file' in line:conditions.add('mosquitto_password_unreadable')
+        if 'Error: Unable to open acl_file' in line:conditions.add('mosquitto_acl_unreadable')
+        if 'Error: Unknown configuration variable' in line:conditions.add('mosquitto_unknown_option')
+        if 'Error: Unable to write pid file' in line:conditions.add('mosquitto_pidfile_unwritable')
+        if 'Address already in use' in line:conditions.add('listener_address_in_use')
+        if 'Cannot assign requested address' in line:conditions.add('listener_address_unavailable')
+        if 'Unable to drop privileges' in line:conditions.add('mosquitto_privilege_drop')
         match=re.match(r'^([A-Za-z]+Error): (.*)$',line)
         if match:
             kind,detail=match.groups()
@@ -95,8 +103,9 @@ def summarize(text):
             allowed={'execute','verify','main','guard_runtime','platform_probes','firewall','bridge',
                      'call','adapter_call','snapshot','verify_package','verify_runtime_schedules',
                      'read','load','ha_ready','postgres_ready','active','idle','space_guard','check',
-                     'read_bytes','open','digest','sha','<module>'}
-            if path.name in {'activate.py','deploy.py','check.py','execute.py','backup_helper.py','pathlib.py','schedules.py','timer_settle.py'}:
+                     'read_bytes','open','digest','sha','private_mqtt_probe','prepare_private',
+                     'encrypted_bundle','bundle','worker','wire','<module>'}
+            if path.name in {'activate.py','deploy.py','check.py','execute.py','backup_helper.py','pathlib.py','schedules.py','timer_settle.py','resume_r23_inventory.py'}:
                 frames.append({'file':path.name,'line':int(number),'function':function if function in allowed else 'withheld'})
         if line.startswith('COMMAND '):
             try:args=ast.literal_eval(line[8:])
@@ -108,6 +117,10 @@ def summarize(text):
                 if args[-2:]==['--topic','zigbee/bridge/devices']:last_command='zigbee_bridge_devices_read'
                 elif args[-2:]==['--topic','zigbee/bridge/info']:last_command='zigbee_bridge_info_read'
                 else:last_command='container_probe'
+            elif args[:2]==['docker','run'] and '--entrypoint' in args and args[args.index('--entrypoint')+1:args.index('--entrypoint')+2]==['mosquitto']:
+                last_command='isolated_mosquitto_config_test' if '--test-config' in args else 'isolated_mosquitto_start'
+            elif args[:2]==['docker','logs']:last_command='isolated_broker_logs'
+            elif args[:2]==['docker','stop']:last_command='container_stop'
             elif args and args[0]=='nft':last_command='firewall_read'
             elif args and args[0]=='systemctl':last_command='systemd'
             else:last_command='other_private_command'

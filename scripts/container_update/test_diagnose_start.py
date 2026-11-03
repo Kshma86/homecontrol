@@ -30,5 +30,17 @@ class Redaction(unittest.TestCase):
         self.assertEqual(result['traceback_frames'],[{'file':'activate.py','line':42,'function':'withheld'}])
         self.assertNotIn('secret',str(result))
 
+    def test_mosquitto_config_permission_failure_is_recognized_without_path(self):
+        command=['docker','run','--user','0:0','--entrypoint','mosquitto','image','-c','/secret/path','--test-config']
+        result=d.summarize('COMMAND '+repr(command)+'\nError: Unable to open config file /secret/path.')
+        self.assertEqual(result['last_command_kind'],'isolated_mosquitto_config_test')
+        self.assertIn('mosquitto_config_unreadable',result['conditions'])
+        self.assertNotIn('secret',str(result))
+
+    def test_unknown_configuration_value_is_withheld(self):
+        result=d.summarize('Error: Unknown configuration variable "private-token".')
+        self.assertEqual(result['conditions'],['mosquitto_unknown_option'])
+        self.assertNotIn('private-token',str(result))
+
 
 if __name__=='__main__':unittest.main()
