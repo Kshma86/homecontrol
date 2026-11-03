@@ -1,0 +1,8 @@
+{
+  "tests": 5,
+  "passed": 5,
+  "script_sha256": "7b6aa6f219319f132558065bbc1f8e460278a41de0e272ba1092f100e40af145",
+  "sudo_attempt": "sudo: a password is required",
+  "root_summary_executed": false,
+  "remote_commands": 0
+}

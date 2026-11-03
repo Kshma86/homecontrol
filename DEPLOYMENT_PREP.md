@@ -1,5 +1,49 @@
 # HomeControl – aktuális éles kiadás
 
+**REPAIR-083 – korai robot-kapu blokkol, a naplóígéret hibája javítva (2026-11-03).**
+A continuation-2 a tranzakció megkezdése előtt `ValueError` hibával megállt;
+privát könyvtára sem jött létre, az r18 és a korábbi rollback-nyugta változatlan.
+Az eredeti konkrét kivételszöveg elveszett: az indító hibásan ígért megőrzött naplót.
+Csak olvasó újrafuttatás a robot-idle guard hibáját adta: a robot előbb takarított,
+majd visszatérő állapotú volt. Az átadás csak dokkolt/töltő állapotban engedélyezett.
+Külön operátori indító készült: legfeljebb két órát vár kizárólag e robot-kapura,
+nem irányítja a robotot, és a korai hibákat is ténylegesen naplózza. Más hibánál megáll.
+10 új teszt sikeres; a lezárt continuation-2 és annak 66 tesztje változatlan.
+Friss elő-/utómentés és restore, valamint minden eredeti guard kötelező marad.
+[Aktuális állapot és helyi parancs](docs/audit-r22-idle-preflight-20261103.md).
+Aktív r18, 15 futó konténer, 10 healthy check, öt aktív timer, tiltott AI.
+46 Ellenőrzött; HC-41/43 Folyamatban; az audit éles átadása nincs lezárva.
+
+
+**REPAIR-082 – r22 timer-záróhiba igazolt, külön folytató lezárva (2026-11-03).**
+A helyi root összegzés a `homecontrol-post-boot-health.timer` hiányzó következő
+időpontját igazolta, sikeres r18 rollback mellett. Valódi, elkülönített systemd-
+próba reprodukálta a futás közbeni `infinity` értéket és a siker utáni új időpontot.
+A külön folytató megvárja a health oneshot sikeres végét, majd minden eredeti
+ellenőrzést megkövetel. Hibás/beragadt service, tartósan hiányzó trigger, más timer
+hibája és hashdrift továbbra is elutasított. 66 célzott teszt sikeres.
+Csak a három r18 rollback-konténer új ID-ját veheti át, a többi 13 azonossága kötelező.
+Az r22 805 lezárt forrása és image-ei változatlanok; friss elő-/utómentés és restore
+minden átállításnál kötelező. A csomag még nincs rootként végrehajtva; aktív r18.
+[Aktuális bizonyítékok és egyszeri helyi indítóparancs](docs/audit-r22-timer-continuation-20261103.md).
+46 Ellenőrzött; HC-41/43 Folyamatban; az audit éles átadása nincs lezárva.
+Az alábbi indítási és diagnosztikai parancsok történetiek.
+
+
+**REPAIR-081 – r22 mentés/restore sikeres, végső ellenőrzés után ismét r18 rollback (2026-11-03).**
+A felhasználó lefuttatta a continuation-1 indítót; az EXDEV-másolási javítás sikeres.
+Az új r18 előmentés/restore, majd az r22 teljes HC/Git/router mentése és PG-restore
+elkészült, de a végső auditátvétel `ValueError` hibája automatikus rollbacket indított.
+Aktív r18: 736 runtime-hash, 16 eredeti image, 15 futó konténer, 10 healthy check,
+öt aktív timer és tiltott AI ellenőrzött. A három átállított konténer ID-ja új.
+A köztes r22 sikerüzenet nem végső átadás. Az eredeti indítók nem ismételhetők.
+Öt teszttel ellenőrzött, csak olvasó hibaösszegző kész; pontos root napló még függő,
+a natív sudo helyi jelszót kér. Az élesítési jóváhagyás továbbra is érvényes.
+[Aktuális állapot és diagnosztikai parancs](docs/audit-r22-handover-failure-20261103.md).
+46 Ellenőrzött; HC-41/43 Folyamatban; az audit éles átadása nincs lezárva.
+Az alábbi kiadási/folytatási állapotok történetiek.
+
+
 **REPAIR-080 – r22 előmentés/restore sikeres, telepítési rollback; cache-folytató kész (2026-11-03).**
 A teljes r18 HC/Git/router mentés, retention és izolált PG-restore sikeres.
 A telepítés `Error` hibája után az automatikus rollback visszaállította az r18-at;

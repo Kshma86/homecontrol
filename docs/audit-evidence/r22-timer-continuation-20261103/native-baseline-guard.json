@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "read_only": true,
+  "deployment_performed": false,
+  "r22_source_count": 805,
+  "r22_source_drift": [],
+  "manifest_sha256": "96577f442a6457bb42a85a127a0e8b2d1f166848242ed4f724d705354fa1aa8c",
+  "r18_runtime_and_access_units_verified": true,
+  "r18_image_count": 16,
+  "recreated_ids": [
+    "homecontrol-backend",
+    "homecontrol-ha-growatt-poller",
+    "homecontrol-mdns"
+  ],
+  "unchanged_containers": 13,
+  "full_guard_pending_local_sudo": true,
+  "rootless_guard_result": "PermissionError reading protected hostops jobs; no checks skipped in production continuation."
+}

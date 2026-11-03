@@ -1,0 +1,24 @@
+{
+  "checked_at": "2026-11-03T13:37:09.026108+00:00",
+  "active_release": "hc-security-20261102-r18",
+  "release_status": {
+    "phase": "previous_release_restored",
+    "timestamp": 1793708242.747385
+  },
+  "private_continuation_directory_exists": false,
+  "backend_ok": true,
+  "running_containers": 15,
+  "healthy_checks": 10,
+  "all_r18_images": true,
+  "robot_state": "5",
+  "robot_handover_gate_passed": false,
+  "ai_enabled": false,
+  "router_backup_enabled": true,
+  "timers": {
+    "homecontrol-backup.timer": true,
+    "homecontrol-ai-weekly-backup.timer": true,
+    "homecontrol-restic-check.timer": true,
+    "homecontrol-log-maintenance.timer": true,
+    "homecontrol-post-boot-health.timer": true
+  }
+}

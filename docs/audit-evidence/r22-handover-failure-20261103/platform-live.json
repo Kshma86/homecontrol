@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "ha": {
+    "ok": true,
+    "image": "sha256:422d416cb27deba90b680a044ee83f695a6bd9dfa219ab54e55eb86b94d590d0",
+    "http_status": 200,
+    "authenticated_api": true,
+    "previously_available_growatt_entities_preserved": 64,
+    "state_count": 86
+  },
+  "postgres": {
+    "ok": true,
+    "major": 16,
+    "recorded": "2.41",
+    "actual": "2.41"
+  },
+  "unchanged_components": 13
+}

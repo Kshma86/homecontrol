@@ -1,0 +1,12 @@
+{
+  "run_id": "ed5dfbc3bf664bfaa44ef9d58f6153c8",
+  "snapshot_id": "e13b233aefaeb74e4be4878acb576765d1cec77a1dbac7d6f67a6ab2239fa00b",
+  "git": "pushed",
+  "restore": "verified",
+  "database": "verified",
+  "ai_enabled": false,
+  "audit_input_prepared": true,
+  "ok": true,
+  "release": "hc-audit-20261103-r22",
+  "state": "deployed_and_router_restore_verified"
+}

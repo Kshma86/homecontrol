@@ -1,0 +1,51 @@
+{
+  "scope": "user_transient",
+  "production_units_modified": false,
+  "observations": [
+    {
+      "timer": {
+        "NextElapseUSecRealtime": "",
+        "NextElapseUSecMonotonic": "2month 2w 2d 10min 9.782079s",
+        "ActiveState": "active",
+        "SubState": "waiting"
+      },
+      "service": {
+        "Result": "success",
+        "ExecMainStatus": "0",
+        "ActiveState": "inactive",
+        "SubState": "dead"
+      }
+    },
+    {
+      "timer": {
+        "NextElapseUSecRealtime": "",
+        "NextElapseUSecMonotonic": "infinity",
+        "ActiveState": "active",
+        "SubState": "running"
+      },
+      "service": {
+        "Result": "success",
+        "ExecMainStatus": "0",
+        "ActiveState": "activating",
+        "SubState": "start"
+      }
+    },
+    {
+      "timer": {
+        "NextElapseUSecRealtime": "",
+        "NextElapseUSecMonotonic": "2month 2w 2d 10min 15.789477s",
+        "ActiveState": "active",
+        "SubState": "waiting"
+      },
+      "service": {
+        "Result": "success",
+        "ExecMainStatus": "0",
+        "ActiveState": "inactive",
+        "SubState": "dead"
+      }
+    }
+  ],
+  "saw_running_without_next": true,
+  "next_returned_after_success": true,
+  "derived_flag_corrected": "Initial detector only matched 0; captured infinity is also a missing trigger. Raw observations unchanged."
+}

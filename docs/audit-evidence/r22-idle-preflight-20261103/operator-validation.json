@@ -1,0 +1,14 @@
+{
+  "checked_at": "2026-11-03T13:38:53.875671+00:00",
+  "new_tests": 10,
+  "passed": 10,
+  "previous_66_tests_not_rerun": true,
+  "deployed": false,
+  "sha256": {
+    "run_r22_when_idle.py": "ce6a10f5b2e0930d736e6eb2c841998e4a3355831392fc5728f77f9ea4610c73",
+    "test_run_r22_when_idle.py": "9297d35b68267ff3a08c7024357c03cdb02b2d25965afd461e0914dbc717e732"
+  },
+  "sealed_entry_sha256": "d29bca87303094a318cea1bf3d8bebb48df134d41034d7c4aa6cd10412c72147",
+  "replicated_readonly_error": "Robot must be idle or charging for the bridge handover",
+  "original_private_error_missing": true
+}

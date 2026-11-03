@@ -1,5 +1,11 @@
 # r22 – sikeres előmentés/restore, visszagörgetett telepítés és EXDEV-folytató
 
+**Frissítés (REPAIR-081): a folytatót a felhasználó lefuttatta, nem ismételhető.**
+Az EXDEV-javítás és az új r22 mentés/restore sikeres, de a végső záróellenőrzés
+`ValueError` hibája ismét r18 rollbacket indított.
+[Aktuális állapot és diagnosztikai parancs](audit-r22-handover-failure-20261103.md).
+Az alábbi előkészítés történeti állapot.
+
 REPAIR-080, 2026-11-03. Aktív: **`hc-security-20261102-r18`**.
 A felhasználó kifejezett r22-élesítési engedélye érvényes. Új alkalmazáskiadás
 vagy image nem készült; az r22 805 lezárt forrása változatlan.

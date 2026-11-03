@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "scope": "transient_user",
+  "production_units_modified": false,
+  "observations": [
+    {
+      "timer": {
+        "ActiveState": "active",
+        "SubState": "running",
+        "NextElapseUSecRealtime": "",
+        "NextElapseUSecMonotonic": "infinity"
+      },
+      "service": {
+        "Result": "success",
+        "ExecMainStatus": "0",
+        "ActiveState": "activating",
+        "SubState": "start"
+      }
+    },
+    {
+      "timer": {
+        "ActiveState": "active",
+        "SubState": "waiting",
+        "NextElapseUSecRealtime": "",
+        "NextElapseUSecMonotonic": "2month 2w 2d 16min 985.498ms"
+      },
+      "service": {
+        "Result": "success",
+        "ExecMainStatus": "0",
+        "ActiveState": "inactive",
+        "SubState": "dead"
+      }
+    }
+  ],
+  "acceptance": {
+    "result": "success",
+    "exit_status": 0,
+    "timer_state": "waiting",
+    "waited_for_completion": true,
+    "wait_seconds": 3.156,
+    "all_frozen_schedule_checks_passed": true
+  },
+  "test_scope": "Real systemd wait adapter; complete frozen checks covered separately by integration fixtures."
+}

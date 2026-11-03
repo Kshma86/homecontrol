@@ -1,0 +1,9 @@
+{
+  "checked_at": "2026-11-03T13:02:40.840564+00:00",
+  "command": "sudo -n python3 /srv/docker/homecontrol/backups/releases/hc-audit-20261103-r22-continuation-2/source/resume_r22_timer.py",
+  "exit_code": 1,
+  "stderr": "sudo: a password is required",
+  "root_continuation_executed": false,
+  "deployment_performed": false,
+  "prior_user_authorization": "Approved r22 deployment remains valid; no new permission requested."
+}

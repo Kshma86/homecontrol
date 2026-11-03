@@ -1,0 +1,7 @@
+{
+  "checked_at": "2026-11-03T13:39:31.704836+00:00",
+  "exit_code": 1,
+  "stderr": "sudo: a password is required",
+  "operator_executed": false,
+  "deployment_performed": false
+}
