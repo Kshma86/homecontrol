@@ -1,5 +1,9 @@
 # r22 – reprodukált FTP-kapcsolatlejárat javítása és élesítési folytatás
 
+**Lezárás (REPAIR-084): az r22 éles átadása sikeres; a korábbi indítók nem ismétlendők.**
+[Aktuális végső állapot és bizonyítékok](audit-r22-live-handover-20261103.md).
+Az alábbi előkészítési/hibaállapot történeti.
+
 **REPAIR-080 frissítés:** a felhasználó az r22-t már elindította. A teljes
 előmentés/retention és PG-restore sikeres; a telepítési hiba után az r18 rollback
 sikeresen lefutott. Az alábbi eredeti indítóparancs nem ismételhető.

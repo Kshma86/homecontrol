@@ -1,5 +1,9 @@
 # r22 – korai robot-kapu és a hiányzó hibanapló javítása
 
+**Lezárás (REPAIR-084): az r22 éles átadása sikeres; a korábbi indítók nem ismétlendők.**
+[Aktuális végső állapot és bizonyítékok](audit-r22-live-handover-20261103.md).
+Az alábbi előkészítési/hibaállapot történeti.
+
 REPAIR-083, 2026-11-03. Aktív továbbra is **hc-security-20261102-r18**.
 Az élesítési engedély érvényes; az audit átadása még nincs lezárva.
 

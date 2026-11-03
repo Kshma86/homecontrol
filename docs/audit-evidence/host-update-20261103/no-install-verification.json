@@ -1,0 +1,133 @@
+{
+  "all_32_packages_still_at_original_state": true,
+  "checked": [
+    {
+      "package": "docker-ce-cli",
+      "still_at_original_state": true
+    },
+    {
+      "package": "containerd.io",
+      "still_at_original_state": true
+    },
+    {
+      "package": "nftables",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libnftables1",
+      "still_at_original_state": true
+    },
+    {
+      "package": "docker-ce",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libopeniscsiusr",
+      "still_at_original_state": true
+    },
+    {
+      "package": "open-iscsi",
+      "still_at_original_state": true
+    },
+    {
+      "package": "ubuntu-drivers-common",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libaudit-common",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libaudit1",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libk5crypto3",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libkrb5support0",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libkrb5-3",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libgssapi-krb5-2",
+      "still_at_original_state": true
+    },
+    {
+      "package": "iproute2",
+      "still_at_original_state": true
+    },
+    {
+      "package": "netplan.io",
+      "still_at_original_state": true
+    },
+    {
+      "package": "netplan-generator",
+      "still_at_original_state": true
+    },
+    {
+      "package": "python3-netplan",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libnetplan0",
+      "still_at_original_state": true
+    },
+    {
+      "package": "nano",
+      "still_at_original_state": true
+    },
+    {
+      "package": "ubuntu-release-upgrader-core",
+      "still_at_original_state": true
+    },
+    {
+      "package": "python3-distupgrade",
+      "still_at_original_state": true
+    },
+    {
+      "package": "docker-buildx-plugin",
+      "still_at_original_state": true
+    },
+    {
+      "package": "docker-ce-rootless-extras",
+      "still_at_original_state": true
+    },
+    {
+      "package": "docker-compose-plugin",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libldap-2.5-0",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libldap-common",
+      "still_at_original_state": true
+    },
+    {
+      "package": "libxmlb2",
+      "still_at_original_state": true
+    },
+    {
+      "package": "linux-firmware",
+      "still_at_original_state": true
+    },
+    {
+      "package": "snapd",
+      "still_at_original_state": true
+    },
+    {
+      "package": "cloud-init",
+      "still_at_original_state": true
+    },
+    {
+      "package": "ubuntu-server-minimal",
+      "still_at_original_state": true
+    }
+  ]
+}

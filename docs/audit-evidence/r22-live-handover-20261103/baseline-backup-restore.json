@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "release": "hc-security-20261102-r18",
+  "run_id": "d721ad3af9624b7abe5faa161df89d58",
+  "snapshot_id": "f4319a0d17fe1d875ccc45a141ddd830248bca743db87f8736055c2f0021ee07",
+  "archive_sha256": "e3ae3890f902571f0b2c1db94829297fbdf0db92618bcda35e758f424f588f6d",
+  "git": "pushed",
+  "restore": "verified",
+  "database": "verified",
+  "platform_still_running": true
+}

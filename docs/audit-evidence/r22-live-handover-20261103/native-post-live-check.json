@@ -1,0 +1,66 @@
+{
+  "checked_at": "2026-11-03T14:48:32.318933+00:00",
+  "active_release": "hc-audit-20261103-r22",
+  "containers": 16,
+  "running": 15,
+  "healthy": 10,
+  "container_drift_from_handover": [],
+  "unchanged_container_ids": 13,
+  "backend_ok": true,
+  "backend_ready": true,
+  "ai_enabled": false,
+  "router_backup_enabled": true,
+  "installed_unit_drift": [],
+  "timers": {
+    "homecontrol-backup.timer": {
+      "NextElapseUSecRealtime": "Wed 2026-11-04 02:15:00 CET",
+      "NextElapseUSecMonotonic": "0",
+      "ActiveState": "active",
+      "SubState": "waiting",
+      "UnitFileState": "enabled"
+    },
+    "homecontrol-ai-weekly-backup.timer": {
+      "NextElapseUSecRealtime": "Sun 2026-11-08 03:30:00 CET",
+      "NextElapseUSecMonotonic": "0",
+      "ActiveState": "active",
+      "SubState": "waiting",
+      "UnitFileState": "enabled"
+    },
+    "homecontrol-restic-check.timer": {
+      "NextElapseUSecRealtime": "Sun 2026-12-06 04:41:26 CET",
+      "NextElapseUSecMonotonic": "0",
+      "ActiveState": "active",
+      "SubState": "waiting",
+      "UnitFileState": "enabled"
+    },
+    "homecontrol-log-maintenance.timer": {
+      "NextElapseUSecRealtime": "Wed 2026-11-04 03:30:00 CET",
+      "NextElapseUSecMonotonic": "0",
+      "ActiveState": "active",
+      "SubState": "waiting",
+      "UnitFileState": "enabled"
+    },
+    "homecontrol-post-boot-health.timer": {
+      "NextElapseUSecRealtime": "",
+      "NextElapseUSecMonotonic": "2month 2w 2d 2h 12min 56.359882s",
+      "ActiveState": "active",
+      "SubState": "waiting",
+      "UnitFileState": "enabled"
+    }
+  },
+  "hostops_and_mqtt_guard": {
+    "homecontrol-hostops.service": true,
+    "homecontrol-mqtt-access.service": true
+  },
+  "backup_supervisor_active": false,
+  "preserved_lab_input": {
+    "release": "hc-audit-20261103-r22",
+    "ok": true,
+    "phase": "ready_for_isolated_restore",
+    "snapshot_id": "e13b233aefaeb74e4be4878acb576765d1cec77a1dbac7d6f67a6ab2239fa00b",
+    "started_at": "2026-11-03T13:08:23.244602+01:00",
+    "finished_at": "2026-11-03T13:16:45.747860+01:00"
+  },
+  "lab_input_matches_latest_backup": false,
+  "lab_existing_path_guard_would_reject_export": true
+}

@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "packages_installed": false,
+  "daemons_started_or_replaced": false,
+  "versions": {
+    "docker_cli": "Docker version 29.9.2, build a82e528",
+    "compose_cli": "5.7.0",
+    "current_daemon": "29.1.5"
+  },
+  "compose_render_identical_with_env_files_unread": true,
+  "services": 14,
+  "render_sha256": "717b84baae92ac5b920fceec5534ff696bc87eed6b576a9e48f2c3560e1ce655",
+  "scope": "Authenticated candidate binaries, current daemon read-only negotiation, public compose rendering with no private env-file resolution. New engine startup not tested."
+}

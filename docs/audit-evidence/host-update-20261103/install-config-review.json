@@ -1,0 +1,8 @@
+{
+  "checked_at": "2026-11-03T15:30:39.370241+00:00",
+  "simulation_only": true,
+  "exact_same_32_transactions": true,
+  "host_dpkg_hooks_preserved_for_future_install": true,
+  "prepare_config_hooks_disabled_only_for_metadata_download": true,
+  "current_package_database_unchanged": true
+}

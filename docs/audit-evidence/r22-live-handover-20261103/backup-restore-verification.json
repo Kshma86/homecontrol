@@ -1,0 +1,56 @@
+{
+  "checked_at": "2026-11-03T14:50:51.318922+00:00",
+  "run_id": "7a6236e4b0a5472a8566024665ffc619",
+  "snapshot_id": "08acafbc0721e29c85997a3f12298f81fe0b28c088fd3b494adf3f58bc2b5d45",
+  "latest_job_matches_acceptance": true,
+  "job_state": "completed",
+  "returncode": 0,
+  "targets": {
+    "local_archive": "succeeded",
+    "restic": "succeeded",
+    "git_offsite": "succeeded",
+    "secrets_bundle": "succeeded",
+    "restic_retention": "succeeded"
+  },
+  "archive": {
+    "name": "homecontrol_2026-11-03_15-17-41_7a6236e4b0a5472a8566024665ffc619.tar.gz",
+    "completed": true,
+    "run_id": "7a6236e4b0a5472a8566024665ffc619",
+    "mode": "weekly",
+    "sha256": "2161ff04db539fd0c2dfd2601eb5bd5c9aeeb8dc3511de5e7c20d5883bd77ec5",
+    "size_bytes": 2170892529,
+    "verified_files": 10690,
+    "coverage": {
+      "include_postgres": true,
+      "include_apps": true,
+      "include_infra": true,
+      "include_zigbee2mqtt": true,
+      "include_homeassistant": true,
+      "include_scripts": true,
+      "include_docker_meta": true
+    }
+  },
+  "baseline": {
+    "ok": true,
+    "release": "hc-security-20261102-r18",
+    "run_id": "d721ad3af9624b7abe5faa161df89d58",
+    "snapshot_id": "f4319a0d17fe1d875ccc45a141ddd830248bca743db87f8736055c2f0021ee07",
+    "archive_sha256": "e3ae3890f902571f0b2c1db94829297fbdf0db92618bcda35e758f424f588f6d",
+    "git": "pushed",
+    "restore": "verified",
+    "database": "verified",
+    "platform_still_running": true
+  },
+  "restore_acceptance": {
+    "ok": true,
+    "git": "pushed",
+    "restore": "verified",
+    "database": "verified",
+    "audit_input_prepared": false
+  },
+  "direct_private_restore_receipt_read": false,
+  "restore_evidence_source": "Successful root activation receipt; private restore-smoke-result.json remains root-only.",
+  "manifest_sha256": "96577f442a6457bb42a85a127a0e8b2d1f166848242ed4f724d705354fa1aa8c",
+  "acceptance_hash_matches_manifest": true,
+  "frozen_evidence_drift": []
+}

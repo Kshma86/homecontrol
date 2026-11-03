@@ -1,5 +1,9 @@
 # r22 – sikeres mentés/restore után visszagörgetett záróellenőrzés
 
+**Lezárás (REPAIR-084): az r22 éles átadása sikeres; a korábbi indítók nem ismétlendők.**
+[Aktuális végső állapot és bizonyítékok](audit-r22-live-handover-20261103.md).
+Az alábbi előkészítési/hibaállapot történeti.
+
 **Frissítés (REPAIR-082): a root összegző a post-boot health timer hiányzó következő
 időpontját igazolta.** A szabályos systemd-futás közbeni átmenet reprodukált;
 elkészült és 66 teszten átment a külön folytató.

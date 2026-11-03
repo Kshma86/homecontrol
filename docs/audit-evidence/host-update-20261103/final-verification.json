@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "command": "python3 /srv/docker/homecontrol/maintenance/host-update-20261103/source/check.py verify",
+  "exit_code": 0,
+  "packages_verified": 32,
+  "rollback_packages_verified": 8,
+  "packages_installed": false,
+  "prepared_artifacts_verified": true,
+  "host_package_state_unchanged": true,
+  "apt_simulation_matches_reviewed_plan": true
+}

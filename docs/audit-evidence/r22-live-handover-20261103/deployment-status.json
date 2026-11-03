@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "release": "hc-audit-20261103-r22",
+  "audit_checked": 46,
+  "audit_in_progress": [
+    "HC-41",
+    "HC-43"
+  ],
+  "state": "deployed_and_audit_handover_complete"
+}

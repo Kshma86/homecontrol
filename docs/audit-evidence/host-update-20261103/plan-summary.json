@@ -1,0 +1,288 @@
+{
+  "prepared_at": "2026-11-03T15:19:43.720084+00:00",
+  "upgrades": 30,
+  "new_packages": 2,
+  "removals": [],
+  "download_bytes": 455459286,
+  "rollback_download_bytes": 91393200,
+  "installed_size_upper_bound_bytes": 1666223104,
+  "packages_installed": false,
+  "reboot_performed": false,
+  "packages": [
+    {
+      "package": "docker-ce-cli",
+      "installed": "5:29.1.5-1~ubuntu.22.04~jammy",
+      "candidate": "5:29.9.2-1~ubuntu.22.04~jammy",
+      "origin": "Docker CE:jammy",
+      "architecture": "amd64"
+    },
+    {
+      "package": "containerd.io",
+      "installed": "2.2.1-1~ubuntu.22.04~jammy",
+      "candidate": "2.4.2-3~ubuntu.22.04~jammy",
+      "origin": "Docker CE:jammy",
+      "architecture": "amd64"
+    },
+    {
+      "package": "nftables",
+      "installed": "1.0.2-1ubuntu3",
+      "candidate": "1.0.2-1ubuntu3.1",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libnftables1",
+      "installed": "1.0.2-1ubuntu3",
+      "candidate": "1.0.2-1ubuntu3.1",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "docker-ce",
+      "installed": "5:29.1.5-1~ubuntu.22.04~jammy",
+      "candidate": "5:29.9.2-1~ubuntu.22.04~jammy",
+      "origin": "Docker CE:jammy",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libopeniscsiusr",
+      "installed": "2.1.5-1ubuntu1.1",
+      "candidate": "2.1.5-1ubuntu1.3",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "open-iscsi",
+      "installed": "2.1.5-1ubuntu1.1",
+      "candidate": "2.1.5-1ubuntu1.3",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "ubuntu-drivers-common",
+      "installed": "1:0.9.6.2~0.22.04.10",
+      "candidate": "1:0.9.6.2~0.22.04.11",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libaudit-common",
+      "installed": "1:3.0.7-1build1",
+      "candidate": "1:3.0.7-1ubuntu0.1",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "all"
+    },
+    {
+      "package": "libaudit1",
+      "installed": "1:3.0.7-1build1",
+      "candidate": "1:3.0.7-1ubuntu0.1",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libk5crypto3",
+      "installed": "1.19.2-2ubuntu0.8",
+      "candidate": "1.19.2-2ubuntu0.10",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libkrb5support0",
+      "installed": "1.19.2-2ubuntu0.8",
+      "candidate": "1.19.2-2ubuntu0.10",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libkrb5-3",
+      "installed": "1.19.2-2ubuntu0.8",
+      "candidate": "1.19.2-2ubuntu0.10",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libgssapi-krb5-2",
+      "installed": "1.19.2-2ubuntu0.8",
+      "candidate": "1.19.2-2ubuntu0.10",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "iproute2",
+      "installed": "5.15.0-1ubuntu2",
+      "candidate": "5.15.0-1ubuntu2.2",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "netplan.io",
+      "installed": "0.106.1-7ubuntu0.22.04.4",
+      "candidate": "0.107.1-3ubuntu0.22.04.5",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "netplan-generator",
+      "installed": null,
+      "candidate": "0.107.1-3ubuntu0.22.04.5",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "python3-netplan",
+      "installed": null,
+      "candidate": "0.107.1-3ubuntu0.22.04.5",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libnetplan0",
+      "installed": "0.106.1-7ubuntu0.22.04.4",
+      "candidate": "0.107.1-3ubuntu0.22.04.5",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "nano",
+      "installed": "6.2-1ubuntu0.2",
+      "candidate": "6.2-1ubuntu0.3",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "ubuntu-release-upgrader-core",
+      "installed": "1:22.04.20",
+      "candidate": "1:22.04.21",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "all"
+    },
+    {
+      "package": "python3-distupgrade",
+      "installed": "1:22.04.20",
+      "candidate": "1:22.04.21",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "all"
+    },
+    {
+      "package": "docker-buildx-plugin",
+      "installed": "0.30.1-1~ubuntu.22.04~jammy",
+      "candidate": "0.38.1-1~ubuntu.22.04~jammy",
+      "origin": "Docker CE:jammy",
+      "architecture": "amd64"
+    },
+    {
+      "package": "docker-ce-rootless-extras",
+      "installed": "5:29.1.5-1~ubuntu.22.04~jammy",
+      "candidate": "5:29.9.2-1~ubuntu.22.04~jammy",
+      "origin": "Docker CE:jammy",
+      "architecture": "amd64"
+    },
+    {
+      "package": "docker-compose-plugin",
+      "installed": "5.0.2-1~ubuntu.22.04~jammy",
+      "candidate": "5.7.0-1~ubuntu.22.04~jammy",
+      "origin": "Docker CE:jammy",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libldap-2.5-0",
+      "installed": "2.5.19+dfsg-0ubuntu0.22.04.1",
+      "candidate": "2.5.20+dfsg-0ubuntu0.22.04.1",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "libldap-common",
+      "installed": "2.5.19+dfsg-0ubuntu0.22.04.1",
+      "candidate": "2.5.20+dfsg-0ubuntu0.22.04.1",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "all"
+    },
+    {
+      "package": "libxmlb2",
+      "installed": "0.3.6-2build1",
+      "candidate": "0.3.24-1~ubuntu0.22.04.1",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "linux-firmware",
+      "installed": "20220329.git681281e4-0ubuntu3.40",
+      "candidate": "20220329.git681281e4-0ubuntu3.42",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "all"
+    },
+    {
+      "package": "snapd",
+      "installed": "2.76.3+ubuntu22.04.1",
+      "candidate": "2.77.1+ubuntu22.04.1",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    },
+    {
+      "package": "cloud-init",
+      "installed": "25.2-0ubuntu1~22.04.1",
+      "candidate": "26.1-0ubuntu1~22.04.1",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "all"
+    },
+    {
+      "package": "ubuntu-server-minimal",
+      "installed": "1.481.4",
+      "candidate": "1.481.5",
+      "origin": "Ubuntu:22.04/jammy-updates",
+      "architecture": "amd64"
+    }
+  ],
+  "rollback_packages": [
+    {
+      "package": "docker-ce-cli",
+      "version": "5:29.1.5-1~ubuntu.22.04~jammy",
+      "architecture": "amd64",
+      "sha256": "6c27fc9fc8e5646cb84927716be7d561d689a40a5d78bbfa36f88131ebf992eb"
+    },
+    {
+      "package": "containerd.io",
+      "version": "2.2.1-1~ubuntu.22.04~jammy",
+      "architecture": "amd64",
+      "sha256": "340edaa90ba979ab05a7900c2aeb99a118eaa94e35dc2efd876648f93d6cc10d"
+    },
+    {
+      "package": "docker-ce",
+      "version": "5:29.1.5-1~ubuntu.22.04~jammy",
+      "architecture": "amd64",
+      "sha256": "4a6e76c680208806ed0d9ca7eacb28670be088209ac6bca6537fa6f28bf7ad4b"
+    },
+    {
+      "package": "netplan.io",
+      "version": "0.106.1-7ubuntu0.22.04.4",
+      "architecture": "amd64",
+      "sha256": "5af3b193787a30320713f546cdec6d36e5f33a3952d5b5c3e919ed70e24e2035"
+    },
+    {
+      "package": "libnetplan0",
+      "version": "0.106.1-7ubuntu0.22.04.4",
+      "architecture": "amd64",
+      "sha256": "baa9113cbd56828e873a44d8a99f4b6fdb341b014ff268fd244f90ce0d3cd117"
+    },
+    {
+      "package": "docker-buildx-plugin",
+      "version": "0.30.1-1~ubuntu.22.04~jammy",
+      "architecture": "amd64",
+      "sha256": "c550ca2fcca56836605b58c64c6a89e198bb9f757d8978e4060a82227bda9c98"
+    },
+    {
+      "package": "docker-ce-rootless-extras",
+      "version": "5:29.1.5-1~ubuntu.22.04~jammy",
+      "architecture": "amd64",
+      "sha256": "4b4d399290f6787fb6dbbc778b92faa2a7f83d44e413ef29111083544617f0cd"
+    },
+    {
+      "package": "docker-compose-plugin",
+      "version": "5.0.2-1~ubuntu.22.04~jammy",
+      "architecture": "amd64",
+      "sha256": "3a02f99456db41f7d5f63f07cd1f40cc03b29b1e02d2f169d2bf2cb0edc93c84"
+    }
+  ],
+  "expected_kernel_after_reboot": "5.15.0-202-generic"
+}

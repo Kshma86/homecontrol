@@ -1,5 +1,9 @@
 # r22 – sikeres előmentés/restore, visszagörgetett telepítés és EXDEV-folytató
 
+**Lezárás (REPAIR-084): az r22 éles átadása sikeres; a korábbi indítók nem ismétlendők.**
+[Aktuális végső állapot és bizonyítékok](audit-r22-live-handover-20261103.md).
+Az alábbi előkészítési/hibaállapot történeti.
+
 **Frissítés (REPAIR-081): a folytatót a felhasználó lefuttatta, nem ismételhető.**
 Az EXDEV-javítás és az új r22 mentés/restore sikeres, de a végső záróellenőrzés
 `ValueError` hibája ismét r18 rollbacket indított.

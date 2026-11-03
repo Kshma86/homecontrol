@@ -1,0 +1,12 @@
+{
+  "checked_at": "2026-11-03T15:36:02.467785+00:00",
+  "host_package_database_unchanged": true,
+  "boot_unchanged": true,
+  "r22_runtime_and_containers_verified": true,
+  "mounts_verified": 5,
+  "runtime_source_count": 805,
+  "all_cache_filenames_match_apt_archive_convention": true,
+  "console_access_confirmed": null,
+  "new_engine_startup_tested": false,
+  "fresh_host_config_backup_pending_execution": true
+}

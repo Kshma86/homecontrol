@@ -1,5 +1,9 @@
 # r22 – a health timer futásának megvárása a végső ellenőrzésben
 
+**Lezárás (REPAIR-084): az r22 éles átadása sikeres; a korábbi indítók nem ismétlendők.**
+[Aktuális végső állapot és bizonyítékok](audit-r22-live-handover-20261103.md).
+Az alábbi előkészítési/hibaállapot történeti.
+
 **Frissítés (REPAIR-083): a felhasználó indítása a tranzakció megkezdése előtt
 megállt.** A robot-idle guard újrafuttatásban blokkol, és a korai hibanaplózás
 hiányossága is kiderült. Az eredeti csomag változatlan.

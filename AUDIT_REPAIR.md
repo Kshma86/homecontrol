@@ -1,5 +1,52 @@
 # HC audit – javítási nyilvántartás
 
+**REPAIR-086 – az engedélyezett hostkarbantartás indítója elkészült (2026-11-03).**
+Friss HC/Git/router előmentés és PG-restore, fizikai kapuk, privát hostkonfiguráció-
+mentés, függőségi leállítás/indítás, pontos helyi APT-terv, nft-összevetés és
+Zigbee/Growatt kapcsolati próbák. 31 teszt sikeres. A natív sudo jelszót kér;
+helyi root indítás szükséges; a felhasználó a konzolelérést megerősítette.
+**Telepítés, szolgáltatásleállítás és reboot még nem történt.** Az indító a sikeres
+reboot előtti nyugtánál megáll; reboot utáni postcheck/új mentési kapu külön lépés.
+[Indító, hibakezelés és pontos jelenlegi állapot](docs/host-update-execution-20261103.md).
+Az r22 átadása és HC-41/43 státusza változatlan.
+
+**REPAIR-085 – Ubuntu hostfrissítés előkészítve, nincs telepítés/reboot (2026-11-03).**
+Friss, elkülönített, APT-hitelesített katalógusból 30 frissítés és 2 új Netplan-
+függőség, eltávolítás nélkül. A 32 új és 8 korábbi Docker/Netplan csomag letöltve,
+SHA-256 és deb-azonosság ellenőrzött. 15 célzott teszt és valódi, csak olvasó
+Docker/Compose klienspróba sikeres; az új daemon indulását nem állítjuk teszteltnek.
+A host dpkg-adatbázisa, bootja és r22 runtime-ja változatlan. Öt backup-mount,
+25 unit/drop-in és 805 runtime-hash rögzített. A következő kernel 5.15.0-202.
+A készlet 24 órán belül és változatlan hostcsomag-/APT-állapot mellett használható;
+a tényleges végrehajtás friss root előellenőrzést/mentést és konzolelérést igényel.
+[Konkrét csomagterv, bizonyítékok és végrehajtási sorrend](docs/host-update-preparation-20261103.md).
+Az r22 éles átadása lezárt marad: 46 Ellenőrzött, HC-41/43 Folyamatban.
+A hostfrissítés nem alkalmazza automatikusan a konténeres HC-43 javításait.
+
+
+**REPAIR-084 – az r22 éles átadása és natív utóellenőrzése sikeres (2026-11-03).**
+Aktív `hc-audit-20261103-r22`; végső állapot `deployed_and_audit_handover_complete`.
+Friss teljes r18 előmentés és PG-restore, majd friss r22 HC/Git/router mentés,
+visszaolvasás és izolált PG-restore sikeres. Run: `7a6236e4b0a5472a8566024665ffc619`.
+A timer-adapter megvárta a health futás végét, majd minden eredeti ellenőrzés teljesült.
+Független natív ellenőrzés: 805 runtime-hash, 15 futó konténer, 10 healthy check,
+13 megőrzött konténer-ID, öt engedélyezett/aktív timer következő időponttal, unitdrift nélkül.
+AI tiltva, routeres mentés engedélyezve. A korábbi indítók nem ismétlendők.
+A külön laborbemenet nem frissült (`audit_input_prepared: false`); a korábbi példány
+megmaradt. Új teljes r22 VM/bare-metal/reboot próbát nem állítunk.
+**A jelenlegi javítási kör éles átadása lezárva: 46 Ellenőrzött; HC-41/43 Folyamatban.**
+[Olvasható végső átadás és pontos bizonyítékok](docs/audit-r22-live-handover-20261103.md).
+Az alábbi indítási/hibaállapotok történetiek. Az automatikus REPAIR-079 átadási
+szöveg régi sablonjelölés; a tényleges mostani lezárás REPAIR-084.
+
+
+**Éles átadás lezárva: hc-audit-20261103-r22, 2026-11-03 (REPAIR-079).**
+A HC-15/16/20/23/24/26 javításai most már élesek; 46 Ellenőrzött, 2 Folyamatban (HC-41/43).
+Friss HC/Git/router mentés és PG-restore, runtime-hashek, health és öt timer ellenőrzött.
+[Éles átadás és bizonyítékok](docs/audit-final-20261102.md).
+**Az alábbi korábbi előkészítési/kiadási állapotok történetiek; az éles r22 átadás felülírja őket.**
+
+
 **REPAIR-083 – korai robot-kapu blokkol, a naplóígéret hibája javítva (2026-11-03).**
 A continuation-2 a tranzakció megkezdése előtt `ValueError` hibával megállt;
 privát könyvtára sem jött létre, az r18 és a korábbi rollback-nyugta változatlan.

@@ -1,0 +1,271 @@
+{
+  "ok": true,
+  "release": "hc-audit-20261103-r22",
+  "checked_at": "2026-11-03T14:39:27.646662+00:00",
+  "runtime_source_count": 805,
+  "runtime_drift": [],
+  "containers": {
+    "homecontrol-proxy": {
+      "id": "d0c1783bd988f145942b1f146c8f66cd7a512c1571dbe96503d71d28259377e2",
+      "image": "sha256:14e71421340a5f9894c685165f61a39f7b79181f0f00b5d1c3ac5d075fcdc832",
+      "running": true,
+      "health": null,
+      "restart_count": 0
+    },
+    "homecontrol-frontend": {
+      "id": "52ab2e9746201c5b8633f91854a1335c6ce3c6a5e749620c1579c179368d9bfb",
+      "image": "sha256:dc7182c89fadfc25e094debfd6112ebbc78b4b057ce4e966ee422255d5187dc4",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "homecontrol-backend": {
+      "id": "fc09a14e300455c1cba95011c69d64315aa8c4d3062bc96413fd8deb90648a69",
+      "image": "sha256:e3e4b121fce197f3447cb656b1fdb7015099218a26365439d0f73d764a8dc291",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "homecontrol-ingest": {
+      "id": "402b7efbb01514eacffa301272cb6fa09f18b16a31933be78c9c30633668b869",
+      "image": "sha256:8f166c09c0aa67062b2c0170ba11f154b4aa8aef24a10a31105da440aa25cecf",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "homecontrol-pgbouncer": {
+      "id": "e333a0ea73d338c3560ce758bfdb22ea685dbdce27a9eaa76ae59ceffe6d9b24",
+      "image": "sha256:121f33add3b5a9281429bd0562ee014630bd2bbc9848072cd5db8c138cb33c20",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "homecontrol-tuya-poller": {
+      "id": "00eaea48b5e1842877840b17a741c8ed55ff86d8430ea11eca2de7076a3488ea",
+      "image": "sha256:f8bd560df207e0d0dffd8adb955dedcb87de9710695fbf86d6b56333d776a378",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "homecontrol-gree-climate": {
+      "id": "d4298c0cdbe4a85b11faa60b04761c8f6d78467dd26b9c59969968d45f10625e",
+      "image": "sha256:1170fe37099ad7b3b9db07cb11875ad086bd9d0e32f186920eb44e973e7c3514",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "homecontrol-xiaomi-x10": {
+      "id": "b3945f9115f0278269c207a51016d4d3391d7a3d969b89347cd5c5cfcb9851a5",
+      "image": "sha256:56fdfbc80dca10ec2f3d9a01174c634471f17b236d4daded3ecc1f2e983c47d0",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "homecontrol-ha-growatt-poller": {
+      "id": "d08e1f56802a0da0a9bcbe5dad308773707c72c3ee2b8bdd699e2db6b40fa09d",
+      "image": "sha256:f85cde2862d666f5a28aefd0429437873bc4ecd0ec92f3f4a87ec59bd2bbdc3c",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "homecontrol-mqtt": {
+      "id": "6416da4a5044bb0076b0d7272add3c68b069171051ce693c98e5562cad4bff6a",
+      "image": "sha256:ea973af3b048e2ab873344fce70ca045beda44ed8a066727ab18a19b79320e18",
+      "running": true,
+      "health": null,
+      "restart_count": 0
+    },
+    "homecontrol-postgres": {
+      "id": "b76e7c94be1bf373f58c68b38e7a127fae5926055384254a1f5c4730179d2c92",
+      "image": "sha256:518afd764e2fde609ec89ad9873fef6143d754faeffd7b49a93101ccb9e76787",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "zigbee2mqtt": {
+      "id": "914f65ba1b5561ff1d8a677441b075a79123116b96759d3aa2b9ba8182aced43",
+      "image": "sha256:6b47bf6547787e89d02efdfe3279d2fe39b6d6206a839d1ebcc6fdc38d92ee6e",
+      "running": true,
+      "health": null,
+      "restart_count": 0
+    },
+    "homecontrol-ai-server": {
+      "id": "f554a09b48c5d00e155cfa0c629d262730bbe5641029ce9d3d3307cfb161d12e",
+      "image": "sha256:0c70389808bb7a7a8674169bc3b79f49e2a8080812ebc101e5bb723e11868ef5",
+      "running": true,
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "homecontrol-mdns": {
+      "id": "ef2115ad3a457622b8c848ddbe3ae3be6add22e4e6de5f85adddcab0513615c2",
+      "image": "sha256:b85dd1092f6346dfea6768fffd23e8cec9c9c9908ecd5629a26c13d7f3148734",
+      "running": true,
+      "health": null,
+      "restart_count": 0
+    },
+    "homeassistant": {
+      "id": "215f77962313f9cda90b5c01af5402c4eabcfeabf5956e32bbbb17dd10e417a1",
+      "image": "sha256:422d416cb27deba90b680a044ee83f695a6bd9dfa219ab54e55eb86b94d590d0",
+      "running": true,
+      "health": null,
+      "restart_count": 0
+    },
+    "homecontrol-adminer": {
+      "id": "0ad15d9c2e815cc351746cdb9586cd90c75de018c563d1e6f52d5585e4b0b506",
+      "image": "sha256:19f38bc71f743beb2ad28bf31dfeb352deb19eb167692d250a66cda40b25de93",
+      "running": false,
+      "health": null,
+      "restart_count": 0
+    }
+  },
+  "changed_services": [
+    "backend",
+    "mdns",
+    "homecontrol-ha-growatt-poller"
+  ],
+  "unchanged_container_count": 13,
+  "ai_enabled": false,
+  "router_backup_enabled": true,
+  "active_timers": {
+    "homecontrol-backup.timer": {
+      "active": true,
+      "enabled": true,
+      "next_trigger": {
+        "NextElapseUSecRealtime": "Wed 2026-11-04 02:15:00 CET",
+        "NextElapseUSecMonotonic": "0"
+      }
+    },
+    "homecontrol-ai-weekly-backup.timer": {
+      "active": true,
+      "enabled": true,
+      "next_trigger": {
+        "NextElapseUSecRealtime": "Sun 2026-11-08 03:30:00 CET",
+        "NextElapseUSecMonotonic": "0"
+      }
+    },
+    "homecontrol-restic-check.timer": {
+      "active": true,
+      "enabled": true,
+      "next_trigger": {
+        "NextElapseUSecRealtime": "Sun 2026-12-06 04:41:26 CET",
+        "NextElapseUSecMonotonic": "0"
+      }
+    },
+    "homecontrol-log-maintenance.timer": {
+      "active": true,
+      "enabled": true,
+      "next_trigger": {
+        "NextElapseUSecRealtime": "Wed 2026-11-04 03:30:00 CET",
+        "NextElapseUSecMonotonic": "0"
+      }
+    },
+    "homecontrol-post-boot-health.timer": {
+      "active": true,
+      "enabled": true,
+      "next_trigger": {
+        "NextElapseUSecRealtime": "",
+        "NextElapseUSecMonotonic": "2month 2w 2d 2h 2min 38.013121s"
+      }
+    }
+  },
+  "scheduled_units": {
+    "timers": {
+      "homecontrol-backup.timer": {
+        "active": true,
+        "enabled": true,
+        "next_trigger": {
+          "NextElapseUSecRealtime": "Wed 2026-11-04 02:15:00 CET",
+          "NextElapseUSecMonotonic": "0"
+        }
+      },
+      "homecontrol-ai-weekly-backup.timer": {
+        "active": true,
+        "enabled": true,
+        "next_trigger": {
+          "NextElapseUSecRealtime": "Sun 2026-11-08 03:30:00 CET",
+          "NextElapseUSecMonotonic": "0"
+        }
+      },
+      "homecontrol-restic-check.timer": {
+        "active": true,
+        "enabled": true,
+        "next_trigger": {
+          "NextElapseUSecRealtime": "Sun 2026-12-06 04:41:26 CET",
+          "NextElapseUSecMonotonic": "0"
+        }
+      },
+      "homecontrol-log-maintenance.timer": {
+        "active": true,
+        "enabled": true,
+        "next_trigger": {
+          "NextElapseUSecRealtime": "Wed 2026-11-04 03:30:00 CET",
+          "NextElapseUSecMonotonic": "0"
+        }
+      },
+      "homecontrol-post-boot-health.timer": {
+        "active": true,
+        "enabled": true,
+        "next_trigger": {
+          "NextElapseUSecRealtime": "",
+          "NextElapseUSecMonotonic": "2month 2w 2d 2h 2min 38.013121s"
+        }
+      }
+    },
+    "unit_sha256": {
+      "homecontrol-ai-weekly-backup.service": "e6450fed3b1d862d1c12c5264903a7ea6ef8feb809e0da2c12e28ac574c234f5",
+      "homecontrol-ai-weekly-backup.timer": "849713f5ecd09cae35fd253fe5e12fe3a4c58367a59c05305186e5cc3460025d",
+      "homecontrol-backup-apply.path": "c104ede34fe921e554e918b6121a4033e230b04ac3e19b7848a01cac8b4b347b",
+      "homecontrol-backup-apply.service": "f91b9d46ee9cb869a2232c8d233d9327f60a73b08bc5f4eea9512e963d62d269",
+      "homecontrol-backup.service": "bea93447a84a266657a6a1d25551d9c8705591fca18a00e4535baf683ab1a5d0",
+      "homecontrol-backup.timer": "b749c25e8fe3227e154312505bacf304c1917386b7789618606894ca24cbe320",
+      "homecontrol-full-ai-backup-request.path": "34a19ff49938c9bda368ca40aaec9667d07a0beaf5c4da3b0af67e3b15991c9c",
+      "homecontrol-full-ai-backup-request.service": "21733360c1598802bb3567088846dfd073a2884dc9be53efd1b014d31276b3d7",
+      "homecontrol-log-maintenance.service": "f06a94fc8c9175084c58b789c1f9b18c06f934c2b9e8bbf3d2a374598f341751",
+      "homecontrol-log-maintenance.timer": "d1fc8c82cf79d14b113d6dfa536d87040675325e13fb673b94ae0f459c5e7642",
+      "homecontrol-restic-check.service": "2113dbd72e11291a3bf07b99703575dc907187feabeff71968564f36bbaf1e33",
+      "homecontrol-restic-check.timer": "bc38573edf881ee013edb7f688d5383a42262ebe91ac5f2939b1dc69bb513c3d",
+      "homecontrol-post-boot-health.service": "2cad0e5296927ac03a2a1ae4487b78d4a5505443b6d360d6e836f6f953d21546",
+      "homecontrol-post-boot-health.timer": "e267f401c48a577c4bcea8ab6e73f51d730cee29f412065bb79178d107f43a8c",
+      "homecontrol-hostops.service": "bd3303120747212ada25d295cf12d55efb0f9a38959fa2a97d971e6126cb0e51",
+      "homecontrol-restic-check.service.d/hc44.conf": "e297fc840bd61d69039bf7da608685ec7b72294435386589f15b5cbb29ed456a",
+      "homecontrol-full-ai-backup-request.service.d/hc44.conf": "5c828af02ce93de15659ab52a233f2b5612d6a60701e99498d5ce5b918cc586f",
+      "homecontrol-log-maintenance.service.d/hc44.conf": "7420b8a3a454394af4279f23b2cacdbd2ba6ab59621bc44ac1ba74de38ba8535",
+      "homecontrol-backup.service.d/hc44.conf": "1a365a46bceb7402a6530edb153231eed756e1b9f071073e452ea30650cabf92",
+      "homecontrol-ai-weekly-backup.service.d/hc44.conf": "86a7acf3d36159d4535d359a67e870d620f18e457a2a085f35cde8d0de100d5a",
+      "homecontrol-post-boot-health.service.d/hc-access.conf": "bf2e417b4b4d5cdb5601f25df3432cd2860eb5aefaeb0f288923424691244811",
+      "homecontrol-backup-apply.service.d/hc-access.conf": "fcffbc2d26532c48a66a845268cd64b8d413f1b814eec1209e49ce7fef87e815",
+      "homecontrol-mqtt-access.service": "7fbe9cb341e2374871d9b65411bbe5cd737ee64b1b0ef076189b011b84197569",
+      "homecontrol-hostops.service.d/hc-access.conf": "2a30fcd6fd1872d9db6b90b00661a1a4e5c28d4124614c032ee385a60cb22a98",
+      "docker.service.d/hc-access.conf": "f52507a54fb6bcbfc986daca5c98105683de215456dd0348578dce6e75602f51"
+    },
+    "settings_source": "current backup_settings.json through frozen schedule generator",
+    "read_only": true,
+    "health_service_acceptance": {
+      "result": "success",
+      "exit_status": 0,
+      "timer_state": "waiting",
+      "waited_for_completion": true,
+      "wait_seconds": 1.238,
+      "all_frozen_schedule_checks_passed": true
+    }
+  },
+  "hc41": "in_progress",
+  "hc43": "in_progress_until_vendor_patch",
+  "backup": {
+    "run_id": "7a6236e4b0a5472a8566024665ffc619",
+    "snapshot_id": "08acafbc0721e29c85997a3f12298f81fe0b28c088fd3b494adf3f58bc2b5d45",
+    "git": "pushed",
+    "restore": "verified",
+    "database": "verified",
+    "ai_enabled": false,
+    "audit_input_prepared": false,
+    "ok": true,
+    "release": "hc-audit-20261103-r22",
+    "state": "deployed_and_router_restore_verified"
+  },
+  "audit_checked": 46,
+  "audit_in_progress": [
+    "HC-41",
+    "HC-43"
+  ]
+}
