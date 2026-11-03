@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-03",
+  "state": "host_update_complete",
+  "live_read_only_verification": {
+    "ok": true,
+    "release": "hc-audit-20261103-r22",
+    "reboot_verified": true,
+    "kernel": "5.15.0-202-generic",
+    "containers_verified": 16,
+    "runtime_sources_verified": 805,
+    "unit_files_verified": 25,
+    "backup_mounts_verified": 5,
+    "package_versions_verified": 32,
+    "timers_active_enabled": 5,
+    "dpkg_audit_empty": true,
+    "ai_enabled": false,
+    "router_backup_enabled": true,
+    "device_connections": {
+      "zigbee_mqtt_bridge": "online",
+      "growatt_ha_entity": "available",
+      "actuation_commands": 0
+    },
+    "original_audit_unchanged": true
+  },
+  "root_finish": {
+    "reported_by": "user_terminal_output",
+    "state": "host_updated_reboot_backup_restore_verified",
+    "full_postchecks_passed": 2,
+    "pre_and_post_backup_restore": "verified_by_sealed_executor",
+    "final_timer_state": "waiting",
+    "health_result": "success",
+    "health_exit_status": 0,
+    "private_receipt": "/srv/docker/homecontrol/maintenance/host-update-20261103-execution/finish-success.json",
+    "private_receipt_read_by_assistant": false
+  },
+  "audit_status": {
+    "checked": 46,
+    "in_progress": [
+      "HC-41",
+      "HC-43"
+    ]
+  }
+}

@@ -1,5 +1,8 @@
 # Hostfrissítés: telepítve, reboot következik
 
+**Lezárt karbantartás: REPAIR-089.** [Sikeres végállapot és bizonyítékok](host-update-complete-20261103.md).
+Az alábbi korábbi állapotleírás történeti; a parancsok nem ismétlendők.
+
 REPAIR-087, 2026-11-03. A felhasználó által visszaküldött felügyelt futás sikeres:
 `upgraded_pending_reboot`. Friss teljes HC/Git/router előmentés és izolált PG-restore,
 függőségi leállítás/indítás, pontos csomagtelepítés és reboot előtti átvétel teljesült.

@@ -1,5 +1,56 @@
 # HC audit – javítási nyilvántartás
 
+**REPAIR-093 – az r23 pontos korai Zigbee-hibájához ellenőrzött folytató kész (2026-11-03).**
+A sudo-diagnosztika megerősítette a nagy eszközlista 64 KiB-os olvasási korlátját;
+a futás mentés, timer-szüneteltetés és átállítás előtt állt meg. A folytató az
+eredeti executor összes kapuját futtatja, csak a korlátozott inventory-olvasót
+cseréli. 17 célzott, összesen 43 container-update teszt és az új image-ek izolált
+207 kB-os MQTT-próbája sikeres. Az eredeti jelző/hiba/napló megőrizve;
+823 lezárt r23 forrás és a 12 image változatlan. **Éles folytatás még hátravan.**
+[Indító, hatókör és bizonyítékok](docs/container-update-r23-inventory-continuation-20261103.md).
+
+
+**REPAIR-092 – az r23 első indítása megállt; a korábbi indítási jelző megőrizve (2026-11-03).**
+A worker már nem fut, az éles r22 16 konténere, 805 runtime-forrása, 25 unitfájlja,
+öt timere és öt backup-mountja ellenőrzött. A második indítást az egyszeri jelző
+megállította. A Zigbee eszközlista 64 KiB-os olvasási korlátjának hibája külön
+reprodukálva; a javított, korlátozott inventory-probe és öt teszt sikeres.
+A privát első hiba megerősítéséhez csak olvasó sudo-diagnosztika kész, négy
+redakciós teszttel. Telepítést nem ismételtünk; a lezárt r23 forrás változatlan.
+[Diagnosztika és pontos parancs](docs/container-update-r23-start-diagnosis-20261103.md).
+
+
+**REPAIR-091 – konténerfrissítések előkészítve, éles indítás előtt (2026-11-03).**
+Az engedélyezett r23 jelölt 12 szolgáltatás image-ét frissíti: Zigbee2MQTT 2.14.3,
+Mosquitto 2.1.2-alpine, két libexpat- és két linux-libc-dev-frissítés,
+valamint pip 26.3 nyolc saját Python-image-ben. 1327 regressziós teszt sikeres;
+izolált MQTT/Zigbee/nginx és tranzakció/rollback kapuk ellenőrzöttek.
+31 image-es, hash-ellenőrzött és visszatöltött offline recovery-archívum elkészült.
+**Az éles r22 változatlan; a helyi sudo-val indított teljes elő-/utómentés és PG-restore még hátravan.**
+HC-43 a megmaradt gyártói tételek miatt Folyamatban, HC-41 státusza változatlan.
+[Frissítési kör, bizonyítékok és pontos indító](docs/container-updates-preparation-20261103.md).
+
+
+**REPAIR-090 – HC-43 célzott lezárhatósági felülvizsgálata a hostfrissítés után (2026-11-03).**
+HC-43 továbbra is Folyamatban. A HA/backend/PostgreSQL konténerek és a tíz
+HA-maradványcsomag verziói változatlanok. Az éles OpenSSH- és libxml2-verziót
+az aktuális Debian trixie tracker továbbra is sérülékenynek jelöli; a hivatalos
+HA latest továbbra is 2026.10.4. Célzott olvasási leltár és gyártói összevetés,
+nem teljes új scan. A sikeresen lezárt hostfrissítés státusza változatlan.
+[Lezárási döntés, pontos verziók és források](docs/hc43-after-host-update-20261103.md).
+46 Ellenőrzött, HC-41/43 Folyamatban; telepítés vagy éles változtatás nem történt.
+
+**REPAIR-089 – a hostfrissítés sikeresen lezárva (2026-11-03).**
+A 32 tervezett hostcsomag telepítve, reboot után 5.15.0-202-generic fut.
+Friss teljes előmentés és PG-restore, valamint reboot utáni teljes HC/Git/router
+utómentés, visszaolvasás és izolált PG-restore sikeres. Végállapot:
+`host_updated_reboot_backup_restore_verified`. Két teljes root postcheck teljesült;
+az ezt követő natív ellenőrzés is sikeres: 16 konténer, 805 runtime-forrás,
+25 unit/drop-in, öt backup-mount, pontos csomagverziók, timerek, Zigbee/Growatt.
+Az r22 és a 46 Ellenőrzött / HC-41, HC-43 Folyamatban státusz változatlan.
+[Lezárás és bizonyítékok](docs/host-update-complete-20261103.md).
+Az alábbi előkészítési/függő állapotok történetiek; az indítók nem ismétlendők.
+
 **REPAIR-088 – új kernel és boot utáni élő állapot ellenőrzött (2026-11-03).**
 Futó 5.15.0-202-generic, új boot-ID; az r22 16 konténere, 805 runtime-forrása,
 25 unit/drop-in hash és öt backup-mount változatlan. A 32 hostcsomag a tervezett

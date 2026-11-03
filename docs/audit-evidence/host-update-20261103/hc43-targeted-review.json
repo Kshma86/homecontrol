@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-03",
+  "hc43_closed": false,
+  "status": "in_progress",
+  "read_only": true,
+  "deployment_performed": false,
+  "full_scan_performed": false,
+  "private_inventory_uploaded": false,
+  "same_accepted_container_and_image_ids": [
+    "homeassistant",
+    "homecontrol-backend",
+    "homecontrol-postgres"
+  ],
+  "ha_python_versions": {
+    "homeassistant": "2026.10.4",
+    "Pillow": "12.3.0",
+    "authlib": "1.7.2",
+    "oauthlib": "3.3.1",
+    "pyasn1": "0.6.4",
+    "mcp": "1.28.1",
+    "geopy": "2.3.0",
+    "paramiko": "3.5.0",
+    "ecdsa": "0.19.2",
+    "python-jose": "3.5.0",
+    "setuptools": "84.0.0"
+  },
+  "os_residuals": [
+    {
+      "container": "homecontrol-backend",
+      "package": "openssh-client",
+      "version": "1:10.0p1-7+deb13u4",
+      "cve": "CVE-2026-60002",
+      "vendor_status": "vulnerable",
+      "branch": "trixie",
+      "source": "https://security-tracker.debian.org/tracker/CVE-2026-60002"
+    },
+    {
+      "container": "homecontrol-postgres",
+      "package": "libxml2",
+      "version": "2.12.7+dfsg+really2.9.14-2.1+deb13u3",
+      "cve": "CVE-2026-6653",
+      "vendor_status": "vulnerable",
+      "branch": "trixie",
+      "source": "https://security-tracker.debian.org/tracker/CVE-2026-6653"
+    }
+  ],
+  "official_ha_latest": "2026.10.4",
+  "official_ha_latest_source": "https://api.github.com/repos/home-assistant/core/releases/latest",
+  "original_audit_unchanged": true
+}

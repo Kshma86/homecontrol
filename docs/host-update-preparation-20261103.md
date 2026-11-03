@@ -1,5 +1,8 @@
 # A HC hostfrissítés előkészítése
 
+**Lezárt karbantartás: REPAIR-089.** [Sikeres végállapot és bizonyítékok](host-update-complete-20261103.md).
+Az alábbi korábbi állapotleírás történeti; a parancsok nem ismétlendők.
+
 REPAIR-085, 2026-11-03. **Előkészítve; telepítés és reboot nem történt.**
 Az r22 éles átadása lezárt marad; HC-41/43 státusza változatlan.
 

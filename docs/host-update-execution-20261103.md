@@ -1,5 +1,8 @@
 # Az engedélyezett hostfrissítés indítója
 
+**Lezárt karbantartás: REPAIR-089.** [Sikeres végállapot és bizonyítékok](host-update-complete-20261103.md).
+Az alábbi korábbi állapotleírás történeti; a parancsok nem ismétlendők.
+
 **Friss állapot: a telepítés sikeres; reboot következik.**
 [Aktuális átvétel és reboot indítása](host-update-reboot-20261103.md).
 Az alábbi indítás előtti leírás történeti.

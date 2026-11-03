@@ -1,5 +1,8 @@
 # Hostfrissítés: az új boot ellenőrzött, utómentés következik
 
+**Lezárt karbantartás: REPAIR-089.** [Sikeres végállapot és bizonyítékok](host-update-complete-20261103.md).
+Az alábbi korábbi állapotleírás történeti; a parancsok nem ismétlendők.
+
 REPAIR-088, 2026-11-03. A felhasználó visszajelzése és a független natív
 olvasási ellenőrzés szerint **5.15.0-202-generic** fut, új boot-ID-val.
 
