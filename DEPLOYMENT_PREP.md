@@ -1,5 +1,25 @@
 # HomeControl – aktuális éles kiadás
 
+**REPAIR-088 – új kernel és boot utáni élő állapot ellenőrzött (2026-11-03).**
+Futó 5.15.0-202-generic, új boot-ID; az r22 16 konténere, 805 runtime-forrása,
+25 unit/drop-in hash és öt backup-mount változatlan. A 32 hostcsomag a tervezett
+verzión, dpkg tiszta, öt timer aktív/engedélyezett, post-boot health exit 0.
+Zigbee/Growatt kapcsolat és fizikai kapuk rendben. AI tiltva, routeres mentés aktív.
+**A friss reboot utáni teljes mentés/PG-restore még hátravan; a hostkarbantartás
+még nincs lezárva.** A lezárt executor finish művelete helyi sudo-indításra kész.
+[Aktuális állapot és záróparancs](docs/host-update-postboot-20261103.md).
+Az r22 átadása és HC-41/43 státusza változatlan; az alábbi állapotok történetiek.
+
+**REPAIR-087 – hostcsomagok telepítve, reboot előtti átvétel sikeres (2026-11-03).**
+Friss HC/Git/router előmentés és PG-restore után a 32 csomag a pontos tervezett
+verzión; függetlenül is ellenőrzött Docker daemon 29.9.2, változatlan r22,
+16 konténer, öt backup-mount és tiszta dpkg. A futó kernel még 5.15.0-187;
+a GRUB első bejegyzése 5.15.0-202, override nélkül. A telepítést nem kell ismételni.
+Nyolc új teszttel ellenőrzött reboot-indító készült; helyi sudo szükséges.
+**Reboot és reboot utáni utómentés/restore még nem történt.**
+[Aktuális állapot és reboot parancs](docs/host-update-reboot-20261103.md).
+Az r22 átadása és HC-41/43 státusza változatlan. Az alábbi korábbi állapotok történetiek.
+
 **REPAIR-086 – az engedélyezett hostkarbantartás indítója elkészült (2026-11-03).**
 Friss HC/Git/router előmentés és PG-restore, fizikai kapuk, privát hostkonfiguráció-
 mentés, függőségi leállítás/indítás, pontos helyi APT-terv, nft-összevetés és

@@ -1,5 +1,9 @@
 # Az engedélyezett hostfrissítés indítója
 
+**Friss állapot: a telepítés sikeres; reboot következik.**
+[Aktuális átvétel és reboot indítása](host-update-reboot-20261103.md).
+Az alábbi indítás előtti leírás történeti.
+
 REPAIR-086, 2026-11-03. A felhasználó engedélyezte a karbantartás folytatását.
 **Az indító elkészült; csomagtelepítés, szolgáltatásleállítás és reboot még nem történt.**
 A natív `sudo -n true` jelszót kért, ezért a root futás helyi terminálból indítható.
