@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "services": 14,
+  "cutover_services": 13,
+  "fixed_endpoints": 11,
+  "coherent_binding_backend_frontend_pair": true,
+  "backend_uid_10001_readonly_no_docker_socket_exact_four_writes": true,
+  "all_images_pinned_no_build": true,
+  "root_units_unchanged_from_previous_vm_proof": true
+}

@@ -42,7 +42,7 @@
         }
       ],
       "pull_policy": "never",
-      "image": "sha256:0c70389808bb7a7a8674169bc3b79f49e2a8080812ebc101e5bb723e11868ef5",
+      "image": "sha256:435b57e72ecc4237f41610662019d3c43a81fc0c5569d978a2555d545cfb3257",
       "env_file": [
         {
           "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/ai-server.env",
@@ -68,7 +68,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:e3e4b121fce197f3447cb656b1fdb7015099218a26365439d0f73d764a8dc291",
+      "image": "sha256:da4255922044845049bb012dee0e622c6f3fad7618a8bb17b92b8be9d3f8efc6",
       "logging": {
         "driver": "json-file",
         "options": {
@@ -173,7 +173,7 @@
         },
         {
           "type": "bind",
-          "source": "/srv/docker/homecontrol/infra/ssh/hc-audit-20261103-r22/mqtt/credentials/backend.password",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-containers-20261103-r23/mqtt/credentials/backend.password",
           "target": "/run/secrets/hc-mqtt.password",
           "read_only": true
         }
@@ -181,7 +181,7 @@
       "pull_policy": "never",
       "env_file": [
         {
-          "path": "/srv/docker/homecontrol/infra/ssh/hc-audit-20261103-r22/compose-env/backend.env",
+          "path": "/srv/docker/homecontrol/infra/ssh/hc-containers-20261103-r23/compose-env/backend.env",
           "format": "raw"
         }
       ],
@@ -207,7 +207,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:dc7182c89fadfc25e094debfd6112ebbc78b4b057ce4e966ee422255d5187dc4",
+      "image": "sha256:1020fdf040f4c5ef6147035ce2fdd568f53753fbf83f220fa7643a32b58e5371",
       "logging": {
         "driver": "json-file",
         "options": {
@@ -245,7 +245,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:8f166c09c0aa67062b2c0170ba11f154b4aa8aef24a10a31105da440aa25cecf",
+      "image": "sha256:364acedd96e4af670b5fd18020cd2da9afd56bfd4a09a8830302281c21edaaae",
       "logging": {
         "driver": "json-file",
         "options": {
@@ -285,7 +285,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:1170fe37099ad7b3b9db07cb11875ad086bd9d0e32f186920eb44e973e7c3514",
+      "image": "sha256:b1bfd18e7d2ec86cfc356b6c5b4bc387ae3f7e2f3aaa373048e89753861d7372",
       "logging": {
         "driver": "json-file",
         "options": {
@@ -340,7 +340,7 @@
       "network_mode": "host",
       "restart": "unless-stopped",
       "pull_policy": "never",
-      "image": "sha256:f85cde2862d666f5a28aefd0429437873bc4ecd0ec92f3f4a87ec59bd2bbdc3c",
+      "image": "sha256:5e6f122dab8e7b79ce169fc0dcc5806495977cce9a733a52e9232fa783ae2a93",
       "env_file": [
         {
           "path": "/srv/docker/homecontrol/infra/ssh/hc-f10-20261031-r12/compose-env/homecontrol-ha-growatt-poller.env",
@@ -366,7 +366,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:f8bd560df207e0d0dffd8adb955dedcb87de9710695fbf86d6b56333d776a378",
+      "image": "sha256:b207f58fb332f648fdac4a36aee716eb30a805833d88c368ee3a3d77f51ce948",
       "networks": {
         "default": {
           "ipv4_address": "172.19.0.6"
@@ -412,7 +412,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:56fdfbc80dca10ec2f3d9a01174c634471f17b236d4daded3ecc1f2e983c47d0",
+      "image": "sha256:d4bc7cf25eba0b3486e290510d8566ec30906b9857d974612749fd97f16000c5",
       "logging": {
         "driver": "json-file",
         "options": {
@@ -462,7 +462,7 @@
       "network_mode": "host",
       "restart": "unless-stopped",
       "pull_policy": "never",
-      "image": "sha256:b85dd1092f6346dfea6768fffd23e8cec9c9c9908ecd5629a26c13d7f3148734",
+      "image": "sha256:c4d332a22f652674428f790ad9b9ab9be3905b18cf56fcd6604f93a73421ce15",
       "env_file": [
         {
           "path": "/srv/docker/homecontrol/infra/ssh/hc-access-20261030-r10/compose-env/mdns.env",
@@ -474,7 +474,7 @@
       "command": null,
       "container_name": "homecontrol-mqtt",
       "entrypoint": null,
-      "image": "sha256:ea973af3b048e2ab873344fce70ca045beda44ed8a066727ab18a19b79320e18",
+      "image": "sha256:888af343ab81912c1f4a88cda46c687a2ce607ed3732754c36d8b8879d17a8b4",
       "logging": {
         "driver": "json-file",
         "options": {
@@ -517,7 +517,7 @@
         },
         {
           "type": "bind",
-          "source": "/srv/docker/homecontrol/infra/ssh/hc-access-20261030-r10/mqtt/broker",
+          "source": "/srv/docker/homecontrol/infra/ssh/hc-containers-20261103-r23/mqtt/broker",
           "target": "/mosquitto/config",
           "read_only": true
         }
@@ -660,7 +660,7 @@
         }
       },
       "entrypoint": null,
-      "image": "sha256:14e71421340a5f9894c685165f61a39f7b79181f0f00b5d1c3ac5d075fcdc832",
+      "image": "sha256:d8175ab35f2f8abc06b9fb95a4c5ec094e68298b831422560c8f9e0961718d4c",
       "logging": {
         "driver": "json-file",
         "options": {
@@ -697,7 +697,7 @@
       "command": null,
       "container_name": "zigbee2mqtt",
       "entrypoint": null,
-      "image": "sha256:6b47bf6547787e89d02efdfe3279d2fe39b6d6206a839d1ebcc6fdc38d92ee6e",
+      "image": "sha256:215d23be0de496fe927ca75f298e306054da41914529cfe5d68a2a3b618e990e",
       "networks": {
         "default": {
           "ipv4_address": "172.19.0.11"

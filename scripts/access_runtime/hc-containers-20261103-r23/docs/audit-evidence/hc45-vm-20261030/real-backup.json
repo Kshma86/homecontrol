@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "real_api_request": true,
+  "real_systemd_runner": true,
+  "run_id": "6d20523314f24e3ba88bda6cd9920f20",
+  "archive": "homecontrol_2026-10-30_21-55-17_6d20523314f24e3ba88bda6cd9920f20.tar.gz",
+  "archive_sha256": "6ae0cb9794b706ef58372d2a865c7b5a4e9687ade28df2edfb4344d10882ce7b",
+  "size_bytes": 782586653,
+  "verified_files": 1480,
+  "schedule_time": "04:27",
+  "settings_inside_selected_archive": true,
+  "images_inside_selected_archive": true,
+  "ai_or_hardware_used": false
+}

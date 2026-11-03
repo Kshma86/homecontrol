@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "public_actual_mqtt_passwords_and_age_private_key_absent": true,
+  "audit_rows": 48,
+  "audit_status_counts": {
+    "Ellen\u0151rz\u00f6tt": 38,
+    "Nyitott": 9,
+    "Folyamatban": 1
+  }
+}

@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accel_mm_s2": {
+      "maximum": 500,
+      "minimum": 50,
+      "type": "integer"
+    },
+    "antenna_body_mm": {
+      "items": {
+        "maximum": 2000,
+        "minimum": -2000,
+        "type": "integer"
+      },
+      "maxItems": 3,
+      "minItems": 3,
+      "type": "array"
+    },
+    "blade_direction": {
+      "enum": [
+        -1,
+        1
+      ],
+      "type": "integer"
+    },
+    "blade_enabled": {
+      "type": "boolean"
+    },
+    "blade_erpm_limit": {
+      "maximum": 25000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "blade_pole_pairs": {
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "blade_rpm_limit": {
+      "maximum": 25000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "body_radius_mm": {
+      "maximum": 1000,
+      "minimum": 100,
+      "type": "integer"
+    },
+    "gnss_hacc_limit_mm": {
+      "maximum": 100,
+      "minimum": 20,
+      "type": "integer"
+    },
+    "heading_accuracy_limit_mdeg": {
+      "maximum": 15000,
+      "minimum": 1000,
+      "type": "integer"
+    },
+    "imu_mount_q_ppm": {
+      "items": {
+        "maximum": 1000000,
+        "minimum": -1000000,
+        "type": "integer"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "type": "array"
+    },
+    "max_linear_mm_s": {
+      "maximum": 500,
+      "minimum": 50,
+      "type": "integer"
+    },
+    "max_slope_mdeg": {
+      "maximum": 15000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "max_yaw_mdeg_s": {
+      "maximum": 45000,
+      "minimum": 5000,
+      "type": "integer"
+    },
+    "parameters_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "robot_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,32}$",
+      "type": "string"
+    },
+    "stop_deceleration_mm_s2": {
+      "maximum": 4294967295,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "stop_test_max_ms": {
+      "maximum": 2000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "tilt_limit_mdeg": {
+      "maximum": 30000,
+      "minimum": 10000,
+      "type": "integer"
+    },
+    "wheel_brake_ma": {
+      "items": {
+        "maximum": 2147483647,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "wheel_circumference_mm": {
+      "items": {
+        "maximum": 2000,
+        "minimum": 100,
+        "type": "integer"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "wheel_direction": {
+      "items": {
+        "enum": [
+          -1,
+          1
+        ],
+        "type": "integer"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "wheel_erpm_limit": {
+      "items": {
+        "maximum": 6000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "wheel_gear_ratio_milli": {
+      "items": {
+        "maximum": 1000000,
+        "minimum": 1000,
+        "type": "integer"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "wheel_motor_pole_pairs": {
+      "items": {
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "wheel_track_mm": {
+      "maximum": 1500,
+      "minimum": 100,
+      "type": "integer"
+    },
+    "yaw_accel_mdeg_s2": {
+      "maximum": 90000,
+      "minimum": 5000,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "accel_mm_s2",
+    "antenna_body_mm",
+    "blade_direction",
+    "blade_enabled",
+    "blade_erpm_limit",
+    "blade_pole_pairs",
+    "blade_rpm_limit",
+    "body_radius_mm",
+    "gnss_hacc_limit_mm",
+    "heading_accuracy_limit_mdeg",
+    "imu_mount_q_ppm",
+    "max_linear_mm_s",
+    "max_slope_mdeg",
+    "max_yaw_mdeg_s",
+    "parameters_version",
+    "robot_id",
+    "stop_deceleration_mm_s2",
+    "stop_test_max_ms",
+    "tilt_limit_mdeg",
+    "wheel_brake_ma",
+    "wheel_circumference_mm",
+    "wheel_direction",
+    "wheel_erpm_limit",
+    "wheel_gear_ratio_milli",
+    "wheel_motor_pole_pairs",
+    "wheel_track_mm",
+    "yaw_accel_mdeg_s2"
+  ],
+  "title": "Rover parameters RCP1 (draft, not admission)",
+  "type": "object"
+}
