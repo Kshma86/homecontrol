@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "unavailable_sftp_repository": true,
+  "bootstrap_exit_nonzero": 1,
+  "no_canonical_files_or_units_replaced": true,
+  "database_container_unchanged": true,
+  "no_false_success": true
+}

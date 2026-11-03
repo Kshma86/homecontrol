@@ -1,0 +1,8 @@
+{
+  "real_reboot": true,
+  "backend_health": false,
+  "broker_error": "failed to set up container networking: Address already in use",
+  "broker_ip": "172.19.0.9",
+  "conflicting_container": "homecontrol-backend",
+  "fix": "Pin every existing HC bridge endpoint in runtime and rollback; reject unreviewed network peers"
+}

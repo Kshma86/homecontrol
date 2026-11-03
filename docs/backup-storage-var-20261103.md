@@ -1,5 +1,11 @@
 # Helyi mentési tárhely a /var partíción
 
+**REPAIR-080 pontosítás:** a megőrzött inode-ok ellenére a külön bind mountok
+közötti új cache-hardlink kernel `EXDEV` hibába ütközhet. A korábbi terv ezt
+a VFS-korlátot nem vette figyelembe. [Valódi reprodukció és javított r22
+cache-átvitel](audit-r22-install-continuation-20261103.md) külön dokumentált;
+a tárhelyátállás maga sikeres maradt.
+
 REPAIR-075 előkészítés; REPAIR-076 sikeres éles átállás, 2026-11-03. Aktív: r18.
 **A felhasználó root futtatása `ok: true`, `phase: complete` eredménnyel lezárult.**
 [Éles utóellenőrzések és az r21 következő lépése](backup-storage-live-20261103.md).

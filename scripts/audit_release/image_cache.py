@@ -82,14 +82,8 @@ def deduplicate(selected, expected_sha256, *, apply=False, uid=0):
 
 
 def link_archive(source, target, expected_sha256, *, uid=0):
-    source, target = Path(source), Path(target)
-    regular(source, uid)
-    for path in (target, *target.parents):
-        if path.is_symlink():
-            raise ValueError('Symlink in new image cache path')
-    if target.exists() or sha(source) != expected_sha256:
-        raise ValueError('Existing cache target or changed archive')
-    os.link(source, target)
+    from cache_transfer import transfer_archive
+    return transfer_archive(source, target, expected_sha256, uid=uid)
 
 
 if __name__ == '__main__':

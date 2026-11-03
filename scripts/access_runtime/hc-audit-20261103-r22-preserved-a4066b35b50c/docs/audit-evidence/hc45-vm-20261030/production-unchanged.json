@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "production_containers_checked": 16,
+  "container_changes": [],
+  "protected_host_files_unchanged": 37,
+  "audit_safety_mqtt_unchanged": true,
+  "active_release": "hc-ingest-20261028-r9",
+  "r10_not_deployed": true,
+  "esp_confirmed": false,
+  "production_secret_bundle_unchanged": true
+}

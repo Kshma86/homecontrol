@@ -1,0 +1,20 @@
+{
+  "evidence_kind": "observed native exec tool result; synthetic disposable fixtures",
+  "unmodified_link_probe": {
+    "same_st_dev": true,
+    "link_succeeded": false,
+    "errno": 18,
+    "EXDEV": true
+  },
+  "corrected_transfer_probe": {
+    "ok": true,
+    "real_kernel_bind_mounts": true,
+    "same_st_dev": true,
+    "independent_inode": true,
+    "xattr_preserved": true,
+    "source_is_test_fixture": true,
+    "method": "verified_copy_after_EXDEV",
+    "sha256": "74e0dfa87777a6f3a04548de0fe53d08c77863fdb7625fa747413e73683513b9",
+    "bytes": 8388615
+  }
+}

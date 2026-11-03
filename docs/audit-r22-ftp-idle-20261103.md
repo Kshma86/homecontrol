@@ -1,5 +1,11 @@
 # r22 – reprodukált FTP-kapcsolatlejárat javítása és élesítési folytatás
 
+**REPAIR-080 frissítés:** a felhasználó az r22-t már elindította. A teljes
+előmentés/retention és PG-restore sikeres; a telepítési hiba után az r18 rollback
+sikeresen lefutott. Az alábbi eredeti indítóparancs nem ismételhető.
+[Aktuális állapot és külön telepítési folytató](audit-r22-install-continuation-20261103.md).
+Az alábbi előkészítési/indítási állapotok történetiek.
+
 REPAIR-079, 2026-11-03. **Előkészítve és lezárva, még nincs élesítve.**
 Aktív: `hc-security-20261102-r18`. Új csomag: `hc-audit-20261103-r22`.
 Az r21, a korábbi folytatók és az eredeti hibabizonyítékok megmaradtak.

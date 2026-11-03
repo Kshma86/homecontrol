@@ -1,5 +1,18 @@
 # HC audit – javítási nyilvántartás
 
+**REPAIR-080 – r22 előmentés/restore sikeres, telepítési rollback; cache-folytató kész (2026-11-03).**
+A teljes r18 HC/Git/router mentés, retention és izolált PG-restore sikeres.
+A telepítés `Error` hibája után az automatikus rollback visszaállította az r18-at;
+16 baseline, 10 healthy check, öt timer és 736 runtime-hash rendben.
+Az azonos fájlrendszeren, külön bind mountok között tiltott hardlinket valódi
+kernelpróba reprodukálta; EXDEV esetére ellenőrzött másolási adapter készült.
+A külön, 52 teszttel lezárt folytató csak a pontos privát cache-EXDEV hibából indul,
+megőrzi a félbemaradt célokat és minden friss mentési/restore-kaput újrafuttat.
+Az eredeti r22 805 forráshashe és image-ei változatlanok. A jóváhagyás érvényes;
+a helyi sudo-hitelesítés és a root-folytatás függő.
+[Állapot, bizonyítékok és aktuális végrehajtóparancs](docs/audit-r22-install-continuation-20261103.md).
+46 Ellenőrzött; HC-41/43 Folyamatban; az audit éles átadása nincs lezárva.
+
 **REPAIR-079 – FTP-idle hiba reprodukálva, új r22 lezárva (2026-11-03).**
 A felhasználó kifejezetten engedélyezte az r22 élesítését. A jóváhagyás utáni
 indításnál a natív sudo helyi jelszót kér; a root Python-indító még nem futott.

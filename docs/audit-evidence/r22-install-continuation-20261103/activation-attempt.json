@@ -1,0 +1,12 @@
+{
+  "attempted_at": "2026-11-03T11:13:04.477037+00:00",
+  "application_release": "hc-audit-20261103-r22",
+  "continuation": "hc-audit-20261103-r22-continuation-1",
+  "explicit_r22_approval_preserved": true,
+  "automatic_approval_rejected": false,
+  "result": "sudo: a password is required",
+  "exit_code": 1,
+  "root_execution_started": false,
+  "production_changed": false,
+  "original_private_error_verification_pending": true
+}
