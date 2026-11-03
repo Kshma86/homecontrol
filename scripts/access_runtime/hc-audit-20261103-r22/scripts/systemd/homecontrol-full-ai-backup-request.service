@@ -1,0 +1,8 @@
+[Unit]
+Description=Run HomeControl full AI backup requested from web UI
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/srv/docker/homecontrol/scripts/weekly_ai_backup.sh

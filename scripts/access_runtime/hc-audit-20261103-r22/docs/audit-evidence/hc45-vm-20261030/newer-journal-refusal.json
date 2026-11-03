@@ -1,0 +1,6 @@
+{
+  "ok": true,
+  "newer_local_completed_jobs_not_overwritten": true,
+  "restore_stopped_before_database_replacement": true,
+  "explicit_lab_reconciliation": "preserved full newer journal separately; no queued/running job; then retry"
+}

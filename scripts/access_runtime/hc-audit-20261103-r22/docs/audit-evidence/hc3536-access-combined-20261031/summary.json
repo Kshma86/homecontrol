@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-31",
+  "release": "hc-access-20261030-r10",
+  "revision": "20261031-hc3536-combined",
+  "findings": [
+    "HC-35",
+    "HC-36",
+    "HC-41",
+    "HC-44",
+    "HC-45 required integration"
+  ],
+  "prepared": true,
+  "deployed": false,
+  "esp": {
+    "ip": "192.168.1.179",
+    "identity_confirmed": true,
+    "fixed_ip_confirmed": true,
+    "method": "router DHCP reservation",
+    "authority": "user confirmation in conversation"
+  },
+  "tests": {
+    "backend": {
+      "tests": 441,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "frontend": {
+      "tests": 113,
+      "failures": 0,
+      "skipped": 0,
+      "build": "passed"
+    },
+    "postgres_transaction_pooler": {
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "handover_and_application_restore_scenarios": 5,
+    "targeted_restore": {
+      "tests": 54,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "overlaps_backend": true
+    }
+  },
+  "actual_candidate_backend_ingest_mqtt_pg_pooler_root_ipc": true,
+  "root_ipc_lab_docker_cli": "strict fixture; actual Docker state used in separate handover checks",
+  "candidate_source_and_frontend_http_checked": true,
+  "application_pg_dump_restore_checked": true,
+  "handover_cancel_deploy_rollback_restore_no_replay": true,
+  "offline_recovery_assets": {
+    "ok": true,
+    "offline_image_count": 21,
+    "all_blob_sha256_verified": true,
+    "blob_count": 241,
+    "linux_amd64_complete_for_all_requested_images": true,
+    "upstream_other_platform_or_attestation_descriptors_omitted": 50,
+    "image_archive_bytes": 650291715,
+    "image_archive_sha256": "cc05451dd8757d75cd755c739ac6a182f4ffc63dff419bf4c3797a4c67f7fabd",
+    "actual_age_decryption_verified": true,
+    "encrypted_bundle_esp_confirmed": true,
+    "esp_ip": "192.168.1.179",
+    "production_bundle_installed": false
+  },
+  "root_units_unchanged_from_20261030_vm_proof": true,
+  "full_vm_bootstrap_reboot_repeated_for_this_revision": false,
+  "full_r9_r10_r9_cutover_repeated_for_this_revision": false,
+  "production": {
+    "ok": true,
+    "production_containers_unchanged": 16,
+    "protected_host_files_unchanged": 37,
+    "audit_safety_mqtt_unchanged": true,
+    "active_release": "hc-ingest-20261028-r9",
+    "backend_frontend_still_r8": true,
+    "prepared_previous_images_environments_match_live": true,
+    "fixed_endpoint_inventory_matches_live": true,
+    "frontend_dependency_lock_unchanged": true,
+    "r10_not_deployed": true,
+    "production_binding_policy_changes": false,
+    "prepared_esp_confirmed": true,
+    "prepared_esp_ip": "192.168.1.179"
+  },
+  "migration_required": false,
+  "dependency_updates": false,
+  "services_recreated_at_deploy": 13,
+  "live_bindings": {
+    "read_only": true,
+    "production_commands_sent": false,
+    "production_rows_modified": false,
+    "roles": 11,
+    "invalid_roles": [],
+    "legacy_fallback_roles": [],
+    "pending_climate_entity_ids": []
+  },
+  "lab_cleanup_complete": true,
+  "remaining": [
+    "Fresh production baseline/backup and root host access at supervised deployment",
+    "Physical ESP STOP/ack, binding/fan and frontend acceptance",
+    "Developer PC dashboard/Explorer authenticated reconnect",
+    "Physical AI SSD/offsite check remains separately deferred"
+  ],
+  "private_lab_inputs_deleted": true,
+  "private_readonly_inventory_preserved_in_kit": true
+}
