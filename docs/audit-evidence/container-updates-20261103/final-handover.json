@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "release": "hc-containers-20261103-r23",
+  "state": "container_updates_backup_restore_verified",
+  "completed_at": "2026-11-03T21:42:40.391737+00:00",
+  "root_execution": {
+    "source": "successful local sudo output and root-generated public release receipts",
+    "private_logs_read_by_assistant": false,
+    "result": {
+      "ok": true,
+      "release": "hc-containers-20261103-r23",
+      "state": "container_updates_backup_restore_verified",
+      "changed_images": 12,
+      "recreated_services": 12,
+      "ai_enabled": false,
+      "hc43": "in_progress",
+      "run_id": "0d5e07d8aeef48fda2ef2e2d62c48796",
+      "snapshot_id": "d1e2af2fc270f95401465946fccc499aca37a2c6f6d26499734ee952b12c2762",
+      "archive_sha256": "0a10c9f9ec7ac673468273fe4c1c1d2f96d5490751c2e4998ad77a4fc342748f",
+      "restore": "verified",
+      "database": "verified"
+    }
+  },
+  "independent_live_check": {
+    "ok": true,
+    "path": "docs/audit-evidence/container-updates-20261103/independent-live-check.json",
+    "sha256": "4929a02bd7fd528eea08849dce24d151056d645c98aaba9cd41658e51bdf5bfd",
+    "container_count": 16,
+    "running_count": 15,
+    "runtime_sources_verified": 823,
+    "unit_files_verified": 25,
+    "timers_verified": 5,
+    "backup_mounts_verified": 5,
+    "zigbee_version": "2.14.3",
+    "zigbee_inventory_count": 58,
+    "mosquitto_version": "2.1.2"
+  },
+  "release_receipts_sha256": {
+    "backups/releases/hc-containers-20261103-r23/deployment-status.json": "ea08a092e879b724c121d95508c32ee339bb2c58f99617dc18dd2d0823cd30fc",
+    "backups/releases/hc-containers-20261103-r23/evidence/post-live-check.json": "d2dfc08c4002a3c694884cba0e76a1b2c3c0a8f5b6b0263bd374e1fa394b1c5b",
+    "backups/releases/hc-containers-20261103-r23/evidence/router-live-acceptance.json": "f445471628015bd14ba8573e831af4c473a33fffda45b9e40fd95410dd5c58d7"
+  },
+  "ai_enabled": false,
+  "router_backup_enabled": true,
+  "audit_checked": 46,
+  "audit_in_progress": [
+    "HC-41",
+    "HC-43"
+  ],
+  "full_new_vulnerability_audit_performed": false,
+  "new_bare_metal_restore_test": false,
+  "original_audit_sha256": "51b28cca083f7ebe1ceba65d5ded3761af0a4ad9a309764f51dc1b0b0f3f25e2"
+}

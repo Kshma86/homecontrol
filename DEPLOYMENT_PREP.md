@@ -1,5 +1,19 @@
 # HomeControl – aktuális éles kiadás
 
+**REPAIR-096 – a konténerfrissítések sikeresen lezárva (2026-11-03).**
+Aktív **hc-containers-20261103-r23**; végállapot
+`container_updates_backup_restore_verified`. Mind a 12 tervezett image éles.
+Friss teljes HC/Git/router elő-/utómentés, visszaolvasás és izolált PG-restore,
+valamint a teljes eredeti timer/health-kapuk sikeresek. Független natív ellenőrzés:
+16 konténer (15 fut, Adminer leállítva), 823 runtime-forrás, 25 unit/drop-in,
+öt timer, öt backup-mount, Zigbee 2.14.3 / 58 inventory-bejegyzés, MQTT 2.1.2,
+Growatt-adat, AI-tiltás és routeres mentés rendben. A négy megőrzött konténer
+ID-ja változatlan. A korábbi nyugták, staging és archívumok megőrizve.
+**46 Ellenőrzött; HC-41 és HC-43 továbbra is Folyamatban.**
+[Lezárás és bizonyítékok](docs/container-updates-complete-20261103.md).
+**Az alábbi előkészítési és hibakeresési állapotok történetiek; indítóik nem ismétlendők.**
+
+
 **REPAIR-095 – r23 broker-tulajdonosi folytató ellenőrzött, éles indítás előtt (2026-11-03).**
 A sudo-diagnosztika igazolta az izolált konfigurációpróba UID-hibáját. A második
 folytató kizárólag e próba brokerparancsait futtatja UID 1883-ként, capability
